@@ -120,6 +120,8 @@ class DraggableItemWidget extends StatelessWidget {
                   if (labelOnly)
                     const Text(
                       'IDENTIFICATION LABEL',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 8,
                         color: Color(0xFF64748B),

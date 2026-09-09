@@ -15,6 +15,7 @@ class DropTargetWidget extends StatelessWidget {
   final DraggableItem? specimenItem;
   final VoidCallback? onInspectSpecimen;
   final bool workflowMode;
+  final bool compact;
 
   const DropTargetWidget({
     super.key,
@@ -29,6 +30,7 @@ class DropTargetWidget extends StatelessWidget {
     this.specimenItem,
     this.onInspectSpecimen,
     this.workflowMode = false,
+    this.compact = false,
   });
 
   @override
@@ -51,7 +53,9 @@ class DropTargetWidget extends StatelessWidget {
           width: width,
           height: height,
           decoration: BoxDecoration(
-            color: immersive && isFilled
+            color: specimenItem != null
+                ? const Color(0xFF132C46)
+                : immersive && isFilled
                 ? Colors.transparent
                 : isFilled
                 ? _getColorForCategory(
@@ -66,7 +70,9 @@ class DropTargetWidget extends StatelessWidget {
                       : Colors.grey.shade100),
             borderRadius: BorderRadius.circular(immersive ? 5 : 10),
             border: Border.all(
-              color: immersive && isFilled
+              color: specimenItem != null
+                  ? const Color(0xFF132C46)
+                  : immersive && isFilled
                   ? Colors.transparent
                   : isFilled
                   ? _getColorForCategory(placedItem!.category)
@@ -89,7 +95,12 @@ class DropTargetWidget extends StatelessWidget {
                 ),
             ],
           ),
-          child: isFilled
+          child: compact && specimenItem == null
+              ? Tooltip(
+                  message: placedItem?.name ?? _getSlotLabel(slotId),
+                  child: _compactContent(),
+                )
+              : isFilled
               ? workflowMode
                     ? _buildWorkflowComplete()
                     : specimenItem != null
@@ -215,6 +226,59 @@ class DropTargetWidget extends StatelessWidget {
                 ),
         );
       },
+    );
+  }
+
+  Widget _compactContent() {
+    if (placedItem != null && immersive) {
+      return Center(
+        child: _buildImage(placedItem!, imageWidth: width, imageHeight: height),
+      );
+    }
+    if (placedItem != null) {
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: _buildFittedImage(
+                placedItem!,
+                imageWidth: width,
+                imageHeight: height,
+              ),
+            ),
+          ),
+          Positioned(
+            left: 4,
+            right: 4,
+            bottom: 2,
+            child: Text(
+              placedItem!.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      );
+    }
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Text(
+          _getSlotLabel(slotId),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 10,
+            height: 1.15,
+            fontWeight: FontWeight.w700,
+            color: immersive ? Colors.white : const Color(0xFF334E68),
+          ),
+        ),
+      ),
     );
   }
 
@@ -368,7 +432,9 @@ class DropTargetWidget extends StatelessWidget {
               right: 7,
               bottom: 5,
               child: Text(
-                'TAP TO INSPECT • DROP LABEL HERE',
+                'Inspect or drop label',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xFFBAE6FD),
@@ -488,6 +554,7 @@ class DropTargetWidget extends StatelessWidget {
   }
 
   String _getSlotLabel(String slotId) {
+    if (slotId.startsWith('pin')) return 'PIN ${slotId.substring(3)}';
     switch (slotId) {
       case 'cpu_socket':
         return 'CPU Socket';
@@ -557,7 +624,7 @@ class DropTargetWidget extends StatelessWidget {
       case 'modem_position':
         return 'Modem';
       default:
-        return 'Drop Here';
+        return slotId.replaceAll('_', ' ').toUpperCase();
     }
   }
 }

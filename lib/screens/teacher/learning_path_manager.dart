@@ -169,7 +169,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
             const Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'Required sequence: lesson → ungraded practice → theory quiz → simulation assessment. Configure each activity before students use it.',
+                'To make a simulation available:\n\n1. In Modules, add the lesson, turn on Publish, then choose Upload & Publish Module. A draft will not unlock it.\n\n2. In Quizzes, create and publish a theory quiz with questions.\n\n3. Select the simulation below, choose its published module and Part 1 theory quiz, then Save.\n\n4. In Content Lock Settings, make sure the lesson, quiz and simulation are unlocked. Students must be enrolled in an active class.\n\nStudents complete the lesson, ungraded practice and the theory quiz before the simulation assessment. Any previous simulation requirement must also be passed.',
               ),
             ),
             ...SimulationData.getAllSimulations().map(

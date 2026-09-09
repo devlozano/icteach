@@ -244,7 +244,7 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
               backgroundColor: Colors.transparent,
               foregroundColor: const Color(0xFF0F172A),
               elevation: 0,
-              toolbarHeight: 70,
+              toolbarHeight: 52,
             )
           : null,
       body: StreamBuilder<List<ModuleModel>>(

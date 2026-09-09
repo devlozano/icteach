@@ -71,7 +71,7 @@ class LrnCsvParser {
       final lrn = field('lrn');
       if (!_lrn.hasMatch(lrn))
         throw FormatException(
-          'CSV record ${i + 1}: LRN must contain exactly 12 digits. Keep the LRN column as text in Excel; scientific notation is not accepted.',
+          'CSV record ${i + 1}: LRN must contain exactly 12 digits. Set the LRN column format to General in Excel, then save as CSV UTF-8. Verify that all 12 digits are saved; scientific notation is not accepted.',
         );
       if (!seen.add(lrn))
         throw FormatException(

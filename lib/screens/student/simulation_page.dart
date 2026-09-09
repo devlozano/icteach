@@ -11,6 +11,10 @@ import '../../widgets/content_access_gate.dart';
 import '../../widgets/activity_preparation_gate.dart';
 import '../../services/learning_path_service.dart';
 
+// Debug builds can open every simulation for local testing without recording
+// practice or assessment progress. Release builds retain every prerequisite.
+const bool _simulationTestingBypass = kDebugMode;
+
 class SimulationPage extends StatelessWidget {
   final String classId;
   final String simulationId;
@@ -28,24 +32,34 @@ class SimulationPage extends StatelessWidget {
     classId: classId,
     contentType: 'simulation',
     contentId: simulationId,
-    builder: (_) => ActivityPreparationGate(
-      classId: classId,
-      type: 'simulation',
-      contentId: simulationId,
-      title: title,
-      sessionBuilder: (practice) => _SimulationSession(
-        practice: practice,
-        classId: classId,
-        simulationId: simulationId,
-        title: title,
-        className: className,
-      ),
-    ),
+    builder: (_) => _simulationTestingBypass
+        ? _SimulationSession(
+            practice: true,
+            testingBypass: true,
+            classId: classId,
+            simulationId: simulationId,
+            title: title,
+            className: className,
+          )
+        : ActivityPreparationGate(
+            classId: classId,
+            type: 'simulation',
+            contentId: simulationId,
+            title: title,
+            sessionBuilder: (practice) => _SimulationSession(
+              practice: practice,
+              classId: classId,
+              simulationId: simulationId,
+              title: title,
+              className: className,
+            ),
+          ),
   );
 }
 
 class _SimulationSession extends StatefulWidget {
   final bool practice;
+  final bool testingBypass;
   final String classId;
   final String simulationId;
   final String title;
@@ -53,6 +67,7 @@ class _SimulationSession extends StatefulWidget {
 
   const _SimulationSession({
     required this.practice,
+    this.testingBypass = false,
     required this.classId,
     required this.simulationId,
     required this.title,
@@ -172,7 +187,7 @@ class _SimulationPageState extends State<_SimulationSession> {
       _simulation = simulation;
       _prerequisites = prerequisites;
       _isCompleted = widget.practice ? false : completed;
-      _prerequisiteCompleted = prerequisiteCompleted;
+      _prerequisiteCompleted = widget.testingBypass || prerequisiteCompleted;
       _isLoading = false;
     });
   }
@@ -206,29 +221,17 @@ class _SimulationPageState extends State<_SimulationSession> {
 
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
-      appBar: _appBar(_simulation!.title, showHelp: true),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _notice(Icons.info_outline, _getInstructionText(), Colors.blue),
-            if (_prerequisites.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _notice(
-                Icons.lock,
-                'Prerequisites: ${_prerequisites.map((item) => item.title).join(' -> ')}',
-                Colors.orange,
-              ),
-            ],
-            const SizedBox(height: 16),
-            DragDropSimulation(
-              practice: widget.practice,
-              onFeedback: (errors) => _attemptErrors = errors,
-              simulation: _simulation!,
-              onComplete: _onComplete,
-            ),
-          ],
+      appBar: _appBar(_simulation!.title),
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: DragDropSimulation(
+            practice: widget.practice,
+            onFeedback: (errors) => _attemptErrors = errors,
+            simulation: _simulation!,
+            onComplete: _onComplete,
+          ),
         ),
       ),
     );
@@ -289,32 +292,11 @@ class _SimulationPageState extends State<_SimulationSession> {
     if (mounted) Navigator.maybePop(context);
   }
 
-  Widget _notice(IconData icon, String text, MaterialColor color) => Container(
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: color.shade50,
-      borderRadius: BorderRadius.circular(8),
-      border: Border.all(color: color.shade200),
-    ),
-    child: Row(
-      children: [
-        Icon(icon, color: color.shade700),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(color: color.shade800, fontSize: 13),
-          ),
-        ),
-      ],
-    ),
-  );
-
   Widget _buildStartPage() {
     final locked = _isLocked();
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
-      appBar: _appBar(_simulation!.title),
+      appBar: _appBar(_simulation!.title, showHelp: true),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -626,8 +608,9 @@ class _SimulationPageState extends State<_SimulationSession> {
     context: context,
     builder: (context) => AlertDialog(
       title: const Text('How to Play'),
+      scrollable: true,
       content: Text(
-        '1. Drag an item from the available components.\n\n2. Drop it onto the correct target.\n\n3. Place all items.\n\n4. Score at least ${_simulation!.passingScore}% to pass.',
+        '${_getInstructionText()}\n\n1. Choose a component and its tool/resource.\n\n2. Drag it to the correct target on the workbench.\n\n3. Use landscape orientation. Browse the parts tray with its arrows, tap a part to inspect it, and pinch the bench to zoom.\n\n4. Complete all tasks in the correct sequence.\n\nPrerequisites: ${_prerequisites.isEmpty ? "None" : _prerequisites.map((s) => s.title).join(", ")}',
       ),
       actions: [
         TextButton(
@@ -666,6 +649,7 @@ class _SimulationPageState extends State<_SimulationSession> {
   }
 
   Future<bool> _saveProgress(int score, int total, bool passed) async {
+    if (widget.testingBypass) return true;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
     try {

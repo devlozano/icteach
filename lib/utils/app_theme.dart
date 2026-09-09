@@ -65,6 +65,8 @@ abstract final class AppTheme {
         bodySmall: const TextStyle(color: muted, height: 1.4),
       ),
       appBarTheme: const AppBarTheme(
+        toolbarHeight: 48,
+        titleSpacing: 8,
         backgroundColor: Colors.white,
         foregroundColor: navy,
         surfaceTintColor: Colors.transparent,

@@ -14,7 +14,6 @@ import 'utils/app_theme.dart';
 import 'services/session_service.dart';
 import 'services/workspace_preferences.dart';
 import 'services/workspace_navigation.dart';
-import 'widgets/workspace_back_bar.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,8 +62,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       navigatorKey: NavigationService.navigatorKey,
       navigatorObservers: [WorkspaceNavigation.instance],
-      builder: (context, child) =>
-          WorkspaceBackBar(child: OfflineIndicator(child: child!)),
+      builder: (context, child) => OfflineIndicator(child: child!),
       theme: AppTheme.light,
       home: const _AppEntry(),
       routes: {

@@ -292,7 +292,7 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'CSV UTF-8, maximum 5 MB / 10,000 rows. Columns: LRN, First Name, Last Name, Middle Name (optional). Headers are recommended. Keep LRNs as 12-digit text, not scientific notation.',
+                  'CSV UTF-8, maximum 5 MB / 10,000 rows. Columns: LRN, First Name, Last Name, Middle Name (optional). Headers are recommended. Set the LRN column format to General in Excel before saving. Verify that the CSV contains all 12 LRN digits, not scientific notation.',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],

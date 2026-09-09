@@ -1103,7 +1103,7 @@ class _TopBar extends StatelessWidget {
     final showProfileDetails = width >= 650;
 
     return Container(
-      height: 68,
+      height: 52,
       color: Colors.white,
       padding: EdgeInsets.symmetric(horizontal: width < 400 ? 6 : 18),
       foregroundDecoration: const BoxDecoration(

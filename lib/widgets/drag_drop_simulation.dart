@@ -96,6 +96,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     _streak = 0;
     _xp = 0;
     _elapsedSeconds = 0;
+    _trayPage = 0;
     _focusedItemId = null;
     _selectedResource = null;
 
@@ -619,80 +620,220 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.screen_rotation_rounded,
+                size: 48,
+                color: Color(0xFF2563EB),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Turn your screen sideways',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'The landscape workbench gives your parts and targets room to breathe.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     if (widget.simulation.id == 'sim_coc1_assembly' && !_preflightComplete) {
-      return _buildPreflight();
+      return LayoutBuilder(
+        builder: (context, size) =>
+            size.maxHeight < 580 ? _compactReadiness(true) : _buildPreflight(),
+      );
     }
     if (widget.simulation.id == 'sim_coc1_os_install' &&
         !_osPreflightComplete) {
-      return _buildOsPreflight();
+      return LayoutBuilder(
+        builder: (context, size) => size.maxHeight < 580
+            ? _compactReadiness(false)
+            : _buildOsPreflight(),
+      );
     }
     return LayoutBuilder(
       builder: (context, constraints) {
-        final inventoryWidth = constraints.maxWidth >= 1150
-            ? 185.0
-            : constraints.maxWidth >= 850
-            ? 165.0
-            : 140.0;
-        final guidanceWidth = constraints.maxWidth >= 1150
-            ? 210.0
-            : constraints.maxWidth >= 850
-            ? 185.0
-            : 150.0;
-        final availableActivityHeight = constraints.maxHeight - 122;
-        final activityHeight = constraints.maxHeight.isFinite
-            ? availableActivityHeight.clamp(210.0, 520.0)
-            : 440.0;
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatusBar(),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: inventoryWidth,
-                  child: _buildPartsPanel(activityHeight),
-                ),
-                const SizedBox(width: 8),
-                Expanded(child: _buildWorkbench(activityHeight)),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: guidanceWidth,
-                  child: _buildAssessmentPanel(activityHeight),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(
-                  Icons.verified_outlined,
-                  size: 16,
-                  color: Color(0xFF627487),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  'Required competency score: ${widget.simulation.passingScore}%',
-                  style: const TextStyle(
-                    color: Color(0xFF627487),
-                    fontSize: 12,
+        final height = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : 560.0;
+        final trayWidth = (constraints.maxWidth * .27).clamp(180.0, 260.0);
+        return SizedBox(
+          height: height,
+          child: Column(
+            children: [
+              _buildStatusBar(),
+              const SizedBox(height: 8),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, space) => Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SizedBox(
+                        width: trayWidth,
+                        child: _buildPartsPanel(space.maxHeight),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildWorkbench(space.maxHeight)),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                if (!_isComplete)
-                  OutlinedButton.icon(
-                    onPressed: _resetSimulation,
-                    icon: const Icon(Icons.restart_alt_rounded, size: 18),
-                    label: const Text('Reset activity'),
-                  ),
-              ],
-            ),
-          ],
+              ),
+            ],
+          ),
         );
       },
     );
   }
+
+  int _trayPage = 0;
+  int _readinessIndex = 0;
+
+  Widget _compactReadiness(bool assembly) {
+    final checks = assembly
+        ? const [
+            (
+              'Disconnect power',
+              'Switch off the PSU and remove its power cable.',
+            ),
+            ('Use ESD protection', 'Wear a grounded anti-static wrist strap.'),
+            ('Prepare the bench', 'Clear screws, tools and packaging.'),
+          ]
+        : const [
+            (
+              'Verify backup',
+              'Confirm required files open from the backup destination.',
+            ),
+            (
+              'Verify installer',
+              'Confirm the approved ISO checksum and bootable USB.',
+            ),
+            (
+              'Check deployment',
+              'Verify hardware, license, network and stable power.',
+            ),
+          ];
+    final selected = assembly ? _safetyChecks : _osReadinessChecks;
+    final index = _readinessIndex.clamp(0, checks.length - 1);
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Safety check ${index + 1} of ${checks.length}',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            CheckboxListTile(
+              value: selected.contains(index),
+              title: Text(checks[index].$1),
+              subtitle: Text(checks[index].$2),
+              onChanged: (checked) => setState(() {
+                if (checked == true) {
+                  selected.add(index);
+                } else {
+                  selected.remove(index);
+                }
+              }),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                TextButton(
+                  onPressed: index == 0
+                      ? null
+                      : () => setState(() => _readinessIndex--),
+                  child: const Text('Previous'),
+                ),
+                FilledButton(
+                  onPressed: !selected.contains(index)
+                      ? null
+                      : () {
+                          if (index < checks.length - 1) {
+                            setState(() => _readinessIndex++);
+                          } else if (assembly) {
+                            _beginAssembly();
+                          } else {
+                            _beginOsInstallation();
+                          }
+                        },
+                  child: Text(index < checks.length - 1 ? 'Next' : 'Start'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _inspectItem(sim_models.DraggableItem item) {
+    setState(() => _focusedItemId = item.id);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(item.name),
+        content: SingleChildScrollView(
+          child: Text(
+            '${item.tooltip}\n\n${item.specification}\n\nResource: ${_resourceProfile(item).$1}\nControl: ${_resourceProfile(item).$2}',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showConfidence() => showDialog<void>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, update) => AlertDialog(
+        title: const Text('Identification confidence'),
+        scrollable: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Higher confidence earns more XP, but a wrong classification costs more.',
+            ),
+            for (var value = 1; value <= 3; value++)
+              ListTile(
+                leading: Icon(
+                  _identificationConfidence == value
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_off,
+                ),
+                title: Text(['Low', 'Medium', 'High'][value - 1]),
+                onTap: () {
+                  setState(() => _identificationConfidence = value);
+                  update(() {});
+                },
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    ),
+  );
 
   Widget _buildPreflight() {
     const checks = [
@@ -909,146 +1050,92 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     );
   }
 
-  Widget _buildStatusBar() {
-    final progress = _requiredItems.isEmpty
-        ? 0.0
-        : _placements.length / _requiredItems.length;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: const Color(0xFF102A43),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF254B6D)),
+  void _showWorkbenchGuide() => showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Using the workbench'),
+      scrollable: true,
+      content: Text(
+        '1. Choose the correct tool or resource in the parts tray.\n\n'
+        '2. Drag a part onto its matching target on the workbench.\n\n'
+        '3. Tap a part to inspect its specifications and technical guidance.\n\n'
+        'Use the tray arrows to see more parts. Pinch the workbench or use Zoom to inspect small targets.\n\n'
+        'Passing score: ${widget.simulation.passingScore}%.',
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 30,
-            height: 30,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2563EB),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: const Icon(
-              Icons.precision_manufacturing_outlined,
-              color: Colors.white,
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.simulation.title.toUpperCase(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: .4,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${widget.simulation.competency}  •  PRACTICAL ACTIVITY',
-                  style: const TextStyle(
-                    color: Color(0xFFB8C8D8),
-                    fontSize: 8,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: .7,
-                  ),
-                ),
-              ],
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Got it'),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildStatusBar() => Container(
+    height: 40,
+    padding: const EdgeInsets.only(left: 12, right: 2),
+    decoration: BoxDecoration(
+      color: const Color(0xFFEAF0F7),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(
+      children: [
+        const Icon(Icons.task_alt_rounded, size: 18, color: Color(0xFF2563EB)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            '${_placements.length}/${_requiredItems.length} placed  ·  $_mistakes errors  ·  $_formattedElapsed',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF334E68),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 2,
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      'Progress ${_placements.length}/${_requiredItems.length}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '${(progress * 100).round()}%',
-                      style: const TextStyle(
-                        color: Color(0xFF7DD3FC),
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 4,
-                    backgroundColor: Colors.white24,
-                    valueColor: const AlwaysStoppedAnimation(Color(0xFF38BDF8)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          if (widget.simulation.type == 'assembly' ||
-              widget.simulation.type == 'procedure' ||
-              widget.simulation.type == 'cabling')
-            _hudChip(
-              Icons.format_list_numbered_rounded,
-              'Step $_nextAssemblyStep',
-            ),
-          const SizedBox(width: 4),
-          _hudChip(
-            Icons.stars_outlined,
-            '$_xp XP',
-            accent: const Color(0xFFBAE6FD),
-          ),
-          const SizedBox(width: 4),
-          _hudChip(Icons.timer_outlined, _formattedElapsed),
-          const SizedBox(width: 4),
+        ),
+        IconButton(
+          tooltip: 'Workbench guide',
+          onPressed: _showWorkbenchGuide,
+          icon: const Icon(Icons.help_outline_rounded, size: 20),
+        ),
+        if (widget.simulation.type == 'identification')
           IconButton(
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-            padding: EdgeInsets.zero,
-            tooltip: _voiceEnabled
-                ? 'Mute voice guidance'
-                : 'Enable voice guidance',
-            onPressed: () {
-              setState(() => _voiceEnabled = !_voiceEnabled);
-              if (_voiceEnabled) {
-                SystemSound.play(SystemSoundType.click);
-                _speak('Voice guidance enabled.');
-              } else {
-                _tts.stop();
-              }
-            },
-            icon: Icon(
-              _voiceEnabled
-                  ? Icons.volume_up_outlined
-                  : Icons.volume_off_outlined,
-              color: Colors.white,
-              size: 18,
-            ),
+            tooltip: 'Identification confidence',
+            onPressed: _showConfidence,
+            icon: const Icon(Icons.psychology_outlined, size: 20),
           ),
-        ],
-      ),
-    );
-  }
+        IconButton(
+          tooltip: _cableZoom > 1 ? 'Reset view' : 'Zoom in',
+          onPressed: () => _setCableZoom(_cableZoom > 1 ? 1 : 1.8),
+          icon: Icon(
+            _cableZoom > 1 ? Icons.center_focus_strong : Icons.zoom_in_rounded,
+            size: 20,
+          ),
+        ),
+        IconButton(
+          tooltip: _voiceEnabled
+              ? 'Mute voice guidance'
+              : 'Enable voice guidance',
+          onPressed: () {
+            setState(() => _voiceEnabled = !_voiceEnabled);
+            if (!_voiceEnabled) _tts.stop();
+          },
+          icon: Icon(
+            _voiceEnabled
+                ? Icons.volume_up_outlined
+                : Icons.volume_off_outlined,
+            size: 20,
+          ),
+        ),
+        IconButton(
+          tooltip: 'Reset activity',
+          onPressed: _resetSimulation,
+          icon: const Icon(Icons.restart_alt_rounded, size: 20),
+        ),
+      ],
+    ),
+  );
 
   String get _formattedElapsed {
     final minutes = (_elapsedSeconds ~/ 60).toString().padLeft(2, '0');
@@ -1056,160 +1143,135 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     return '$minutes:$seconds';
   }
 
-  Widget _hudChip(IconData icon, String text, {Color accent = Colors.white}) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.09),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: Colors.white12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: accent),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-              color: accent,
-              fontSize: 9,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildPartsPanel(double panelHeight) {
     final resources = widget.simulation.items
         .map((item) => _resourceProfile(item).$1)
         .toSet()
         .toList();
+    final perPage = max(1, ((panelHeight - 104) / 48).floor());
+    final pages = max(1, (_availableItems.length / perPage).ceil());
+    final page = _trayPage.clamp(0, pages - 1);
+    final visible = _availableItems.skip(page * perPage).take(perPage).toList();
     return Container(
-      height: panelHeight,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       decoration: BoxDecoration(
-        color: const Color(0xCCFFFFFF),
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: const Color(0xFFDCE3EA)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFDCE5EF)),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(
-                widget.simulation.type == 'identification'
-                    ? Icons.sell_outlined
-                    : Icons.inventory_2_outlined,
-                size: 18,
-                color: const Color(0xFF2563EB),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  widget.simulation.type == 'identification'
-                      ? 'EVIDENCE LABELS'
-                      : 'COMPONENTS',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: .5,
+          SizedBox(
+            height: 40,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Parts  ${page + 1}/$pages',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const Divider(height: 14),
-          Container(
-            height: 58,
-            padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              image: const DecorationImage(
-                image: AssetImage(
-                  'assets/simulations/technician-tool-tray-realistic.png',
+                IconButton(
+                  tooltip: 'Previous parts',
+                  onPressed: page > 0
+                      ? () => setState(() => _trayPage = page - 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_left, size: 20),
                 ),
-                fit: BoxFit.cover,
-                opacity: .18,
-              ),
-              color: const Color(0xFFEEF6FF),
-              border: Border.all(color: const Color(0xFFBFDBFE)),
+                IconButton(
+                  tooltip: 'Next parts',
+                  onPressed: page + 1 < pages
+                      ? () => setState(() => _trayPage = page + 1)
+                      : null,
+                  icon: const Icon(Icons.chevron_right, size: 20),
+                ),
+              ],
             ),
+          ),
+          SizedBox(
+            height: 48,
             child: DropdownButtonFormField<String>(
               key: ValueKey(_selectedResource),
               initialValue: _selectedResource,
+              itemHeight: null,
+              selectedItemBuilder: (context) => resources
+                  .map(
+                    (r) => Align(
+                      alignment: Alignment.centerLeft,
+                      child: Tooltip(
+                        message: r,
+                        child: Text(
+                          r,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
               isExpanded: true,
               decoration: const InputDecoration(
-                labelText: 'SELECT TOOL / CONTROL',
-                labelStyle: TextStyle(fontSize: 8, fontWeight: FontWeight.w900),
-                prefixIcon: Icon(Icons.handyman_outlined, size: 16),
-                prefixIconConstraints: BoxConstraints(minWidth: 27),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
+                hintText: 'Select tool',
+                hintStyle: TextStyle(fontSize: 11),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 8,
+                ),
+                isDense: true,
               ),
-              style: const TextStyle(
-                color: Color(0xFF102A43),
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-              ),
-              items: [
-                for (final resource in resources)
-                  DropdownMenuItem(
-                    value: resource,
-                    child: Text(
-                      resource,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              items: resources
+                  .map(
+                    (r) => DropdownMenuItem(
+                      value: r,
+                      child: Text(
+                        r,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11),
+                      ),
                     ),
-                  ),
-              ],
+                  )
+                  .toList(),
               onChanged: (value) => setState(() => _selectedResource = value),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Expanded(
             child: _availableItems.isEmpty
                 ? const Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.task_alt_rounded,
-                          color: Colors.green,
-                          size: 34,
-                        ),
-                        SizedBox(height: 7),
-                        Text(
-                          'All components installed',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
+                    child: Icon(
+                      Icons.task_alt_rounded,
+                      color: Color(0xFF059669),
+                      size: 32,
                     ),
                   )
-                : ListView.separated(
-                    itemCount: _availableItems.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 4),
-                    itemBuilder: (context, index) => DraggableItemWidget(
-                      item: widget.simulation.items.firstWhere(
-                        (item) => item.id == _availableItems[index],
-                      ),
-                      isComplete: _isComplete,
-                      compact: true,
-                      labelOnly:
-                          widget.simulation.type == 'identification' ||
-                          widget.simulation.id == 'sim_coc1_os_install',
-                      isFocused: _focusedItemId == _availableItems[index],
-                      onInspect: () => setState(
-                        () => _focusedItemId = _availableItems[index],
-                      ),
-                    ),
+                : Column(
+                    children: [
+                      for (final id in visible)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: DraggableItemWidget(
+                            item: widget.simulation.items.firstWhere(
+                              (item) => item.id == id,
+                            ),
+                            isComplete: _isComplete,
+                            compact: true,
+                            labelOnly:
+                                widget.simulation.type == 'identification' ||
+                                widget.simulation.id == 'sim_coc1_os_install',
+                            isFocused: _focusedItemId == id,
+                            onInspect: () => _inspectItem(
+                              widget.simulation.items.firstWhere(
+                                (item) => item.id == id,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
           ),
         ],
@@ -1217,379 +1279,77 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     );
   }
 
-  Widget _buildAssessmentPanel(double panelHeight) {
-    final progress = _requiredItems.isEmpty
-        ? 0
-        : (_placements.length / _requiredItems.length * 100).round();
-    final nextItem = _availableItems.isEmpty
-        ? null
-        : (_itemForStep(_nextAssemblyStep) ??
-              widget.simulation.items.firstWhere(
-                (item) => item.id == _availableItems.first,
-              ));
-    final inspectedItem = _focusedItemId == null
-        ? null
-        : widget.simulation.items
-              .where((item) => item.id == _focusedItemId)
-              .firstOrNull;
-    final guidanceItem = inspectedItem ?? nextItem;
-    final guidanceResource = guidanceItem == null
-        ? null
-        : _resourceProfile(guidanceItem);
-    return SizedBox(
-      height: panelHeight,
-      child: Column(
-        children: [
-          Expanded(
-            child: _technicalPanel(
-              title: 'ACTIVITY STATUS',
-              icon: Icons.monitor_heart_outlined,
-              expandChild: true,
-              child: GridView.count(
-                crossAxisCount: 2,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 1.35,
-                crossAxisSpacing: 5,
-                mainAxisSpacing: 5,
+  Widget _buildWorkbench(double activityHeight) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      final height = activityHeight;
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ColoredBox(
+          color: const Color(0xFF17283B),
+          child: InteractiveViewer(
+            transformationController: _cableZoomController,
+            minScale: 1,
+            maxScale: 3.5,
+            onInteractionUpdate: (_) {
+              final zoom = _cableZoomController.value.getMaxScaleOnAxis();
+              if ((zoom - _cableZoom).abs() > .02) {
+                setState(() => _cableZoom = zoom);
+              }
+            },
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: Stack(
                 children: [
-                  _metricTile(
-                    'Installed',
-                    '${_placements.length}/${_requiredItems.length}',
-                    Icons.build_outlined,
-                  ),
-                  _metricTile(
-                    'Progress',
-                    '$progress%',
-                    Icons.donut_large_rounded,
-                  ),
-                  _metricTile('Score', '$_xp XP', Icons.assessment_outlined),
-                  _metricTile(
-                    'Errors',
-                    '$_mistakes',
-                    Icons.error_outline_rounded,
-                  ),
+                  Positioned.fill(child: _buildWorkbenchBackground()),
+                  ...widget.simulation.slots.where(_shouldDisplaySlot).map((
+                    slot,
+                  ) {
+                    final size = _targetSize(slot, width, height);
+                    final position = _targetPosition(slot, width, height, size);
+                    return Positioned(
+                      left: position.dx,
+                      top: position.dy,
+                      child: DropTargetWidget(
+                        slotId: slot,
+                        placedItem: _placedItemFor(slot),
+                        isComplete: _isComplete,
+                        onDrop: _handleDrop,
+                        canAccept: (id) =>
+                            widget.simulation.items
+                                .firstWhere((item) => item.id == id)
+                                .correctSlot ==
+                            slot,
+                        specimenItem: widget.simulation.type == 'identification'
+                            ? widget.simulation.items.firstWhere(
+                                (item) => item.correctSlot == slot,
+                              )
+                            : null,
+                        onInspectSpecimen:
+                            widget.simulation.type == 'identification'
+                            ? () => _showSpecimenInspection(slot)
+                            : null,
+                        workflowMode:
+                            widget.simulation.id == 'sim_coc1_os_install',
+                        width: size.width,
+                        height: size.height,
+                        compact: size.height < 110,
+                        immersive:
+                            widget.simulation.id == 'sim_coc1_assembly' ||
+                            widget.simulation.id == 'sim_coc1_cabling' ||
+                            widget.simulation.competency == 'COC2',
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
           ),
-          if (panelHeight >= 340) ...[
-            const SizedBox(height: 6),
-            _technicalPanel(
-              title: 'TECHNICAL NOTE',
-              icon: Icons.lightbulb_outline_rounded,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (inspectedItem != null)
-                    Text(
-                      inspectedItem.name.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF0284C7),
-                      ),
-                    ),
-                  Text(
-                    (inspectedItem ?? nextItem)?.tooltip.isNotEmpty == true
-                        ? (inspectedItem ?? nextItem)!.tooltip
-                        : 'Tap a component to inspect it, then drag it to the highlighted installation zone.',
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      height: 1.35,
-                      color: Color(0xFF334E68),
-                    ),
-                  ),
-                  if ((inspectedItem ?? nextItem)?.specification.isNotEmpty ==
-                      true) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      (inspectedItem ?? nextItem)!.specification,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F766E),
-                      ),
-                    ),
-                  ],
-                  if (guidanceResource != null) ...[
-                    const SizedBox(height: 5),
-                    Text(
-                      'RESOURCE  ${guidanceResource.$1}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF1D4ED8),
-                      ),
-                    ),
-                    Text(
-                      'CONTROL  ${guidanceResource.$2}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF7C3AED),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-          if (widget.simulation.type == 'identification') ...[
-            const SizedBox(height: 6),
-            _buildConfidencePanel(),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConfidencePanel() {
-    return _technicalPanel(
-      title: 'CLAIM CONFIDENCE',
-      icon: Icons.psychology_alt_outlined,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Higher confidence earns more XP, but a wrong classification costs more.',
-            style: TextStyle(fontSize: 9, color: Color(0xFF475569)),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (var level = 1; level <= 3; level++)
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(right: level < 3 ? 4 : 0),
-                    child: ChoiceChip(
-                      label: Text(const ['LOW', 'MED', 'HIGH'][level - 1]),
-                      selected: _identificationConfidence == level,
-                      onSelected: (_) =>
-                          setState(() => _identificationConfidence = level),
-                      visualDensity: VisualDensity.compact,
-                      labelStyle: const TextStyle(
-                        fontSize: 8,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _technicalPanel({
-    required String title,
-    required IconData icon,
-    required Widget child,
-    bool expandChild = false,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(11),
-      decoration: BoxDecoration(
-        color: const Color(0xC7FFFFFF),
-        borderRadius: BorderRadius.circular(9),
-        border: Border.all(color: const Color(0xFFDCE3EA)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 17, color: const Color(0xFF2563EB)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF102A43),
-                    letterSpacing: .5,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const Divider(height: 14),
-          if (expandChild) Expanded(child: child) else child,
-        ],
-      ),
-    );
-  }
-
-  Widget _metricTile(String label, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F7FA),
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(color: const Color(0xFFE3E9EF)),
-      ),
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: const Color(0xFF486581)),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF102A43),
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 9, color: Color(0xFF627487)),
-            ),
-          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildWorkbench(double activityHeight) {
-    final isAssembly = widget.simulation.type == 'assembly';
-    final isCableLab = widget.simulation.id == 'sim_coc1_cabling';
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final height = activityHeight;
-        final scene = Stack(
-          children: [
-            Positioned.fill(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: _buildWorkbenchBackground(),
-              ),
-            ),
-            Positioned(
-              left: 14,
-              top: 12,
-              child: _benchLabel(
-                isCableLab
-                    ? 'CABLE PORT LAB • PIN & KEY INSPECTION'
-                    : widget.simulation.type == 'identification'
-                    ? 'HARDWARE FORENSICS • SPECIMEN CLASSIFICATION'
-                    : isAssembly
-                    ? 'PC ASSEMBLY WORKBENCH'
-                    : 'TECHNICAL LAB WORKBENCH',
-              ),
-            ),
-            ...widget.simulation.slots.where(_shouldDisplaySlot).map((slotId) {
-              final item = _placedItemFor(slotId);
-              final targetSize = _targetSize(slotId, width, height);
-              final position = _targetPosition(
-                slotId,
-                width,
-                height,
-                targetSize,
-              );
-
-              return Positioned(
-                left: position.dx,
-                top: position.dy,
-                child: DropTargetWidget(
-                  slotId: slotId,
-                  placedItem: item,
-                  isComplete: _isComplete,
-                  onDrop: _handleDrop,
-                  canAccept: (itemId) =>
-                      widget.simulation.items
-                          .firstWhere((candidate) => candidate.id == itemId)
-                          .correctSlot ==
-                      slotId,
-                  specimenItem: widget.simulation.type == 'identification'
-                      ? widget.simulation.items.firstWhere(
-                          (candidate) => candidate.correctSlot == slotId,
-                        )
-                      : null,
-                  onInspectSpecimen: widget.simulation.type == 'identification'
-                      ? () => _showSpecimenInspection(slotId)
-                      : null,
-                  workflowMode: widget.simulation.id == 'sim_coc1_os_install',
-                  width: targetSize.width,
-                  height: targetSize.height,
-                  immersive:
-                      widget.simulation.id == 'sim_coc1_assembly' ||
-                      isCableLab ||
-                      widget.simulation.competency == 'COC2',
-                ),
-              );
-            }),
-          ],
-        );
-
-        return Container(
-          height: height,
-          decoration: BoxDecoration(
-            color: const Color(0xff24282b),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xff4b5358), width: 2),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 12,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-          child: isCableLab
-              ? Stack(
-                  children: [
-                    Positioned.fill(
-                      child: InteractiveViewer(
-                        transformationController: _cableZoomController,
-                        minScale: 1,
-                        maxScale: 3.5,
-                        boundaryMargin: const EdgeInsets.all(160),
-                        onInteractionUpdate: (_) {
-                          final zoom = _cableZoomController.value
-                              .getMaxScaleOnAxis();
-                          if ((zoom - _cableZoom).abs() > .02) {
-                            setState(() => _cableZoom = zoom);
-                          }
-                        },
-                        child: scene,
-                      ),
-                    ),
-                    Positioned(
-                      right: 10,
-                      top: 10,
-                      child: _buildCableZoomControls(),
-                    ),
-                    Positioned(
-                      left: 12,
-                      bottom: 10,
-                      child: _benchLabel(
-                        'SCROLL / PINCH TO ZOOM • DRAG EMPTY SPACE TO PAN',
-                      ),
-                    ),
-                  ],
-                )
-              : scene,
-        );
-      },
-    );
-  }
+      );
+    },
+  );
 
   void _showSpecimenInspection(String slotId) {
     final specimen = widget.simulation.items.firstWhere(
@@ -1597,131 +1357,41 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     );
     showDialog<void>(
       context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: const Color(0xFF0F172A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.biotech_outlined,
-                      color: Color(0xFF38BDF8),
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'MAGNIFIED SPECIMEN ANALYSIS',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: .7,
-                        ),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(dialogContext),
-                      icon: const Icon(Icons.close, color: Colors.white70),
-                    ),
-                  ],
+      builder: (context) => AlertDialog(
+        title: const Text('Inspect specimen'),
+        scrollable: true,
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 180,
+                width: double.infinity,
+                child: InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 4,
+                  child: Image.asset(specimen.imageUrl, fit: BoxFit.contain),
                 ),
-                Container(
-                  height: 230,
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: InteractiveViewer(
-                    minScale: 1,
-                    maxScale: 4,
-                    child: Image.asset(specimen.imageUrl, fit: BoxFit.contain),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'OBSERVABLE EVIDENCE',
-                  style: TextStyle(
-                    color: Color(0xFF7DD3FC),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: .8,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  specimen.tooltip,
-                  style: const TextStyle(
-                    color: Color(0xFFE2E8F0),
-                    height: 1.35,
-                  ),
-                ),
-                if (specimen.specification.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    specimen.specification,
-                    style: const TextStyle(
-                      color: Color(0xFF94A3B8),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                const Text(
-                  'Pinch or scroll to inspect contacts, connectors, chips, and form factor. Close this view, set your confidence, then classify the specimen.',
-                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-                ),
+              ),
+              const SizedBox(height: 12),
+              Text(specimen.tooltip),
+              if (specimen.specification.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text(specimen.specification),
               ],
-            ),
+              const SizedBox(height: 8),
+              const Text(
+                'Inspect the evidence, choose your confidence, then drag the matching label onto the specimen.',
+              ),
+            ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildCableZoomControls() {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: const Color(0xE6111C27),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: 'Zoom out',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => _setCableZoom(_cableZoom - .35),
-            icon: const Icon(Icons.remove, color: Colors.white),
-          ),
-          Text(
-            '${(_cableZoom * 100).round()}%',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Zoom in',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => _setCableZoom(_cableZoom + .35),
-            icon: const Icon(Icons.add, color: Colors.white),
-          ),
-          IconButton(
-            tooltip: 'Reset view',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => _setCableZoom(1),
-            icon: const Icon(Icons.center_focus_strong, color: Colors.white),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -1764,42 +1434,31 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     }
   }
 
+  bool get _gridTargets => !const {
+    'sim_coc1_assembly',
+    'sim_coc1_cabling',
+    'sim_coc1_identification',
+  }.contains(widget.simulation.id);
+
   Size _targetSize(String slotId, double benchWidth, double benchHeight) {
-    if (widget.simulation.id == 'sim_coc1_os_install') {
+    if (_gridTargets) {
+      final columns = widget.simulation.id == 'sim_coc2_crimping' ? 4 : 3;
+      final count = widget.simulation.slots.where(_shouldDisplaySlot).length;
+      final rows = max(1, (count / columns).ceil());
       return Size(
-        (benchWidth * .43).clamp(120.0, 300.0),
-        (benchHeight * .13).clamp(48.0, 62.0),
-      );
-    }
-    if (widget.simulation.id == 'sim_coc1_software_config') {
-      return Size(
-        (benchWidth * .25).clamp(115.0, 220.0),
-        (benchHeight * .23).clamp(88.0, 145.0),
-      );
-    }
-    if (widget.simulation.id == 'sim_coc2_crimping') {
-      return Size(
-        (benchWidth * .45).clamp(180.0, 420.0),
-        (benchHeight * .032).clamp(13.0, 20.0),
-      );
-    }
-    if (widget.simulation.id == 'sim_coc2_topology' ||
-        widget.simulation.id == 'sim_coc2_ipconfig' ||
-        widget.simulation.id == 'sim_coc2_diagnostics') {
-      return Size(
-        (benchWidth * .22).clamp(100.0, 210.0),
-        (benchHeight * .25).clamp(82.0, 150.0),
+        (benchWidth - 24 - (columns - 1) * 8) / columns,
+        (benchHeight - 24 - (rows - 1) * 8) / rows,
       );
     }
     switch (slotId) {
+      case 'assembly_test_station':
+      case 'cable_test_station':
+        return Size(benchWidth * .24, benchHeight * .16);
       case 'motherboard_tray':
         // The matched ATX board is rendered in the same upright, top-down
         // orientation as the case. Keep its real proportions so the CPU,
         // DIMM and PCIe layers land over the sockets drawn on the board.
-        return Size(
-          (benchWidth * .36).clamp(150.0, 310.0),
-          (benchHeight * .58).clamp(210.0, 360.0),
-        );
+        return Size((benchWidth * .36).clamp(150.0, 310.0), benchHeight * .58);
       case 'cpu_target':
       case 'ram_target':
       case 'gpu_target':
@@ -1840,67 +1499,20 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     double height,
     Size targetSize,
   ) {
-    if (widget.simulation.id == 'sim_coc1_os_install') {
-      final index = widget.simulation.slots.indexOf(slotId);
-      final column = index % 2;
-      final row = index ~/ 2;
-      final raw = Offset(
-        width * (column == 0 ? .05 : .52),
-        height * (.14 + row * .17),
+    if (_gridTargets) {
+      final columns = widget.simulation.id == 'sim_coc2_crimping' ? 4 : 3;
+      final index = widget.simulation.slots
+          .where(_shouldDisplaySlot)
+          .toList()
+          .indexOf(slotId);
+      return Offset(
+        12 + (index % columns) * (targetSize.width + 8),
+        12 + (index ~/ columns) * (targetSize.height + 8),
       );
-      return _safeTargetPosition(raw, width, height, targetSize);
-    }
-    if (widget.simulation.id == 'sim_coc1_software_config') {
-      final index = widget.simulation.slots.indexOf(slotId).clamp(0, 5);
-      final column = index % 3;
-      final row = index ~/ 3;
-      final raw = Offset(
-        width * (.08 + column * .31),
-        height * (.43 + row * .28),
-      );
-      return _safeTargetPosition(raw, width, height, targetSize);
-    }
-    if (widget.simulation.id == 'sim_coc2_crimping') {
-      final pin = int.tryParse(slotId.replaceFirst('pin', '')) ?? 1;
-      final raw = Offset(width * .275, height * (.395 + (pin - 1) * .022));
-      return _safeTargetPosition(raw, width, height, targetSize);
-    }
-    if (widget.simulation.id == 'sim_coc2_topology') {
-      final raw =
-          <String, Offset>{
-            'modem_position': Offset(width * .14, height * .19),
-            'router_position': Offset(width * .42, height * .19),
-            'switch_position': Offset(width * .69, height * .19),
-            'pc_position': Offset(width * .14, height * .56),
-            'server_position': Offset(width * .42, height * .56),
-            'printer_position': Offset(width * .69, height * .56),
-          }[slotId] ??
-          Offset(width * .14, height * .19);
-      return _safeTargetPosition(raw, width, height, targetSize);
-    }
-    if (widget.simulation.id == 'sim_coc2_ipconfig') {
-      final raw =
-          <String, Offset>{
-            'pc1_ip': Offset(width * .14, height * .19),
-            'pc2_ip': Offset(width * .42, height * .19),
-            'pc3_ip': Offset(width * .69, height * .19),
-            'server_ip': Offset(width * .14, height * .56),
-            'router_ip': Offset(width * .42, height * .56),
-          }[slotId] ??
-          Offset(width * .14, height * .19);
-      return _safeTargetPosition(raw, width, height, targetSize);
-    }
-    if (widget.simulation.id == 'sim_coc2_diagnostics') {
-      final index = widget.simulation.slots.indexOf(slotId).clamp(0, 5);
-      final column = index % 3;
-      final row = index ~/ 3;
-      final raw = Offset(
-        width * (.14 + column * .275),
-        height * (.19 + row * .37),
-      );
-      return _safeTargetPosition(raw, width, height, targetSize);
     }
     final positions = <String, Offset>{
+      'assembly_test_station': Offset(width * .70, height * .78),
+      'cable_test_station': Offset(width * .04, height * .77),
       'motherboard_tray': Offset(width * 0.22, height * 0.16),
       'cpu_socket': Offset(width * 0.35, height * 0.30),
       'cpu_fan_mount': Offset(width * 0.33, height * 0.26),
@@ -1908,11 +1520,11 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       'pcie_slot': Offset(width * 0.24, height * 0.58),
       'storage_bay': Offset(width * 0.72, height * 0.50),
       'psu_mount': Offset(width * 0.13, height * 0.76),
-      'power_slot': Offset(width * 0.48, height * 0.24),
+      'power_slot': Offset(width * 0.60, height * 0.20),
       'cpu_power_slot': Offset(width * 0.25, height * 0.11),
-      'gpu_power_slot': Offset(width * 0.42, height * 0.48),
-      'sata_slot': Offset(width * 0.54, height * 0.61),
-      'front_panel_slot': Offset(width * 0.38, height * 0.66),
+      'gpu_power_slot': Offset(width * 0.30, height * 0.43),
+      'sata_slot': Offset(width * 0.64, height * 0.61),
+      'front_panel_slot': Offset(width * 0.34, height * 0.72),
       'cpu_target': Offset(width * .05, height * .17),
       'ram_target': Offset(width * .365, height * .17),
       'gpu_target': Offset(width * .68, height * .17),
@@ -2015,26 +1627,6 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       default:
         return 'assets/simulations/whiteboard.svg';
     }
-  }
-
-  Widget _benchLabel(String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.72),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Text(
-        text,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 1,
-        ),
-      ),
-    );
   }
 }
 

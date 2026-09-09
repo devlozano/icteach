@@ -100,6 +100,19 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
     }
   }
 
+  String _submittedAnswerText(int questionIndex) {
+    final answers = _result?['answers'];
+    final options = PreAssessmentData.questions[questionIndex].options;
+    if (answers is! List || questionIndex >= answers.length) {
+      return 'Not recorded';
+    }
+    final answer = answers[questionIndex];
+    if (answer is! int || answer < 0 || answer >= options.length) {
+      return 'Not recorded';
+    }
+    return options[answer];
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<bool>(
     future: _access,
@@ -154,6 +167,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                           ListTile(
                             title: Text(PreAssessmentData.questions[i].prompt),
                             subtitle: Text(
+                              'Your answer: ${_submittedAnswerText(i)}\n'
                               'Correct answer: ${PreAssessmentData.questions[i].options[PreAssessmentData.questions[i].answer]}',
                             ),
                           ),

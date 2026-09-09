@@ -66,7 +66,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('must link a published lesson'), findsOneWidget);
+    expect(find.textContaining('waiting for teacher setup'), findsOneWidget);
     expect(find.byType(FilledButton), findsNothing);
   });
   testWidgets('loading failure remains blocked and retry works', (

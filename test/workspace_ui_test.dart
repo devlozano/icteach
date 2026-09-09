@@ -7,7 +7,6 @@ import 'package:icteach/services/workspace_navigation.dart';
 import 'package:icteach/services/navigation_service.dart';
 import 'package:icteach/screens/teacher/manage_modules_page.dart';
 import 'package:icteach/utils/app_theme.dart';
-import 'package:icteach/widgets/workspace_back_bar.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -164,21 +163,23 @@ void main() {
     expect(find.text('Exit ICTeach?'), findsNothing);
   });
   testWidgets(
-    'shared Back button appears on a pushed page and returns to root',
+    'one screen app bar provides Back navigation without a global header',
     (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
           navigatorKey: NavigationService.navigatorKey,
           navigatorObservers: [WorkspaceNavigation.instance],
-          builder: (context, child) => WorkspaceBackBar(child: child!),
           home: Builder(
             builder: (context) => Scaffold(
               body: TextButton(
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const Scaffold(body: Text('Destination')),
+                    builder: (_) => Scaffold(
+                      appBar: AppBar(title: const Text('Destination')),
+                      body: const SizedBox(),
+                    ),
                   ),
                 ),
                 child: const Text('Open destination'),
@@ -191,8 +192,10 @@ void main() {
       expect(find.text('Back'), findsNothing);
       await tester.tap(find.text('Open destination'));
       await tester.pumpAndSettle();
-      expect(find.text('Back'), findsOneWidget);
-      await tester.tap(find.text('Back'));
+      expect(find.byType(BackButton), findsOneWidget);
+      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.text('ICTeach workspace'), findsNothing);
+      await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
       expect(find.text('Open destination'), findsOneWidget);
       expect(find.text('Back'), findsNothing);
