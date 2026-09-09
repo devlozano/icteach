@@ -1,3 +1,4 @@
+import 'widgets/persistent_workspace.dart';
 // home_router.dart
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -92,6 +93,7 @@ class _HomeRouterState extends State<HomeRouter> {
                     TextButton(
                       onPressed: () async {
                         await FirebaseAuth.instance.signOut();
+                        PersistentWorkspace.clear();
                         if (!context.mounted) return;
                         Navigator.of(context).pushAndRemoveUntil(
                           MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -162,6 +164,7 @@ class _WebAccessBlockedState extends State<_WebAccessBlocked> {
 
   Future<void> _returnToWebLogin() async {
     await FirebaseAuth.instance.signOut();
+    PersistentWorkspace.clear();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AdminLoginPage()),

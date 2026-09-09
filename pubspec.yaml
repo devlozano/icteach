@@ -44,6 +44,8 @@ dependencies:
   flutter_svg: ^2.1.0
   flutter_tts: ^4.2.5
   shared_preferences: ^2.5.3
+  pdf: ^3.12.0
+  printing: ^5.14.3
 
   # ❌ REMOVED: webview_flutter (caused build errors)
   # Use url_launcher instead – more reliable and free-plan friendly
@@ -59,5 +61,6 @@ flutter:
   assets:
     - assets/logo 2.png
     - assets/ict_logo.png
+    - assets/fonts/
     - assets/simulations/
     # Add any other assets here

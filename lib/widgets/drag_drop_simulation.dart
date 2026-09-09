@@ -1,3 +1,4 @@
+import 'summary_print_button.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -586,6 +587,31 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
             ),
           ),
           actions: [
+            SummaryPrintButton(
+              title: 'Simulation - ' + widget.simulation.title,
+              load: () async => [
+                SummarySection(
+                  'Session result',
+                  ['Score', 'Total', 'Percentage', 'Outcome', 'Mistakes'],
+                  [
+                    [
+                      correct,
+                      total,
+                      percentage,
+                      passed ? 'Passed' : 'Needs practice',
+                      _mistakes,
+                    ],
+                  ],
+                ),
+                SummarySection(
+                  'Feedback',
+                  ['Observation'],
+                  [
+                    for (final error in _errorLog) [error],
+                  ],
+                ),
+              ],
+            ),
             if (passed)
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),

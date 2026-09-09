@@ -452,28 +452,6 @@ class _CreateModulePageState extends State<CreateModulePage> {
               ),
               const SizedBox(height: 16),
 
-              // Content
-              TextFormField(
-                controller: _contentController,
-                maxLines: 8,
-                decoration: const InputDecoration(
-                  labelText: 'Lesson Content',
-                  hintText: 'Write the lesson content here...',
-                  prefixIcon: Icon(Icons.article),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                  ),
-                  alignLabelWithHint: true,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Lesson content is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
               // Video Section - YouTube
               Container(
                 padding: const EdgeInsets.all(16),

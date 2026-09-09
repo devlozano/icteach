@@ -1,3 +1,4 @@
+import '../../services/assessment_order.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -47,6 +48,7 @@ class _QuizSession extends StatefulWidget {
 class _TakeQuizPageState extends State<_QuizSession> {
   final QuizService _quizService = QuizService();
   List<int?> _selectedAnswers = [];
+  late final AssessmentOrder _order;
   int _currentQuestionIndex = 0;
   bool _isSubmitting = false;
   Timer? _timer;
@@ -56,6 +58,9 @@ class _TakeQuizPageState extends State<_QuizSession> {
   @override
   void initState() {
     super.initState();
+    _order = AssessmentOrder(
+      widget.quiz.questions.map((q) => q.options.length).toList(),
+    );
     _selectedAnswers = List.filled(widget.quiz.questions.length, null);
     if (!widget.practice && widget.quiz.timeLimit > 0) {
       _timeRemaining = widget.quiz.timeLimit * 60;
@@ -199,7 +204,8 @@ class _TakeQuizPageState extends State<_QuizSession> {
         body: const Center(child: Text('This quiz has no questions yet.')),
       );
     }
-    final question = widget.quiz.questions[_currentQuestionIndex];
+    final originalIndex = _order.questions[_currentQuestionIndex];
+    final question = widget.quiz.questions[originalIndex];
     final progress =
         ((_currentQuestionIndex + 1) / widget.quiz.questions.length * 100);
 
@@ -274,11 +280,10 @@ class _TakeQuizPageState extends State<_QuizSession> {
                   const SizedBox(height: 24),
 
                   // Options
-                  ...question.options.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final option = entry.value;
-                    final isSelected =
-                        _selectedAnswers[_currentQuestionIndex] == index;
+                  ..._order.options[originalIndex].asMap().entries.map((entry) {
+                    final index = entry.value;
+                    final option = question.options[index];
+                    final isSelected = _selectedAnswers[originalIndex] == index;
 
                     return GestureDetector(
                       onTap:
@@ -289,7 +294,7 @@ class _TakeQuizPageState extends State<_QuizSession> {
                           ? null
                           : () {
                               setState(() {
-                                _selectedAnswers[_currentQuestionIndex] = index;
+                                _selectedAnswers[originalIndex] = index;
                               });
                             },
                       child: Container(
@@ -320,7 +325,7 @@ class _TakeQuizPageState extends State<_QuizSession> {
                               ),
                               child: Center(
                                 child: Text(
-                                  String.fromCharCode(65 + index),
+                                  String.fromCharCode(65 + entry.key),
                                   style: TextStyle(
                                     color: isSelected
                                         ? Colors.white
@@ -444,7 +449,8 @@ class _TakeQuizPageState extends State<_QuizSession> {
                     children: List.generate(widget.quiz.questions.length, (
                       index,
                     ) {
-                      final isAnswered = _selectedAnswers[index] != null;
+                      final isAnswered =
+                          _selectedAnswers[_order.questions[index]] != null;
                       final isCurrent = index == _currentQuestionIndex;
                       return Container(
                         width: 12,

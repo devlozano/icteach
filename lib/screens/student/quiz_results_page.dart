@@ -1,3 +1,4 @@
+import '../../widgets/summary_print_button.dart';
 import 'package:flutter/material.dart';
 import '../../models/quiz_model.dart';
 
@@ -13,12 +14,57 @@ class QuizResultsPage extends StatelessWidget {
     required this.quizTitle,
   });
 
+  String _getOptionText(Question question, int selected) =>
+      selected < 0 || selected >= question.options.length
+      ? 'Not answered'
+      : question.options[selected];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
         title: const Text('Quiz Results'),
+        actions: [
+          SummaryPrintButton(
+            title: quizTitle,
+            load: () async => [
+              SummarySection(
+                'Result',
+                ['Student', 'Score', 'Total', 'Percentage'],
+                [
+                  [
+                    result.studentName,
+                    result.score,
+                    result.totalPoints,
+                    result.percentage.toStringAsFixed(1),
+                  ],
+                ],
+              ),
+              SummarySection(
+                'Answers',
+                ['Question', 'Your answer', 'Correct'],
+                [
+                  for (final q in questions)
+                    [
+                      q.text,
+                      result.userAnswers
+                              .where((a) => a.questionId == q.id)
+                              .isEmpty
+                          ? 'Not answered'
+                          : _getOptionText(
+                              q,
+                              result.userAnswers
+                                  .firstWhere((a) => a.questionId == q.id)
+                                  .selectedAnswer,
+                            ),
+                      _getOptionText(q, q.correctAnswer),
+                    ],
+                ],
+              ),
+            ],
+          ),
+        ],
         backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
         elevation: 0,

@@ -1,3 +1,4 @@
+import '../admin/school_profile.dart';
 import 'package:flutter/material.dart';
 
 class StaffSidebar extends StatelessWidget {
@@ -21,7 +22,7 @@ class StaffSidebar extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
     width: 256,
     child: Material(
-      color: const Color(0xFF10243A),
+      color: const Color(0xFF0F172A),
       child: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -59,7 +60,7 @@ class StaffSidebar extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Material(
                   color: selectedIndex == i
-                      ? const Color(0xFF2563EB)
+                      ? const Color(0xFF0891B2)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(12),
                   clipBehavior: Clip.antiAlias,
@@ -108,20 +109,26 @@ class StaffSidebar extends StatelessWidget {
               ),
             const SizedBox(height: 28),
             const Divider(color: Color(0xFF36506B)),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-              title: Text(
-                name,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white),
+            if (role == 'Admin')
+              const DefaultTextStyle(
+                style: TextStyle(color: Colors.white),
+                child: SchoolIdentity(compact: true),
+              )
+            else
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+                title: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white),
+                ),
+                subtitle: Text(
+                  role,
+                  style: const TextStyle(color: Color(0xFFB5CDE2)),
+                ),
               ),
-              subtitle: Text(
-                role,
-                style: const TextStyle(color: Color(0xFFB5CDE2)),
-              ),
-            ),
             TextButton.icon(
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFFFDA4AF),

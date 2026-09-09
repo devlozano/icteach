@@ -1,3 +1,9 @@
+import 'widgets/summary_print_button.dart';
+import 'services/personal_summary_service.dart';
+import 'widgets/persistent_workspace.dart';
+import 'widgets/staff_sidebar.dart';
+import 'screens/staff_outcomes.dart';
+import 'admin/school_profile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -58,6 +64,47 @@ class _AdminHomePageState extends State<AdminHomePage> {
       builder: (context, snapshot) {
         final profile = snapshot.data?.data();
         final name = _adminName(profile, user);
+        const labels = [
+          'Dashboard',
+          'Manage Users',
+          'Manage Classes',
+          'Content Overview',
+          'Performance',
+          'Reports',
+          'Feedback',
+          'School Profile',
+          'LRN Registry',
+          'Settings',
+        ];
+        PersistentWorkspace.register(
+          context,
+          StaffSidebar(
+            role: 'Admin',
+            name: 'School administration',
+            selectedIndex: labels.indexOf(_currentSelectedLabel),
+            items: const [
+              (Icons.dashboard_outlined, 'Dashboard'),
+              (Icons.people_outline, 'Manage Users'),
+              (Icons.school_outlined, 'Manage Classes'),
+              (Icons.menu_book_outlined, 'Content Overview'),
+              (Icons.insights_outlined, 'Performance'),
+              (Icons.assessment_outlined, 'Reports'),
+              (Icons.rate_review_outlined, 'Feedback'),
+              (Icons.school_outlined, 'School Profile'),
+              (Icons.badge_outlined, 'LRN Registry'),
+              (Icons.settings_outlined, 'Settings'),
+            ],
+            onSelected: (index) => PersistentWorkspace.returnHome(
+              context,
+              () => _selectPanel(labels[index]),
+            ),
+            onLogout: () async {
+              await FirebaseAuth.instance.signOut();
+              PersistentWorkspace.clear();
+              if (context.mounted) _openWebLogin(context);
+            },
+          ),
+        );
 
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -113,6 +160,17 @@ class _AdminHomePageState extends State<AdminHomePage> {
                                       icon: _sectionIcon(),
                                     ),
                                     const SizedBox(height: 20),
+                                    if (const [
+                                      'Dashboard',
+                                      'Performance',
+                                      'Content Overview',
+                                      'Manage Classes',
+                                    ].contains(_currentSelectedLabel))
+                                      SummaryPrintButton(
+                                        title:
+                                            _currentSelectedLabel + ' summary',
+                                        load: AdminSummaryService.load,
+                                      ),
                                     _buildActivePanelContent(),
                                     const SizedBox(height: 40),
                                   ],
@@ -144,7 +202,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 'Performance':
         return 'Track student quiz performance and leaderboards';
       case 'Reports':
-        return 'Platform-wide analytics and content statistics';
+        return 'Student counts and NC II pass monitoring';
       case 'LRN Registry':
         return 'Manage LRN registration and master records';
       case 'Settings':
@@ -186,9 +244,19 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 'Performance':
         return const _PerformanceContent();
       case 'Reports':
-        return const _ReportsContent();
+        return const StaffOutcomes(admin: true);
       case 'LRN Registry':
         return const _LRNRegistryContent();
+      case 'Feedback':
+        return const Column(
+          children: [
+            StaffOutcomes(admin: true, feedback: true),
+            SizedBox(height: 24),
+            SizedBox(height: 640, child: EvaluationReportsPage()),
+          ],
+        );
+      case 'School Profile':
+        return const SchoolProfileEditor();
       case 'Settings':
         return const _SettingsContent();
       default:
@@ -823,6 +891,18 @@ class _SideNav extends StatelessWidget {
                   onTap: () => onSelected('Reports'),
                 ),
                 _NavTile(
+                  icon: Icons.rate_review_outlined,
+                  label: 'Feedback',
+                  selected: currentSelection == 'Feedback',
+                  onTap: () => onSelected('Feedback'),
+                ),
+                _NavTile(
+                  icon: Icons.school_outlined,
+                  label: 'School Profile',
+                  selected: currentSelection == 'School Profile',
+                  onTap: () => onSelected('School Profile'),
+                ),
+                _NavTile(
                   icon: Icons.numbers_rounded,
                   label: 'LRN Registry',
                   selected: currentSelection == 'LRN Registry',
@@ -848,40 +928,15 @@ class _SideNav extends StatelessWidget {
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: _kAccentBlue,
-                  child: Text(
-                    adminName.isNotEmpty ? adminName[0].toUpperCase() : 'A',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 13,
-                    ),
+                const SizedBox(
+                  width: 165,
+                  child: DefaultTextStyle(
+                    style: TextStyle(color: Colors.white),
+                    child: SchoolIdentity(compact: true),
                   ),
                 ),
                 const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        adminName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const Text(
-                        'Administrator',
-                        style: TextStyle(color: Colors.white54, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
+                const SizedBox.shrink(),
                 InkWell(
                   onTap: () async {
                     final confirm = await showDialog<bool>(
@@ -912,6 +967,7 @@ class _SideNav extends StatelessWidget {
                     );
                     if (confirm == true) {
                       await FirebaseAuth.instance.signOut();
+                      PersistentWorkspace.clear();
                       if (context.mounted) {
                         _openWebLogin(context);
                       }
@@ -1097,7 +1153,6 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : 'A';
     final width = MediaQuery.sizeOf(context).width;
     final showWorkspaceTitle = width >= 430;
     final showProfileDetails = width >= 650;
@@ -1162,48 +1217,9 @@ class _TopBar extends StatelessWidget {
               horizontal: showProfileDetails ? 14 : 7,
               vertical: 7,
             ),
-            child: Row(
-              children: [
-                if (showProfileDetails) ...[
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 150),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Text(
-                          'Admin',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF888888),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                ],
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: _kAccentBlue,
-                  child: Text(
-                    initial,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ],
+            child: const SizedBox(
+              width: 210,
+              child: SchoolIdentity(compact: true),
             ),
           ),
         ],
@@ -3290,11 +3306,10 @@ class _SettingsContentState extends State<_SettingsContent> {
     setState(() => _isSavingAcademicYear = true);
     try {
       final db = FirebaseFirestore.instance;
-      final user = FirebaseAuth.instance.currentUser;
       await db.collection('system_settings').doc('academic_year').set({
         'activeSchoolYear': _selectedAcademicYear,
         'updatedAt': FieldValue.serverTimestamp(),
-        'updatedBy': user?.uid,
+        'updatedBy': FirebaseAuth.instance.currentUser?.uid,
       }, SetOptions(merge: true));
 
       var archivedCount = 0;
@@ -3428,155 +3443,11 @@ class _SettingsContentState extends State<_SettingsContent> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Admin Profile
-        StreamBuilder<DocumentSnapshot>(
-          stream: user != null
-              ? FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(user.uid)
-                    .snapshots()
-              : const Stream.empty(),
-          builder: (context, snapshot) {
-            final data = snapshot.data?.data() as Map<String, dynamic>?;
-            final name = data?['name']?.toString() ?? 'Administrator';
-            final email = data?['email']?.toString() ?? user?.email ?? '';
-            final role = data?['role']?.toString() ?? 'admin';
-            final createdAt = data?['createdAt'] as Timestamp?;
-
-            return Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _kCardBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: _kAccentBlue.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.person_rounded,
-                          color: _kAccentBlue,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Text(
-                        'Admin Profile',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: _kAccentBlue,
-                        child: Text(
-                          name.isNotEmpty ? name[0].toUpperCase() : 'A',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 28,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 20),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.email_outlined,
-                                  size: 14,
-                                  color: _kSubtextColor,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    email,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: _kSubtextColor,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: 12,
-                              runSpacing: 6,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: _kAccentBlue.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    role.toUpperCase(),
-                                    style: const TextStyle(
-                                      color: _kAccentBlue,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                if (createdAt != null) ...[
-                                  Text(
-                                    'Joined ${DateFormat('MMM d, y').format(createdAt.toDate())}',
-                                    style: const TextStyle(
-                                      color: _kSubtextColor,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+        const SchoolProfileEditor(),
         const SizedBox(height: 18),
 
         Container(
@@ -3663,66 +3534,6 @@ class _SettingsContentState extends State<_SettingsContent> {
                     ),
                   ],
                 ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 18),
-
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _kCardBorder),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.purple.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(
-                      Icons.rate_review_rounded,
-                      color: Colors.purple,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Evaluation Reports',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Review teaching, course, system, and simulation feedback.',
-                          style: TextStyle(color: _kSubtextColor),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const EvaluationReportsPage(),
-                  ),
-                ),
-                icon: const Icon(Icons.open_in_new_rounded),
-                label: const Text('Open reports'),
-              ),
             ],
           ),
         ),
@@ -3893,6 +3704,7 @@ class _SettingsContentState extends State<_SettingsContent> {
                     );
                     if (confirm == true) {
                       await FirebaseAuth.instance.signOut();
+                      PersistentWorkspace.clear();
                       if (context.mounted) {
                         _openWebLogin(context);
                       }

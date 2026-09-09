@@ -1,3 +1,5 @@
+import '../../widgets/summary_print_button.dart';
+import '../../services/class_summary_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'activity_timeline_page.dart';
@@ -196,6 +198,10 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
             ],
           ),
           actions: [
+            SummaryPrintButton(
+              title: 'Class summary - ${widget.className}',
+              load: () => ClassSummaryService.load(widget.classId),
+            ),
             IconButton(
               tooltip: 'Student activity timeline',
               icon: const Icon(Icons.history),

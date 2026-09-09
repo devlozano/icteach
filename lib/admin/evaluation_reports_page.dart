@@ -1,3 +1,4 @@
+import '../../widgets/summary_print_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
@@ -14,6 +15,46 @@ class EvaluationReportsPage extends StatelessWidget {
           backgroundColor: const Color(0xFF0F172A),
           foregroundColor: Colors.white,
           title: const Text('Evaluation Reports'),
+          actions: [
+            SummaryPrintButton(
+              title: 'Evaluation summaries',
+              load: () async {
+                final responses = await FirebaseFirestore.instance
+                    .collection('questionnaire_responses')
+                    .get();
+                final feedback = await FirebaseFirestore.instance
+                    .collection('activity_feedback')
+                    .get();
+                return [
+                  SummarySection(
+                    'Course and system feedback',
+                    ['Student', 'Survey', 'Ratings', 'Comment'],
+                    [
+                      for (final d in responses.docs)
+                        [
+                          d.data()['studentName'],
+                          d.data()['questionnaireTitle'],
+                          d.data()['ratings'],
+                          d.data()['summary'],
+                        ],
+                    ],
+                  ),
+                  SummarySection(
+                    'Simulation feedback',
+                    ['Simulation', 'Difficulty', 'Comment'],
+                    [
+                      for (final d in feedback.docs)
+                        [
+                          d.data()['simulationTitle'],
+                          d.data()['difficulty'],
+                          d.data()['comment'],
+                        ],
+                    ],
+                  ),
+                ];
+              },
+            ),
+          ],
           bottom: const TabBar(
             labelColor: Colors.white,
             unselectedLabelColor: Color(0xFF94A3B8),

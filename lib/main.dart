@@ -1,3 +1,4 @@
+import 'widgets/persistent_workspace.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
@@ -62,7 +63,8 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       navigatorKey: NavigationService.navigatorKey,
       navigatorObservers: [WorkspaceNavigation.instance],
-      builder: (context, child) => OfflineIndicator(child: child!),
+      builder: (context, child) =>
+          OfflineIndicator(child: PersistentWorkspace(child: child!)),
       theme: AppTheme.light,
       home: const _AppEntry(),
       routes: {

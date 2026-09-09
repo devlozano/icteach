@@ -1,3 +1,6 @@
+import '../../widgets/summary_print_button.dart';
+import '../../services/class_summary_service.dart';
+import '../../widgets/module_access_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/module_model.dart';
@@ -34,6 +37,10 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          SummaryPrintButton(
+            title: 'Class summary - ${widget.className}',
+            load: () => ClassSummaryService.load(widget.classId),
+          ),
           IconButton(
             icon: const Icon(Icons.account_tree),
             tooltip: 'Lesson & assessment links',
@@ -156,14 +163,23 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
             itemCount: modules.length,
             itemBuilder: (context, index) {
               final module = modules[index];
-              return _ModuleCard(
-                module: module,
-                onEdit: () => _editModule(module),
-                onDelete: () => _deleteModule(module),
-                onTogglePublish: () => _togglePublish(module),
-                onOpen: module.hasAttachment
-                    ? () => _openModule(module.attachmentUrl!)
-                    : null,
+              return Column(
+                children: [
+                  _ModuleCard(
+                    module: module,
+                    onEdit: () => _editModule(module),
+                    onDelete: () => _deleteModule(module),
+                    onTogglePublish: () => _togglePublish(module),
+                    onOpen: module.hasAttachment
+                        ? () => _openModule(module.attachmentUrl!)
+                        : null,
+                  ),
+                  ModuleAccessPanel(
+                    classId: widget.classId,
+                    moduleId: module.id,
+                    title: module.title,
+                  ),
+                ],
               );
             },
           );

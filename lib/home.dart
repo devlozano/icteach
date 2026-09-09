@@ -1,3 +1,7 @@
+import 'widgets/summary_print_button.dart';
+import 'services/personal_summary_service.dart';
+import 'widgets/persistent_workspace.dart';
+import 'screens/student/helpfulness_survey.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -32,7 +36,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentTabIndex = WorkspacePreferences.tab('student', 5);
+  int _currentTabIndex = WorkspacePreferences.tab('student', 6);
   void _selectTab(int index) {
     setState(() => _currentTabIndex = index);
     WorkspacePreferences.saveTab('student', index);
@@ -64,6 +68,7 @@ class _HomePageState extends State<HomePage> {
 
     if (confirm == true) {
       await FirebaseAuth.instance.signOut();
+      PersistentWorkspace.clear();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const LoginPage()),
@@ -130,6 +135,7 @@ class _HomePageState extends State<HomePage> {
                             _buildForumContent(),
                             _buildProgressContent(user.uid),
                             _buildProfileContent(profile, user),
+                            const HelpfulnessSurvey(),
                           ],
                         ),
                       ),
@@ -826,6 +832,10 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          SummaryPrintButton(
+            title: 'My learning summary',
+            load: () => PersonalSummaryService.load(userId, classId: _classId),
+          ),
           const Text(
             'My Progress',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -1666,6 +1676,7 @@ class _HomePageState extends State<HomePage> {
       {'icon': Icons.forum_outlined, 'label': 'Forum', 'index': 2},
       {'icon': Icons.bar_chart_rounded, 'label': 'Progress', 'index': 3},
       {'icon': Icons.person_outline_rounded, 'label': 'Profile', 'index': 4},
+      {'icon': Icons.rate_review_outlined, 'label': 'Feedback', 'index': 5},
     ];
 
     return Container(
@@ -1688,7 +1699,7 @@ class _HomePageState extends State<HomePage> {
           return InkWell(
             onTap: () => _selectTab(index),
             child: SizedBox(
-              width: 60,
+              width: MediaQuery.sizeOf(context).width / 6,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

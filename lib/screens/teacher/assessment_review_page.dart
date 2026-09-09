@@ -1,3 +1,5 @@
+import '../../widgets/summary_print_button.dart';
+import '../../services/class_summary_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -140,7 +142,15 @@ class _AssessmentReviewPageState extends State<AssessmentReviewPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('Assessments - ${widget.className}')),
+    appBar: AppBar(
+      title: Text('Assessments - ${widget.className}'),
+      actions: [
+        SummaryPrintButton(
+          title: 'Assessment summary - ${widget.className}',
+          load: () => ClassSummaryService.load(widget.classId),
+        ),
+      ],
+    ),
     body: FutureBuilder<bool>(
       future: _staff,
       builder: (context, staff) {

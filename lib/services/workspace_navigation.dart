@@ -27,6 +27,7 @@ import '../screens/student/student_assignments_page.dart';
 class WorkspaceNavigation extends NavigatorObserver {
   static final instance = WorkspaceNavigation();
   final canGoBack = ValueNotifier(false);
+  final topPage = ValueNotifier<Route<dynamic>?>(null);
   final _stack = <Route<dynamic>>[];
   final _pages = <Route<dynamic>, Map<String, dynamic>>{};
   String? _role;
@@ -208,6 +209,8 @@ class WorkspaceNavigation extends NavigatorObserver {
   void _changed() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       canGoBack.value = navigator?.canPop() ?? false;
+      final pages = _stack.whereType<PageRoute<dynamic>>();
+      topPage.value = pages.isEmpty ? null : pages.last;
     });
     if (_ready &&
         _role != null &&

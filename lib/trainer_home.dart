@@ -1,3 +1,7 @@
+import 'screens/staff_management_page.dart';
+import 'widgets/workspace_intro.dart';
+import 'widgets/persistent_workspace.dart';
+import 'screens/staff_outcomes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +28,7 @@ class TrainerHomePage extends StatefulWidget {
 }
 
 class _TrainerHomePageState extends State<TrainerHomePage> {
-  int _selectedIndex = WorkspacePreferences.tab('trainer', 3);
+  int _selectedIndex = WorkspacePreferences.tab('trainer', 7);
   void _selectTab(int index) {
     setState(() => _selectedIndex = index);
     WorkspacePreferences.saveTab('trainer', index);
@@ -52,6 +56,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
     if (confirm == true) {
       await FirebaseAuth.instance.signOut();
+      PersistentWorkspace.clear();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -126,7 +131,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF5B2182);
+    const primaryColor = Color(0xFF0891B2);
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -149,6 +154,21 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
         final profile = snapshot.data?.data();
         final trainerName = _trainerName(profile, user);
+        PersistentWorkspace.register(
+          context,
+          _TrainerDesktopNav(
+            currentIndex: _selectedIndex,
+            trainerName: trainerName,
+            onChanged: (index) => PersistentWorkspace.returnHome(
+              context,
+              () => _selectTab(index),
+            ),
+            onNotifications: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const NotificationPage())),
+            onLogout: _logout,
+          ),
+        );
 
         return PopScope(
           canPop: _selectedIndex == 0,
@@ -207,7 +227,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     Material(
                       color: Colors.white,
                       child: SizedBox(
-                        height: 52,
+                        height: 76,
                         child: Row(
                           children: [
                             if (_selectedIndex != 0)
@@ -223,6 +243,10 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                                   'Overview',
                                   'Discussions',
                                   'Profile',
+                                  'Class Monitoring',
+                                  'Feedback',
+                                  'Student Management',
+                                  'Module Management',
                                 ][_selectedIndex],
                                 style: const TextStyle(
                                   color: Color(0xFF102A43),
@@ -246,6 +270,22 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                           ),
                           _buildDiscussionForums(primaryColor),
                           _buildProfileContent(profile, user),
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: const StaffOutcomes(trainer: true),
+                          ),
+                          SingleChildScrollView(
+                            padding: const EdgeInsets.all(24),
+                            child: const StaffOutcomes(
+                              trainer: true,
+                              feedback: true,
+                            ),
+                          ),
+                          const StaffManagementPage(trainer: true),
+                          const StaffManagementPage(
+                            modules: true,
+                            trainer: true,
+                          ),
                         ],
                       ),
                     ),
@@ -275,6 +315,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             bottomNavigationBar: MediaQuery.sizeOf(context).width >= 1000
                 ? null
                 : BottomNavigationBar(
+                    type: BottomNavigationBarType.fixed,
                     currentIndex: _selectedIndex,
                     onTap: (index) => _selectTab(index),
                     items: const [
@@ -289,6 +330,22 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                       BottomNavigationBarItem(
                         icon: Icon(Icons.person_rounded),
                         label: 'Profile',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.insights_outlined),
+                        label: 'Class Monitoring',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.rate_review_outlined),
+                        label: 'Feedback',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.groups_outlined),
+                        label: 'Students',
+                      ),
+                      BottomNavigationBarItem(
+                        icon: Icon(Icons.menu_book_outlined),
+                        label: 'Modules',
                       ),
                     ],
                   ),
@@ -310,107 +367,114 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // TOP BANNER
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Color(0xFF72279A), Color(0xFF47146D)],
+          if (desktop)
+            const WorkspaceIntro(
+              title: 'Build skills. Follow progress.',
+              description:
+                  'Manage learning activities, monitor your classes, and understand what helps students learn.',
+            )
+          else
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF0F172A), Color(0xFF164E63)],
+                ),
+                borderRadius: desktop
+                    ? BorderRadius.circular(20)
+                    : const BorderRadius.only(
+                        bottomLeft: Radius.circular(24),
+                        bottomRight: Radius.circular(24),
+                      ),
+                boxShadow: desktop
+                    ? [
+                        BoxShadow(
+                          color: const Color(0xFF164E63).withValues(alpha: 0.2),
+                          blurRadius: 24,
+                          offset: const Offset(0, 10),
+                        ),
+                      ]
+                    : null,
               ),
-              borderRadius: desktop
-                  ? BorderRadius.circular(20)
-                  : const BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                    ),
-              boxShadow: desktop
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF47146D).withValues(alpha: 0.2),
-                        blurRadius: 24,
-                        offset: const Offset(0, 10),
-                      ),
-                    ]
-                  : null,
-            ),
-            padding: EdgeInsets.symmetric(
-              horizontal: desktop ? 44 : 20,
-              vertical: desktop ? 29 : 28,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Welcome back,",
-                  style: TextStyle(color: Colors.white70, fontSize: 17),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  trainerName,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: desktop ? 30 : 26,
-                    fontWeight: FontWeight.bold,
+              padding: EdgeInsets.symmetric(
+                horizontal: desktop ? 44 : 20,
+                vertical: desktop ? 29 : 28,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "Welcome back,",
+                    style: TextStyle(color: Colors.white70, fontSize: 17),
                   ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.verified_rounded,
-                            color: Color(0xFF5B2182),
-                            size: 14,
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            "OFFICIAL TRAINER",
-                            style: TextStyle(
-                              color: Color(0xFF5B2182),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ],
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    trainerName,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: desktop ? 30 : 26,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: const Text(
-                        "CSS Evaluator",
-                        style: TextStyle(
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
                           color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.verified_rounded,
+                              color: Color(0xFF0891B2),
+                              size: 14,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              "OFFICIAL TRAINER",
+                              style: TextStyle(
+                                color: Color(0xFF0891B2),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: const Text(
+                          "CSS Evaluator",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
 
           Padding(
             padding: EdgeInsets.fromLTRB(
@@ -1453,6 +1517,10 @@ class _TrainerDesktopNav extends StatelessWidget {
       (Icons.dashboard_outlined, 'Overview'),
       (Icons.forum_outlined, 'Discussions'),
       (Icons.person_outline, 'Profile'),
+      (Icons.insights_outlined, 'Class Monitoring'),
+      (Icons.rate_review_outlined, 'Feedback'),
+      (Icons.groups_outlined, 'Student Management'),
+      (Icons.menu_book_outlined, 'Module Management'),
     ],
     onSelected: onChanged,
     onLogout: onLogout,

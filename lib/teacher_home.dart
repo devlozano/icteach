@@ -1,3 +1,7 @@
+import 'screens/staff_management_page.dart';
+import 'widgets/workspace_intro.dart';
+import 'widgets/persistent_workspace.dart';
+import 'screens/staff_outcomes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -7,7 +11,6 @@ import 'package:icteach/utils/app_navigation.dart';
 import 'package:icteach/screens/teacher/manage_modules_page.dart';
 import 'package:icteach/screens/teacher/manage_quizzes_page.dart';
 import 'package:icteach/screens/teacher/manage_assignments_page.dart';
-import 'package:icteach/screens/teacher/progress_tracker_page.dart'; // ✅ ADD THIS IMPORT
 import 'package:icteach/screens/student/forums_page.dart';
 import 'package:icteach/screens/notification_page.dart';
 import 'package:icteach/widgets/notification_badge.dart';
@@ -25,7 +28,7 @@ class TeacherHomePage extends StatefulWidget {
 }
 
 class _TeacherHomePageState extends State<TeacherHomePage> {
-  int _currentTabIndex = WorkspacePreferences.tab('teacher', 5);
+  int _currentTabIndex = WorkspacePreferences.tab('teacher', 8);
   void _selectTab(int index) {
     setState(() => _currentTabIndex = index);
     WorkspacePreferences.saveTab('teacher', index);
@@ -97,6 +100,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
 
     if (confirm == true) {
       await FirebaseAuth.instance.signOut();
+      PersistentWorkspace.clear();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
@@ -357,6 +361,18 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       builder: (context, snapshot) {
         final profile = snapshot.data?.data();
         final name = _teacherName(profile, user);
+        PersistentWorkspace.register(
+          context,
+          _TeacherDesktopNav(
+            currentIndex: _currentTabIndex,
+            teacherName: name,
+            onChanged: (index) => PersistentWorkspace.returnHome(
+              context,
+              () => _selectTab(index),
+            ),
+            onLogout: _logout,
+          ),
+        );
 
         return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
           stream: _classesStream,
@@ -393,7 +409,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                           Material(
                             color: Colors.white,
                             child: SizedBox(
-                              height: 52,
+                              height: 76,
                               child: Row(
                                 children: [
                                   if (_currentTabIndex != 0)
@@ -409,8 +425,11 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                                         'Overview',
                                         'Classes',
                                         'Discussions',
-                                        'Analytics',
+                                        'Class Monitoring',
                                         'Profile',
+                                        'Feedback',
+                                        'Student Management',
+                                        'Module Management',
                                       ][_currentTabIndex],
                                       style: const TextStyle(
                                         color: Color(0xFF102A43),
@@ -423,11 +442,12 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                               ),
                             ),
                           ),
-                          _TeacherHeader(
-                            name: name,
-                            onLogout: _logout,
-                            classStream: _classesStream,
-                          ),
+                          if (!desktop)
+                            _TeacherHeader(
+                              name: name,
+                              onLogout: _logout,
+                              classStream: _classesStream,
+                            ),
                           Expanded(
                             child: IndexedStack(
                               index: _currentTabIndex,
@@ -440,8 +460,20 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                                 ),
                                 buildClassesTab(),
                                 _buildDiscussionTab(),
-                                _buildAnalyticsTab(),
+                                SingleChildScrollView(
+                                  padding: const EdgeInsets.all(24),
+                                  child: const StaffOutcomes(),
+                                ),
                                 _buildTeacherProfile(user, profile),
+                                SingleChildScrollView(
+                                  padding: const EdgeInsets.all(24),
+                                  child: const StaffOutcomes(feedback: true),
+                                ),
+                                const StaffManagementPage(trainer: false),
+                                const StaffManagementPage(
+                                  modules: true,
+                                  trainer: false,
+                                ),
                               ],
                             ),
                           ),
@@ -514,6 +546,12 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (MediaQuery.sizeOf(context).width >= 1000)
+            const WorkspaceIntro(
+              title: 'Your classroom, at a glance.',
+              description:
+                  'Organise lessons, follow student progress, and record NC II achievements in one workspace.',
+            ),
           _TeacherSummary(
             classStream: _classesStream,
             totalEnrolled: totalEnrolled,
@@ -611,88 +649,6 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => ForumsPage(
-                        classId: classData.classId,
-                        className: classData.className,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildAnalyticsTab() {
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: _classesStream,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final classDocs = snapshot.data?.docs ?? [];
-        if (classDocs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.analytics_rounded,
-                  size: 64,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No classes found',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Create a class to track progress',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final classes = classDocs
-            .map((doc) => _TeacherClassData.fromSnapshot(doc))
-            .toList();
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: classes.length,
-          itemBuilder: (context, index) {
-            final classData = classes[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: const Color(0xFF2F80ED).withOpacity(0.1),
-                  child: const Icon(
-                    Icons.analytics_rounded,
-                    color: Color(0xFF2F80ED),
-                  ),
-                ),
-                title: Text(
-                  classData.className,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text('View student progress & leaderboard'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ProgressTrackerPage(
                         classId: classData.classId,
                         className: classData.className,
                       ),
@@ -814,7 +770,7 @@ class _TeacherHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Good Morning, Teacher',
+                  'Teacher workspace',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.84),
                     fontSize: desktop ? 17 : 12,
@@ -1190,8 +1146,11 @@ class _TeacherDesktopNav extends StatelessWidget {
       (Icons.dashboard_outlined, 'Overview'),
       (Icons.groups_outlined, 'Classes'),
       (Icons.forum_outlined, 'Discussions'),
-      (Icons.insights_outlined, 'Analytics'),
+      (Icons.insights_outlined, 'Class Monitoring'),
       (Icons.person_outline, 'Profile'),
+      (Icons.rate_review_outlined, 'Feedback'),
+      (Icons.groups_outlined, 'Student Management'),
+      (Icons.menu_book_outlined, 'Module Management'),
     ],
     onSelected: onChanged,
     onLogout: onLogout,
@@ -1242,11 +1201,23 @@ class _TeacherBottomNavBar extends StatelessWidget {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart_rounded),
-            label: 'Analytics',
+            label: 'Class Monitoring',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person_rounded),
             label: 'Profile',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.rate_review_outlined),
+            label: 'Feedback',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.groups_outlined),
+            label: 'Students',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.menu_book_outlined),
+            label: 'Modules',
           ),
         ],
       ),

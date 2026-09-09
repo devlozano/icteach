@@ -1,3 +1,5 @@
+import '../../services/module_access_service.dart';
+import '../../widgets/module_resource_actions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -124,6 +126,16 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
           'completed': done,
           'updatedAt': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
+        transaction.set(
+          ModuleAccessService.record(widget.classId, module.id, uid),
+          {
+            'studentId': uid,
+            'moduleId': module.id,
+            'accessed': true,
+            'lastAccessedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
         transaction.set(db.collection('activity_events').doc(), {
           'classId': widget.classId,
           'studentId': uid,
@@ -357,7 +369,10 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
             if (index >= 0) {
               _selectedModuleIndex = index;
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) setState(() {});
+                if (mounted) {
+                  _saveProgress(modules[index], false);
+                  setState(() {});
+                }
               });
             }
           }
@@ -716,41 +731,6 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Lesson Content Section
-                  const Text(
-                    'Lesson Content',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      module.content,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        color: Color(0xFF475569),
-                        height: 1.7,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
                   // Attachment Section
                   if (module.attachmentUrl != null &&
                       module.attachmentUrl!.isNotEmpty) ...[
@@ -763,90 +743,10 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () async {
-                          try {
-                            final uri = Uri.parse(module.attachmentUrl!);
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(
-                                uri,
-                                mode: LaunchMode.externalApplication,
-                              );
-                            }
-                          } catch (e) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Cannot open file'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                        borderRadius: BorderRadius.circular(16),
-                        child: Ink(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.indigo.shade100),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.indigo.shade50.withOpacity(0.5),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.indigo.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(
-                                  Icons.picture_as_pdf_rounded,
-                                  color: Color(0xFF4F46E5),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    const Text(
-                                      'Module Reference Guide',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                        color: Color(0xFF0F172A),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Tap to download or view',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const Icon(
-                                Icons.download_rounded,
-                                color: Color(0xFF4F46E5),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                    ModuleResourceActions(
+                      classId: widget.classId,
+                      module: module,
                     ),
-                    const SizedBox(height: 32),
                   ],
 
                   // Mark as Done Button

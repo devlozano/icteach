@@ -1,3 +1,5 @@
+import 'widgets/summary_print_button.dart';
+import 'services/content_access_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -138,12 +140,14 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       }
 
       // ✅ Fetch ALL users from the users collection
-      final allUsersSnapshot =
-          await FirebaseFirestore.instance.collection('users').get();
+      final allUsersSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .get();
 
       // ✅ Also fetch from students collection as backup
-      final allStudentsSnapshot =
-          await FirebaseFirestore.instance.collection('students').get();
+      final allStudentsSnapshot = await FirebaseFirestore.instance
+          .collection('students')
+          .get();
 
       // Create a map of userId -> userData for quick lookup
       final Map<String, Map<String, dynamic>> usersMap = {};
@@ -217,7 +221,8 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           final role = _extractRole(userData);
 
           print(
-              '   👤 Found: $name, Role: $role, Email: ${email.isNotEmpty ? email : 'No email'}');
+            '   👤 Found: $name, Role: $role, Email: ${email.isNotEmpty ? email : 'No email'}',
+          );
 
           final userInfo = {
             'id': userId,
@@ -267,10 +272,12 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       }
 
       // ✅ Sort by name
-      students
-          .sort((a, b) => a['name'].toString().compareTo(b['name'].toString()));
-      trainers
-          .sort((a, b) => a['name'].toString().compareTo(b['name'].toString()));
+      students.sort(
+        (a, b) => a['name'].toString().compareTo(b['name'].toString()),
+      );
+      trainers.sort(
+        (a, b) => a['name'].toString().compareTo(b['name'].toString()),
+      );
 
       setState(() {
         _students = students;
@@ -279,7 +286,8 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       });
 
       print(
-          '📊 Final counts - Students: ${students.length}, Trainers: ${trainers.length}');
+        '📊 Final counts - Students: ${students.length}, Trainers: ${trainers.length}',
+      );
       print('📊 Student names: ${students.map((s) => s['name']).join(', ')}');
       print('📊 Student emails: ${students.map((s) => s['email']).join(', ')}');
     } catch (e) {
@@ -290,44 +298,66 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
 
   Future<void> deleteStudent(BuildContext context, String studentId) async {
     if (studentId.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Invalid user ID")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Invalid user ID")));
       return;
     }
 
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Remove from class?'),
+        content: const Text(
+          'The student account and learning records will be retained.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     try {
-      await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.classId)
-          .collection('students')
-          .doc(studentId)
-          .delete();
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(studentId)
-          .collection('classes')
-          .doc(widget.classId)
-          .delete();
-
-      await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.classId)
-          .update({
+      if (!await ContentAccessService.isClassStaff(widget.classId))
+        throw StateError('Class staff access required.');
+      final db = FirebaseFirestore.instance;
+      final batch = db.batch();
+      batch.delete(
+        db
+            .collection('classes')
+            .doc(widget.classId)
+            .collection('students')
+            .doc(studentId),
+      );
+      batch.delete(
+        db
+            .collection('users')
+            .doc(studentId)
+            .collection('classes')
+            .doc(widget.classId),
+      );
+      batch.update(db.collection('classes').doc(widget.classId), {
         'enrolledStudentIds': FieldValue.arrayRemove([studentId]),
       });
-
+      await batch.commit();
       await _loadRoster();
 
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("User removed from class")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("User removed from class")));
     } catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error removing user: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error removing user: $e")));
     }
   }
 
@@ -337,8 +367,9 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
     Map<String, dynamic> data,
   ) {
     if (studentId.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Invalid user ID")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Invalid user ID")));
       return;
     }
 
@@ -346,9 +377,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       text: data['displayName']?.toString() ?? data['name']?.toString() ?? '',
     );
 
-    final emailController = TextEditingController(
-      text: _extractEmail(data),
-    );
+    final emailController = TextEditingController(text: _extractEmail(data));
 
     showDialog(
       context: context,
@@ -389,10 +418,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
 
                 try {
                   // Update in users collection
-                  final updateData = {
-                    'displayName': newName,
-                    'name': newName,
-                  };
+                  final updateData = {'displayName': newName, 'name': newName};
                   if (newEmail.isNotEmpty) {
                     updateData['email'] = newEmail;
                   }
@@ -427,22 +453,22 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                       .collection('students')
                       .doc(studentId)
                       .update({
-                    'name': newName,
-                    if (newEmail.isNotEmpty) 'email': newEmail,
-                  });
+                        'name': newName,
+                        if (newEmail.isNotEmpty) 'email': newEmail,
+                      });
 
                   await _loadRoster();
 
                   if (!context.mounted) return;
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("User updated")),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(const SnackBar(content: Text("User updated")));
                 } catch (e) {
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Error updating: $e")),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text("Error updating: $e")));
                 }
               },
               child: const Text("Save"),
@@ -455,8 +481,9 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
 
   void _copyClassCode(BuildContext context) {
     if (_classCode.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No class code available")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("No class code available")));
       return;
     }
 
@@ -490,9 +517,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
 
   Widget _buildQRCode(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -500,10 +525,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           children: [
             const Text(
               'Class QR Code',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -578,10 +600,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
   }
 
   void _showQRCodeDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => _buildQRCode(context),
-    );
+    showDialog(context: context, builder: (context) => _buildQRCode(context));
   }
 
   @override
@@ -622,6 +641,18 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
+          SummaryPrintButton(
+            title: 'Student roster - ' + widget.className,
+            load: () async => [
+              SummarySection(
+                'Students',
+                ['Name', 'Email'],
+                [
+                  for (final s in _students) [s['name'], s['email']],
+                ],
+              ),
+            ],
+          ),
           if (_classCode.isNotEmpty) ...[
             IconButton(
               icon: const Icon(Icons.qr_code_2, color: Colors.white),
@@ -762,122 +793,114 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : (_students.isEmpty && _trainers.isEmpty)
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.people_outline,
-                        size: 64,
-                        color: Colors.grey.shade300,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        "No users joined yet",
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 16,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Share the class code to invite students and trainers",
-                        style: TextStyle(
-                          color: Colors.grey.shade400,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.people_outline,
+                    size: 64,
+                    color: Colors.grey.shade300,
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    if (_trainers.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.purple.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'Trainers (${_trainers.length})',
-                                style: TextStyle(
-                                  color: Colors.purple.shade800,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
+                  const SizedBox(height: 16),
+                  Text(
+                    "No users joined yet",
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Share the class code to invite students and trainers",
+                    style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                  ),
+                ],
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (_trainers.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.purple.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Trainers (${_trainers.length})',
+                            style: TextStyle(
+                              color: Colors.purple.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
                             ),
-                            const Spacer(),
-                            Text(
-                              '👑 Class Trainers',
-                              style: TextStyle(
-                                color: Colors.purple.shade600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
-                      ),
-                      ..._trainers.map((trainer) => _buildUserCard(
-                            context,
-                            trainer,
-                            isTrainer: true,
-                          )),
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 8),
-                    ],
-                    if (_students.isNotEmpty) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                'Students (${_students.length})',
-                                style: TextStyle(
-                                  color: Colors.blue.shade800,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              '🎓 Enrolled Students',
-                              style: TextStyle(
-                                color: Colors.blue.shade600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                        const Spacer(),
+                        Text(
+                          '👑 Class Trainers',
+                          style: TextStyle(
+                            color: Colors.purple.shade600,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                      ..._students.map((student) => _buildUserCard(
-                            context,
-                            student,
-                            isTrainer: false,
-                          )),
-                    ],
-                  ],
-                ),
+                      ],
+                    ),
+                  ),
+                  ..._trainers.map(
+                    (trainer) =>
+                        _buildUserCard(context, trainer, isTrainer: true),
+                  ),
+                  const SizedBox(height: 16),
+                  const Divider(),
+                  const SizedBox(height: 8),
+                ],
+                if (_students.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Students (${_students.length})',
+                            style: TextStyle(
+                              color: Colors.blue.shade800,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '🎓 Enrolled Students',
+                          style: TextStyle(
+                            color: Colors.blue.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  ..._students.map(
+                    (student) =>
+                        _buildUserCard(context, student, isTrainer: false),
+                  ),
+                ],
+              ],
+            ),
     );
   }
 
@@ -893,9 +916,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
 
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: isTrainer
@@ -904,8 +925,9 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           child: Text(
             name.isNotEmpty ? name[0].toUpperCase() : '?',
             style: TextStyle(
-              color:
-                  isTrainer ? Colors.purple.shade700 : const Color(0xFF428DEB),
+              color: isTrainer
+                  ? Colors.purple.shade700
+                  : const Color(0xFF428DEB),
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -939,10 +961,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         ),
         subtitle: Text(
           email.isNotEmpty ? email : 'No email',
-          style: TextStyle(
-            color: Colors.grey.shade600,
-            fontSize: 13,
-          ),
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
         ),
         trailing: PopupMenuButton(
           icon: const Icon(Icons.more_vert),
@@ -951,11 +970,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
               value: "edit",
               child: Row(
                 children: [
-                  Icon(
-                    Icons.edit,
-                    size: 18,
-                    color: Color(0xFF428DEB),
-                  ),
+                  Icon(Icons.edit, size: 18, color: Color(0xFF428DEB)),
                   SizedBox(width: 8),
                   Text("Edit"),
                 ],
@@ -965,11 +980,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
               value: "delete",
               child: Row(
                 children: [
-                  Icon(
-                    Icons.delete_outline,
-                    size: 18,
-                    color: Colors.red,
-                  ),
+                  Icon(Icons.delete_outline, size: 18, color: Colors.red),
                   SizedBox(width: 8),
                   Text("Remove"),
                 ],

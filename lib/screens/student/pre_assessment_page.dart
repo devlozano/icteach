@@ -1,3 +1,5 @@
+import '../../widgets/summary_print_button.dart';
+import '../../services/assessment_order.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +22,13 @@ class PreAssessmentPage extends StatefulWidget {
 
 class _PreAssessmentPageState extends State<PreAssessmentPage> {
   late Future<bool> _access;
+  late AssessmentOrder _order;
+  void _randomize() {
+    _order = AssessmentOrder(
+      PreAssessmentData.questions.map((q) => q.options.length).toList(),
+    );
+  }
+
   final _answers = List<int?>.filled(PreAssessmentData.questions.length, null);
   bool _saving = false;
   bool _started = false;
@@ -28,6 +37,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
   @override
   void initState() {
     super.initState();
+    _randomize();
     _access = _check();
   }
 
@@ -35,6 +45,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
   void didUpdateWidget(covariant PreAssessmentPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.classId != widget.classId) {
+      _randomize();
       _answers.fillRange(0, _answers.length, null);
       _result = null;
       _continue = false;
@@ -154,21 +165,32 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                       ),
                       const SizedBox(height: 20),
                       if (_result != null) ...[
+                        SummaryPrintButton(
+                          title: 'Pre-assessment - ' + widget.className,
+                          load: () async => [
+                            SummarySection(
+                              'Submitted answers',
+                              ['Question', 'Your answer'],
+                              [
+                                for (final i in _order.questions)
+                                  [
+                                    PreAssessmentData.questions[i].prompt,
+                                    _submittedAnswerText(i),
+                                  ],
+                              ],
+                            ),
+                          ],
+                        ),
                         Text(
                           'Saved: ${_result!['score']} / ${_result!['totalQuestions']} correct',
                           style: const TextStyle(fontSize: 22),
                         ),
                         const SizedBox(height: 12),
-                        for (
-                          var i = 0;
-                          i < PreAssessmentData.questions.length;
-                          i++
-                        )
+                        for (final i in _order.questions)
                           ListTile(
                             title: Text(PreAssessmentData.questions[i].prompt),
                             subtitle: Text(
-                              'Your answer: ${_submittedAnswerText(i)}\n'
-                              'Correct answer: ${PreAssessmentData.questions[i].options[PreAssessmentData.questions[i].answer]}',
+                              'Your answer: ${_submittedAnswerText(i)}',
                             ),
                           ),
                         FilledButton(
@@ -181,11 +203,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                           child: const Text('Start pre-assessment'),
                         )
                       else ...[
-                        for (
-                          var i = 0;
-                          i < PreAssessmentData.questions.length;
-                          i++
-                        )
+                        for (final i in _order.questions)
                           Card(
                             child: Padding(
                               padding: const EdgeInsets.all(16),
@@ -193,21 +211,13 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    '${i + 1}. ${PreAssessmentData.questions[i].prompt}',
+                                    '${_order.questions.indexOf(i) + 1}. ${PreAssessmentData.questions[i].prompt}',
                                     style: const TextStyle(
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  for (
-                                    var j = 0;
-                                    j <
-                                        PreAssessmentData
-                                            .questions[i]
-                                            .options
-                                            .length;
-                                    j++
-                                  )
+                                  for (final j in _order.options[i])
                                     ListTile(
                                       contentPadding: EdgeInsets.zero,
                                       leading: Icon(
