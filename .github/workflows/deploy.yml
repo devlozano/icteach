@@ -1,71 +1,10 @@
-name: Build and Deploy Flutter Web
-
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-concurrency:
-  group: hostinger-production
-  cancel-in-progress: false
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.9'
-          channel: stable
-
-      - name: Get dependencies
-        run: flutter pub get
-
-      - name: Build Flutter Web
-        run: flutter build web --release --no-wasm-dry-run
-
-      - name: Add .htaccess
-        run: cp web/.htaccess build/web/.htaccess
-
-      - name: Test
-        run: flutter test
-
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-
-      - name: Save tested web build
-        uses: actions/upload-artifact@v4
-        with:
-          name: icteach-web
-          path: build/web/
-          include-hidden-files: true
-
-      - name: Deploy to Hostinger
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          # FTP_HOST must be the Hostinger hostname matching its TLS certificate, not a raw IP.
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          server-dir: /public_html/
-          local-dir: ./build/web/
-          log-level: standard
-          security: strict
-          timeout: 60000
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            **/.env
-            **/.DS_Store
+- name: Deploy to Hostinger
+  uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+  with:
+    server: ${{ secrets.FTP_HOST }}
+    username: ${{ secrets.FTP_USERNAME }}
+    password: ${{ secrets.FTP_PASSWORD }}
+    protocol: ftp
+    port: 21
+    local-dir: ./build/web/
+    server-dir: /public_html/
