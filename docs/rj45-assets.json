@@ -1,0 +1,187 @@
+{
+  "generator": "Built-in image_gen tool",
+  "date": "2026-09-11",
+  "note": "Object illustrations are not grading truth. Actual pin assignments and tester LED states are rendered by the simulation. Cable-plug final uses a plain white background after rejected checkerboard outputs.",
+  "assets": [
+    {
+      "id": "stripper",
+      "file": "assets/simulations/rj45/stripper.png",
+      "prompt": "Create one production-ready photorealistic game asset: a professional adjustable Ethernet cable jacket stripper, compact yellow rotary stripping tool with finger loop and small guarded blade, isolated centered, three-quarter overhead product view, handle aimed lower left and working jaw upper right. Entire tool visible with generous transparent margins. Genuine transparent background, no ground plane, no text, no logos, no hands, no other objects. Clean studio illumination, sharp mechanical detail, realistic molded yellow polymer and steel. For an educational RJ45 cable termination simulation. Save as a single individual asset, not a sprite sheet.",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1626305,
+      "sha256": "2cac1289c7d4f9cc4ae311b8c6e57de1868f0cfe27cb8e2ff92cb2f0fb8f9c12"
+    },
+    {
+      "id": "cutters",
+      "file": "assets/simulations/rj45/cutters.png",
+      "prompt": "Single production-ready photorealistic educational RJ45 simulator game asset, isolated centered fully visible on genuinely transparent background with generous margins. Consistent three-quarter overhead product photography, studio light, sharp realistic material detail. No text, logos, hands, extra objects, collage or sprite sheet. Compact precision flush cutters, black steel angled flush-cutting jaws open, red insulated handles, working tip upper right and handles lower left.",
+      "width": 1402,
+      "height": 1122,
+      "bytes": 842072,
+      "sha256": "e317b779ee50e89805ae07be891943b3f36da44112ae679f199d0caf4a9c9e34"
+    },
+    {
+      "id": "crimper_open",
+      "file": "assets/simulations/rj45/crimper_open.png",
+      "prompt": "Single production-ready photorealistic educational RJ45 simulator game asset, isolated centered fully visible on genuinely transparent background with generous margins. Consistent three-quarter overhead product photography, studio light, sharp realistic material detail. No text, logos, hands, extra objects, collage or sprite sheet. Professional unbranded blue-and-black ratcheting RJ45 8P8C modular plug crimping tool in OPEN position, visible rectangular eight-contact die and ratchet linkage, handles spread, jaws upper right.",
+      "width": 1402,
+      "height": 1122,
+      "bytes": 958114,
+      "sha256": "cee957bb6861c3c6e955de390c981a0be6a4b39f5578edb0e7c211f8c5816de1"
+    },
+    {
+      "id": "crimper_closed",
+      "file": "assets/simulations/rj45/crimper_closed.png",
+      "prompt": "Single production-ready photorealistic educational RJ45 simulator game asset, isolated centered fully visible on genuinely transparent background with generous margins. Consistent three-quarter overhead product photography, studio light, sharp realistic material detail. No text, logos, hands, extra objects, collage or sprite sheet. Professional unbranded blue-and-black ratcheting RJ45 8P8C modular plug crimping tool in CLOSED squeezed position, visible rectangular eight-contact die, handles together, jaws upper right.",
+      "width": 1374,
+      "height": 1145,
+      "bytes": 1145636,
+      "sha256": "fa90f6a4f7648f53394a7bae3be8e77abb8fa7a30f3c18c42d99f3248f16d557"
+    },
+    {
+      "id": "cable_intact",
+      "file": "assets/simulations/rj45/cable_intact.png",
+      "prompt": "One photorealistic macro product cutout asset for an educational RJ45 cable termination simulator. Landscape composition, isolated centered on genuinely transparent background, sharp studio detail, no text, labels, logo, hands, tools, diagrams, multiple panels or ground plane. Entire subject visible, same neutral blue-gray PVC Cat6 U/UTP cable, cable runs horizontally left to right with working end on right. A 20cm short straight cable segment, intact outer jacket along entire length, clean square unprepared end visible at right in slight three-quarter perspective. The end cross-section subtly shows four pairs around a white plastic cross spline, but no conductors protrude.",
+      "width": 1774,
+      "height": 887,
+      "bytes": 368573,
+      "sha256": "2525ba1593f8d166c92fdfc30cea614d1c07e26eb300d24644a1b7a77c377b4f"
+    },
+    {
+      "id": "cable_spline",
+      "file": "assets/simulations/rj45/cable_spline.png",
+      "prompt": "One photorealistic macro product cutout asset for an educational RJ45 cable termination simulator. Landscape composition, isolated centered on genuinely transparent background, sharp studio detail, no text, labels, logo, hands, tools, diagrams, multiple panels or ground plane. Entire subject visible, same neutral blue-gray PVC Cat6 U/UTP cable, cable runs horizontally left to right with working end on right. Cable preparation stage: outer jacket removed from the last 5cm at right. Four still-twisted pairs fan out around a clearly exposed white cross-shaped central separator spline. Exactly four pairs, each a solid conductor plus matching white-striped conductor: orange, green, blue, brown. All individual insulation intact. Not arranged in a pin sequence. White central spline prominently visible protruding from jacket.",
+      "width": 1774,
+      "height": 887,
+      "bytes": 785353,
+      "sha256": "23eef4eb1f60c2f94e4912b288bfc79278b5ec1b30375e66bb8321f26132cef1"
+    },
+    {
+      "id": "cable_pairs",
+      "file": "assets/simulations/rj45/cable_pairs.png",
+      "prompt": "One photorealistic macro product cutout asset for an educational RJ45 cable termination simulator. Landscape composition, isolated centered on genuinely transparent background, sharp studio detail, no text, labels, logo, hands, tools, diagrams, multiple panels or ground plane. Entire subject visible, same neutral blue-gray PVC Cat6 U/UTP cable, cable runs horizontally left to right with working end on right. Cable preparation stage: jacket removed from last 5cm and central white separator cut flush at jacket lip. Exactly four still-twisted insulated pairs fan apart, orange/white-orange, green/white-green, blue/white-blue, brown/white-brown. No protruding spline. No plug. Pairs remain twisted, not ordered into a pin sequence.",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1364715,
+      "sha256": "d765fd2e221e173b73136e0b450b343a5c971256a55af4db0a3ebedbb4e7ae4b"
+    },
+    {
+      "id": "plug_empty",
+      "file": "assets/simulations/rj45/plug_empty.png",
+      "prompt": "One realistic isolated product-photo game asset for an educational RJ45 simulator. Genuinely transparent background, generous clear margins, studio light, no text, no logos, no hands, no other objects, no collage. A single EMPTY transparent polycarbonate unshielded RJ45 8P8C closed-end modular plug, large macro three-quarter top view, eight parallel gold contacts sharply visible, rear cable-entry opening and molded strain-relief latch visible. No cable and no conductors inside. Rectangular not USB.",
+      "width": 1374,
+      "height": 1145,
+      "bytes": 1687045,
+      "sha256": "9df07f654d008c3fca7297e3562536e24b91f427a3705cebcf4df143561fd642"
+    },
+    {
+      "id": "plug_side",
+      "file": "assets/simulations/rj45/plug_side.png",
+      "prompt": "One realistic isolated product-photo game asset for an educational RJ45 simulator. Genuinely transparent background, generous clear margins, studio light, no text, no logos, no hands, no other objects, no collage. A single EMPTY clear polycarbonate unshielded RJ45 8P8C modular connector housing, orthographic TOP view, cable entry on LEFT and contact nose on RIGHT. Transparent internal space with no colored wires. All eight gold contact blades are visible across the nose. Used as a housing layer over independently drawn learner-selected conductors.",
+      "width": 1774,
+      "height": 887,
+      "bytes": 1100724,
+      "sha256": "9a8a51316f497846b36947a32d624f9a72aceec7a8ac148917c96f73881befbd"
+    },
+    {
+      "id": "cable_plug",
+      "file": "assets/simulations/rj45/cable_plug.png",
+      "prompt": "Photorealistic macro product photograph of one finished Ethernet cable end. Clear rectangular RJ45 8P8C connector with gold contacts, plain blue-gray PVC cable directly entering the clear plastic housing, no rubber boot. Narrow SIDE PROFILE: do not show internal colored-wire order. Plug on right, cable curves down left. Centered complete object, isolated on a completely plain seamless WHITE studio background. Absolutely NO checkerboard, NO patterned transparency grid, NO text, NO logo, NO gradients or glow. Crisp clean catalog image for a draggable game object.",
+      "width": 1536,
+      "height": 1024,
+      "bytes": 1221273,
+      "sha256": "fb8dc8c8c6300a9c41cc38d72ae829a82125c9794f8e741815c28e990635f09a"
+    },
+    {
+      "id": "tester_main",
+      "file": "assets/simulations/rj45/tester_main.png",
+      "prompt": "One production photorealistic game-asset cutout, isolated on genuinely transparent background, whole object with generous clear margins, clean studio illumination. No brand, text, numbers, logos, hands, cables, labels or collage. Orthographic front view, rectangular navy blue molded plastic Ethernet continuity tester, gray rubber side bumpers, crisp mechanical detail. All indicator lenses dark/unlit. MAIN battery-powered unit of a two-piece LAN cable tester. Wider handheld rectangular body, one clearly EMPTY RJ45 socket at top facing viewer at shallow angle, vertical column of exactly EIGHT round unlit small green lenses centered down face, a small power slide switch below. Leave plenty of blank panel space around lenses for UI overlay labels.",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 2205516,
+      "sha256": "f42b79f9d3449a84b986b9ccf79af0e279620d02b270d1fefeead2888f2d9617"
+    },
+    {
+      "id": "tester_remote",
+      "file": "assets/simulations/rj45/tester_remote.png",
+      "prompt": "One production photorealistic game-asset cutout, isolated on genuinely transparent background, whole object with generous clear margins, clean studio illumination. No brand, text, numbers, logos, hands, cables, labels or collage. Orthographic front view, rectangular navy blue molded plastic Ethernet continuity tester, gray rubber side bumpers, crisp mechanical detail. All indicator lenses dark/unlit. REMOTE unit of a two-piece LAN cable tester. Narrow handheld rectangular body, one clearly EMPTY RJ45 socket at top facing viewer at shallow angle, vertical column of exactly EIGHT round unlit small green lenses centered down face, no power switch, same navy and gray design as main unit. Leave blank panel space for UI overlay labels.",
+      "width": 1024,
+      "height": 1536,
+      "bytes": 1876693,
+      "sha256": "ac84eb7790b20c796fc93d2c1be33a5ca187e8b0de44151667d5a7d34f04a5c8"
+    },
+    {
+      "id": "wire_white-orange",
+      "file": "assets/simulations/rj45/wire_white-orange.png",
+      "prompt": "Single realistic macro game asset of exactly ONE thin Ethernet cable insulated copper conductor, WHITE insulation with a clearly visible continuous ORANGE tracer stripe. Gently curved horizontal strand, full length visible centered, no coil, insulation intact along length, squared tip with only tiny cross-section of copper at very end. Isolated on truly transparent background, generous margins, clean studio lighting, precise smooth cylindrical insulation, 4:1 subject aspect ratio on a landscape canvas. No other wires, no plug, no jacket, no hands, no labels, no text, no glow. For a draggable conductor in an RJ45 educational simulator; color must be unambiguous.",
+      "width": 1983,
+      "height": 793,
+      "bytes": 178808,
+      "sha256": "5b0ecd9e06e7a82e2ddece640eceedead7fb9a26458450006247c22dd08d386d"
+    },
+    {
+      "id": "wire_orange",
+      "file": "assets/simulations/rj45/wire_orange.png",
+      "prompt": "Single realistic macro game asset of exactly ONE thin Ethernet cable insulated copper conductor, ORANGE insulation, solid color. Gently curved horizontal strand, full length visible centered, no coil, insulation intact along length, squared tip with only tiny cross-section of copper at very end. Isolated on truly transparent background, generous margins, clean studio lighting, precise smooth cylindrical insulation, 4:1 subject aspect ratio on a landscape canvas. No other wires, no plug, no jacket, no hands, no labels, no text, no glow. For a draggable conductor in an RJ45 educational simulator; color must be unambiguous.",
+      "width": 1983,
+      "height": 793,
+      "bytes": 147954,
+      "sha256": "30a9e092eb3f7c38601a587712f1aa4993caf7b2e471ba71996b01a27ba2aa6c"
+    },
+    {
+      "id": "wire_white-green",
+      "file": "assets/simulations/rj45/wire_white-green.png",
+      "prompt": "Single realistic macro game asset of exactly ONE thin Ethernet cable insulated copper conductor, WHITE insulation with a clearly visible continuous GREEN tracer stripe. Gently curved horizontal strand, full length visible centered, no coil, insulation intact along length, squared tip with only tiny cross-section of copper at very end. Isolated on truly transparent background, generous margins, clean studio lighting, precise smooth cylindrical insulation, 4:1 subject aspect ratio on a landscape canvas. No other wires, no plug, no jacket, no hands, no labels, no text, no glow. For a draggable conductor in an RJ45 educational simulator; color must be unambiguous.",
+      "width": 2056,
+      "height": 765,
+      "bytes": 204214,
+      "sha256": "21eb92d34089fe8b3d493f208feee7cf5c79db4d9ced20d7878123eda02ac85f"
+    },
+    {
+      "id": "wire_green",
+      "file": "assets/simulations/rj45/wire_green.png",
+      "prompt": "Single realistic macro game asset of exactly ONE thin Ethernet cable insulated copper conductor, GREEN insulation, solid color. Gently curved horizontal strand, full length visible centered, no coil, insulation intact along length, squared tip with only tiny cross-section of copper at very end. Isolated on truly transparent background, generous margins, clean studio lighting, precise smooth cylindrical insulation, 4:1 subject aspect ratio on a landscape canvas. No other wires, no plug, no jacket, no hands, no labels, no text, no glow. For a draggable conductor in an RJ45 educational simulator; color must be unambiguous.",
+      "width": 1983,
+      "height": 793,
+      "bytes": 170667,
+      "sha256": "4e88fc30c9d2794ab613f4c59ed695509d84f466e8060c149902a96252ac4456"
+    },
+    {
+      "id": "wire_white-blue",
+      "file": "assets/simulations/rj45/wire_white-blue.png",
+      "prompt": "Single realistic macro game asset of exactly ONE thin Ethernet cable insulated copper conductor, WHITE insulation with a clearly visible continuous BLUE tracer stripe. Gently curved horizontal strand, full length visible centered, no coil, insulation intact along length, squared tip with only tiny cross-section of copper at very end. Isolated on truly transparent background, generous margins, clean studio lighting, precise smooth cylindrical insulation, 4:1 subject aspect ratio on a landscape canvas. No other wires, no plug, no jacket, no hands, no labels, no text, no glow. For a draggable conductor in an RJ45 educational simulator; color must be unambiguous.",
+      "width": 1983,
+      "height": 793,
+      "bytes": 197561,
+      "sha256": "dced9f07a308fa9870b7cb763195f0a7f7d01e7871fb06a78b3da888ef2b0cb7"
+    },
+    {
+      "id": "wire_blue",
+      "file": "assets/simulations/rj45/wire_blue.png",
+      "prompt": "Single realistic macro game asset of exactly ONE thin Ethernet cable insulated copper conductor, BLUE insulation, solid color. Gently curved horizontal strand, full length visible centered, no coil, insulation intact along length, squared tip with only tiny cross-section of copper at very end. Isolated on truly transparent background, generous margins, clean studio lighting, precise smooth cylindrical insulation, 4:1 subject aspect ratio on a landscape canvas. No other wires, no plug, no jacket, no hands, no labels, no text, no glow. For a draggable conductor in an RJ45 educational simulator; color must be unambiguous.",
+      "width": 1983,
+      "height": 793,
+      "bytes": 160035,
+      "sha256": "06ecb0890f2a249277f07912a4ef8b95e3437b7794718f1082ad38c412c3d780"
+    },
+    {
+      "id": "wire_white-brown",
+      "file": "assets/simulations/rj45/wire_white-brown.png",
+      "prompt": "Single realistic macro game asset of exactly ONE thin Ethernet cable insulated copper conductor, WHITE insulation with a clearly visible continuous BROWN tracer stripe. Gently curved horizontal strand, full length visible centered, no coil, insulation intact along length, squared tip with only tiny cross-section of copper at very end. Isolated on truly transparent background, generous margins, clean studio lighting, precise smooth cylindrical insulation, 4:1 subject aspect ratio on a landscape canvas. No other wires, no plug, no jacket, no hands, no labels, no text, no glow. For a draggable conductor in an RJ45 educational simulator; color must be unambiguous.",
+      "width": 1983,
+      "height": 793,
+      "bytes": 192531,
+      "sha256": "56445aaacde1457fc232bfb6fa82fa2815001c2166c908bc90b0697ef744bd02"
+    },
+    {
+      "id": "wire_brown",
+      "file": "assets/simulations/rj45/wire_brown.png",
+      "prompt": "Single realistic macro game asset of exactly ONE thin Ethernet cable insulated copper conductor, BROWN insulation, solid color. Gently curved horizontal strand, full length visible centered, no coil, insulation intact along length, squared tip with only tiny cross-section of copper at very end. Isolated on truly transparent background, generous margins, clean studio lighting, precise smooth cylindrical insulation, 4:1 subject aspect ratio on a landscape canvas. No other wires, no plug, no jacket, no hands, no labels, no text, no glow. For a draggable conductor in an RJ45 educational simulator; color must be unambiguous.",
+      "width": 1983,
+      "height": 793,
+      "bytes": 176361,
+      "sha256": "3cf27c8d97e6a47e92775fb61885389707928bcd0d85e198d67b202fe0d2153b"
+    }
+  ]
+}

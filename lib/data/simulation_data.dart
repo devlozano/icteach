@@ -434,7 +434,7 @@ class SimulationData {
     id: 'sim_coc2_crimping',
     title: 'RJ45 Cable Crimping - COC2',
     description:
-        'Arrange the wires in the correct T568B order for a straight-through cable.',
+        'Prepare both cable ends: strip the jacket, remove the spline, untwist, arrange, trim, insert and crimp. Manually connect the LAN tester to check straight-through or 10/100 crossover wiring.',
     type: 'cabling',
     competency: 'COC2',
     learningOutcome: 'LO1 - Install network cables',

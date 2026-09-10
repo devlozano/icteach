@@ -1,0 +1,19 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Registration must verify one exact, still-available LRN before sign-in.
+    // Collection listing remains unavailable to unauthenticated users.
+    match /lrn_master_list/{lrn} {
+      allow get: if resource.data.isRegistered == false;
+      allow list: if request.auth != null;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // Preserve the existing authenticated application access while the
+    // collection-specific policies are migrated.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

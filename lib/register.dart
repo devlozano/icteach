@@ -29,17 +29,22 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscureConfirmPassword = true;
   bool _isLrnValid = false;
   bool _verifyingLrn = false;
+  bool _showAccountDetails = false;
   LrnIdentity? _verifiedIdentity;
   Future<LrnIdentity> _lookupLrn(String lrn) =>
       widget.lrnVerifier?.call(lrn) ??
       RegistrationInvitationService().validateLrn(lrn);
   void _clearIdentity() {
     _isLrnValid = false;
+    _showAccountDetails = false;
     _verifiedIdentity = null;
     _firstNameController.clear();
     _middleNameController.clear();
     _lastNameController.clear();
     _extensionController.clear();
+    _emailController.clear();
+    _passwordController.clear();
+    _confirmPasswordController.clear();
   }
 
   // List of values that should be treated as "no extension"
@@ -299,6 +304,7 @@ class _RegisterPageState extends State<RegisterPage> {
       setState(() {
         _verifiedIdentity = identity;
         _isLrnValid = true;
+        _showAccountDetails = true;
         _firstNameController.text = identity.firstName;
         _middleNameController.text = identity.middleName;
         _lastNameController.text = identity.lastName;
@@ -669,130 +675,140 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           const SizedBox(height: 24),
           _buildLrnField(),
-          const Padding(
-            padding: EdgeInsets.only(top: 12),
-            child: Text(
-              'Your official name is filled from the school master list and cannot be changed here. If it is incorrect or not yours, contact the school before continuing.',
+          if (!_showAccountDetails) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Verify your LRN to load the official name from the school master list before continuing.',
             ),
-          ),
-          const SizedBox(height: 18),
-          _buildTextField(
-            label: 'First Name',
-            controller: _firstNameController,
-            readOnly: true,
-            hintText: 'Juan',
-            icon: Icons.person_outline_rounded,
-            validator: (value) => _validateName(value, 'First name'),
-          ),
-          const SizedBox(height: 18),
-          _buildTextField(
-            label: 'Middle Name',
-            controller: _middleNameController,
-            readOnly: true,
-            hintText: 'Santos',
-            icon: Icons.person_outline_rounded,
-            isRequired: false,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) return null;
-              return _validateName(value, 'Middle name');
-            },
-          ),
-          const SizedBox(height: 18),
-          _buildTextField(
-            label: 'Last Name',
-            controller: _lastNameController,
-            readOnly: true,
-            hintText: 'Dela Cruz',
-            icon: Icons.person_outline_rounded,
-            validator: (value) => _validateName(value, 'Last name'),
-          ),
-          const SizedBox(height: 18),
-          _buildTextField(
-            label: 'Extension (Optional)',
-            controller: _extensionController,
-            readOnly: true,
-            hintText: 'Jr., Sr., III',
-            icon: Icons.person_add_alt_1_outlined,
-            validator: _validateExtension,
-            isRequired: false,
-          ),
-          const SizedBox(height: 18),
-          _buildTextField(
-            label: 'Email Address',
-            controller: _emailController,
-            hintText: 'student@school.edu.ph',
-            icon: Icons.email_outlined,
-            keyboardType: TextInputType.emailAddress,
-            validator: (value) {
-              final email = value?.trim() ?? '';
-              if (email.isEmpty) return 'Email address is required.';
-              if (_containsEmoji(email)) {
-                return 'Emojis are not allowed in email.';
-              }
-              if (!_isValidEmail(email)) return 'Enter a valid email address.';
-              return null;
-            },
-          ),
-          const SizedBox(height: 18),
-          _buildPasswordField(
-            label: 'Password',
-            controller: _passwordController,
-            isObscured: _obscurePassword,
-            onToggle: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
-            validator: _validatePassword,
-          ),
-          const SizedBox(height: 18),
-          _buildPasswordField(
-            label: 'Confirm Password',
-            controller: _confirmPasswordController,
-            isObscured: _obscureConfirmPassword,
-            onToggle: () => setState(
-              () => _obscureConfirmPassword = !_obscureConfirmPassword,
-            ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Confirm your password.';
-              }
-              if (value != _passwordController.text) {
-                return 'Passwords do not match.';
-              }
-              return null;
-            },
-            onFieldSubmitted: (_) => _isLoading ? null : _register(),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _register,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: registerGreen,
-                disabledBackgroundColor: registerGreen.withValues(alpha: 0.55),
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+          ] else ...[
+            const Padding(
+              padding: EdgeInsets.only(top: 12),
+              child: Text(
+                'These names come from the school master list and cannot be changed here. If they are incorrect, contact the school before continuing.',
               ),
-              child: _isLoading
-                  ? const SizedBox.square(
-                      dimension: 22,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2.6,
-                      ),
-                    )
-                  : const Text(
-                      'Create Account',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
             ),
-          ),
+            const SizedBox(height: 18),
+            _buildTextField(
+              label: 'First Name',
+              controller: _firstNameController,
+              readOnly: true,
+              hintText: 'Juan',
+              icon: Icons.person_outline_rounded,
+              validator: (value) => _validateName(value, 'First name'),
+            ),
+            const SizedBox(height: 18),
+            _buildTextField(
+              label: 'Middle Name',
+              controller: _middleNameController,
+              readOnly: true,
+              hintText: 'Santos',
+              icon: Icons.person_outline_rounded,
+              isRequired: false,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) return null;
+                return _validateName(value, 'Middle name');
+              },
+            ),
+            const SizedBox(height: 18),
+            _buildTextField(
+              label: 'Last Name',
+              controller: _lastNameController,
+              readOnly: true,
+              hintText: 'Dela Cruz',
+              icon: Icons.person_outline_rounded,
+              validator: (value) => _validateName(value, 'Last name'),
+            ),
+            const SizedBox(height: 18),
+            _buildTextField(
+              label: 'Extension (Optional)',
+              controller: _extensionController,
+              readOnly: true,
+              hintText: 'Jr., Sr., III',
+              icon: Icons.person_add_alt_1_outlined,
+              validator: _validateExtension,
+              isRequired: false,
+            ),
+            const SizedBox(height: 18),
+            _buildTextField(
+              label: 'Email Address',
+              controller: _emailController,
+              hintText: 'student@school.edu.ph',
+              icon: Icons.email_outlined,
+              keyboardType: TextInputType.emailAddress,
+              validator: (value) {
+                final email = value?.trim() ?? '';
+                if (email.isEmpty) return 'Email address is required.';
+                if (_containsEmoji(email)) {
+                  return 'Emojis are not allowed in email.';
+                }
+                if (!_isValidEmail(email))
+                  return 'Enter a valid email address.';
+                return null;
+              },
+            ),
+            const SizedBox(height: 18),
+            _buildPasswordField(
+              label: 'Password',
+              controller: _passwordController,
+              isObscured: _obscurePassword,
+              onToggle: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+              validator: _validatePassword,
+            ),
+            const SizedBox(height: 18),
+            _buildPasswordField(
+              label: 'Confirm Password',
+              controller: _confirmPasswordController,
+              isObscured: _obscureConfirmPassword,
+              onToggle: () => setState(
+                () => _obscureConfirmPassword = !_obscureConfirmPassword,
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Confirm your password.';
+                }
+                if (value != _passwordController.text) {
+                  return 'Passwords do not match.';
+                }
+                return null;
+              },
+              onFieldSubmitted: (_) => _isLoading ? null : _register(),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _register,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: registerGreen,
+                  disabledBackgroundColor: registerGreen.withValues(
+                    alpha: 0.55,
+                  ),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: _isLoading
+                    ? const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.6,
+                        ),
+                      )
+                    : const Text(
+                        'Create Account',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           Center(
             child: TextButton(

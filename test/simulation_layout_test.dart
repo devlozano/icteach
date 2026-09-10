@@ -111,9 +111,14 @@ void main() {
         expect(find.text('Place on target'), findsNothing);
         expect(find.text('Drop Here'), findsNothing);
         if (simulation.id == 'sim_coc2_crimping') {
-          for (var pin = 1; pin <= 8; pin++) {
-            expect(find.text('PIN $pin'), findsOneWidget);
-          }
+          expect(find.text('Straight-through'), findsOneWidget);
+          expect(find.text('Crossover (10/100)'), findsOneWidget);
+          await tester.tap(find.text('Straight-through'));
+          await tester.pumpAndSettle();
+          expect(find.textContaining('Strip outer jacket'), findsOneWidget);
+          expect(find.byKey(const ValueKey('cable-work-area')), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          return;
         }
         expect(find.byType(DropTargetWidget).evaluate().length, greaterThan(1));
         expect(find.byType(SingleChildScrollView), findsNothing);
@@ -253,7 +258,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final simulation = SimulationData.getSimulationById('sim_coc2_crimping')!;
+      final simulation = SimulationData.getSimulationById('sim_coc1_cabling')!;
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
@@ -321,7 +326,7 @@ void main() {
         }
         await tester.tap(find.byType(DropdownButtonFormField<String>));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('RJ45 crimper + cable stripper').last);
+        await tester.tap(find.text('Connector key + latch inspection').last);
         await tester.pumpAndSettle();
         await tester.dragFrom(
           tester.getCenter(part()),

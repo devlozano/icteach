@@ -1,3 +1,4 @@
+import 'rj45_workbench.dart';
 import 'simulation_process_guide.dart';
 import 'summary_print_button.dart';
 import 'dart:async';
@@ -60,6 +61,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   void initState() {
     super.initState();
     _resetSimulation(notify: false);
+    if (widget.simulation.id == 'sim_coc2_crimping') return;
     _configureVoice();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _speak('Mission started. Drag each pictured part to the correct target.');
@@ -119,6 +121,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   }
 
   void _startTimer() {
+    if (widget.simulation.id == 'sim_coc2_crimping') return;
     _missionTimer?.cancel();
     _missionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && !_isComplete) setState(() => _elapsedSeconds++);
@@ -647,6 +650,12 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.simulation.id == 'sim_coc2_crimping') {
+      return Rj45Workbench(
+        onComplete: widget.onComplete,
+        onFeedback: widget.onFeedback,
+      );
+    }
     if (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height) {
       return const Center(
         child: Padding(

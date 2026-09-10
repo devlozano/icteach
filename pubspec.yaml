@@ -64,4 +64,5 @@ flutter:
     - assets/ict_logo.png
     - assets/fonts/
     - assets/simulations/
+    - assets/simulations/rj45/
     # Add any other assets here
