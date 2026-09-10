@@ -49,7 +49,10 @@ class DropTargetWidget extends StatelessWidget {
         final hasRejected =
             rejectedData.isNotEmpty ||
             (candidateData.isNotEmpty && !candidateCompatible);
-        return Container(
+        return AnimatedContainer(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : const Duration(milliseconds: 250),
           width: width,
           height: height,
           decoration: BoxDecoration(

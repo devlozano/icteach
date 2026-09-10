@@ -1,3 +1,4 @@
+import 'simulation_process_guide.dart';
 import 'summary_print_button.dart';
 import 'dart:async';
 import 'dart:math';
@@ -1119,6 +1120,15 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
               color: Color(0xFF334E68),
             ),
           ),
+        ),
+        IconButton(
+          tooltip: 'Guided process',
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (_) =>
+                SimulationProcessGuide(simulation: widget.simulation),
+          ),
+          icon: const Icon(Icons.play_circle_outline, size: 20),
         ),
         IconButton(
           tooltip: 'Workbench guide',

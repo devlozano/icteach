@@ -6,7 +6,8 @@ import 'home_router.dart';
 import 'services/registration_invitation_service.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
+  final Future<LrnIdentity> Function(String)? lrnVerifier;
+  const RegisterPage({super.key, this.lrnVerifier});
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
@@ -27,6 +28,19 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isLrnValid = false;
+  bool _verifyingLrn = false;
+  LrnIdentity? _verifiedIdentity;
+  Future<LrnIdentity> _lookupLrn(String lrn) =>
+      widget.lrnVerifier?.call(lrn) ??
+      RegistrationInvitationService().validateLrn(lrn);
+  void _clearIdentity() {
+    _isLrnValid = false;
+    _verifiedIdentity = null;
+    _firstNameController.clear();
+    _middleNameController.clear();
+    _lastNameController.clear();
+    _extensionController.clear();
+  }
 
   // List of values that should be treated as "no extension"
   static const List<String> _noExtensionValues = [
@@ -275,8 +289,37 @@ class _RegisterPageState extends State<RegisterPage> {
       _showError('Enter a valid 12-digit LRN.');
       return;
     }
-    setState(() => _isLrnValid = true);
-    _showSnackBar('LRN format verified.', Colors.green);
+    setState(() {
+      _verifyingLrn = true;
+      _clearIdentity();
+    });
+    try {
+      final identity = await _lookupLrn(lrn);
+      if (!mounted || _lrnController.text.trim() != lrn) return;
+      setState(() {
+        _verifiedIdentity = identity;
+        _isLrnValid = true;
+        _firstNameController.text = identity.firstName;
+        _middleNameController.text = identity.middleName;
+        _lastNameController.text = identity.lastName;
+        _extensionController.text = identity.extension;
+      });
+      _showSnackBar(
+        'LRN verified against the school master list.',
+        Colors.green,
+      );
+    } on FormatException catch (e) {
+      if (mounted) _showError(e.message);
+    } on FirebaseException catch (e) {
+      if (mounted) _showError(_firebaseErrorMessage(e));
+    } catch (_) {
+      if (mounted)
+        _showError(
+          'Could not verify your LRN. Check your connection and retry.',
+        );
+    } finally {
+      if (mounted) setState(() => _verifyingLrn = false);
+    }
   }
 
   Widget _buildLrnField() {
@@ -285,7 +328,7 @@ class _RegisterPageState extends State<RegisterPage> {
       children: [
         TextFormField(
           controller: _lrnController,
-          enabled: !_isLoading,
+          enabled: !_isLoading && !_verifyingLrn,
           keyboardType: TextInputType.number,
           maxLength: 12,
           decoration: const InputDecoration(
@@ -299,19 +342,32 @@ class _RegisterPageState extends State<RegisterPage> {
             }
             return _isLrnValid ? null : 'Verify your LRN first.';
           },
-          onChanged: (_) => setState(() => _isLrnValid = false),
+          onChanged: (_) => setState(_clearIdentity),
         ),
         const SizedBox(height: 8),
         FilledButton.icon(
-          onPressed: _isLoading ? null : _validateLRN,
+          onPressed: _isLoading || _verifyingLrn ? null : _validateLRN,
           icon: Icon(_isLrnValid ? Icons.verified : Icons.fact_check_outlined),
-          label: Text(_isLrnValid ? 'LRN verified' : 'Verify LRN'),
+          label: Text(
+            _verifyingLrn
+                ? 'Checking school record?'
+                : _isLrnValid
+                ? 'LRN verified'
+                : 'Verify LRN',
+          ),
         ),
       ],
     );
   }
 
   Future<UserCredential> _createVerifiedAccount() async {
+    final current = await _lookupLrn(_lrnController.text.trim());
+    if (_verifiedIdentity == null ||
+        !current.matchesProfile(_verifiedIdentity!.profileFields)) {
+      throw const FormatException(
+        'The school record changed. Verify your LRN again.',
+      );
+    }
     final auth = FirebaseAuth.instance;
     try {
       final credential = await auth.createUserWithEmailAndPassword(
@@ -373,11 +429,10 @@ class _RegisterPageState extends State<RegisterPage> {
       }
 
       final lrn = _lrnController.text.trim();
-      final firstName = _firstNameController.text.trim();
-      final middleName = _middleNameController.text.trim();
-      final lastName = _lastNameController.text.trim();
-      final extensionRaw = _extensionController.text.trim();
-      final extension = _cleanExtension(extensionRaw);
+      final firstName = _verifiedIdentity!.firstName;
+      final middleName = _verifiedIdentity!.middleName;
+      final lastName = _verifiedIdentity!.lastName;
+      final extension = _verifiedIdentity!.extension;
       final email = _emailController.text.trim();
 
       final displayName = _displayName(
@@ -451,9 +506,7 @@ class _RegisterPageState extends State<RegisterPage> {
   String _firebaseErrorMessage(FirebaseException error) {
     switch (error.code) {
       case 'permission-denied':
-        return 'Enrollment was not completed. Your code may have expired or been used, '
-            'or school permissions need setup. Retry with the same email and password '
-            'and a valid school code; contact your school if this continues.';
+        return 'The school verification service denied access. Contact the school to enable LRN verification; no name or enrollment has been accepted.';
       case 'unavailable':
         return 'Firebase is unavailable right now. Please try again.';
       default:
@@ -616,10 +669,17 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
           const SizedBox(height: 24),
           _buildLrnField(),
+          const Padding(
+            padding: EdgeInsets.only(top: 12),
+            child: Text(
+              'Your official name is filled from the school master list and cannot be changed here. If it is incorrect or not yours, contact the school before continuing.',
+            ),
+          ),
           const SizedBox(height: 18),
           _buildTextField(
             label: 'First Name',
             controller: _firstNameController,
+            readOnly: true,
             hintText: 'Juan',
             icon: Icons.person_outline_rounded,
             validator: (value) => _validateName(value, 'First name'),
@@ -628,6 +688,7 @@ class _RegisterPageState extends State<RegisterPage> {
           _buildTextField(
             label: 'Middle Name',
             controller: _middleNameController,
+            readOnly: true,
             hintText: 'Santos',
             icon: Icons.person_outline_rounded,
             isRequired: false,
@@ -640,6 +701,7 @@ class _RegisterPageState extends State<RegisterPage> {
           _buildTextField(
             label: 'Last Name',
             controller: _lastNameController,
+            readOnly: true,
             hintText: 'Dela Cruz',
             icon: Icons.person_outline_rounded,
             validator: (value) => _validateName(value, 'Last name'),
@@ -648,6 +710,7 @@ class _RegisterPageState extends State<RegisterPage> {
           _buildTextField(
             label: 'Extension (Optional)',
             controller: _extensionController,
+            readOnly: true,
             hintText: 'Jr., Sr., III',
             icon: Icons.person_add_alt_1_outlined,
             validator: _validateExtension,
@@ -750,6 +813,7 @@ class _RegisterPageState extends State<RegisterPage> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
     bool isRequired = true,
+    bool readOnly = false,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -783,7 +847,12 @@ class _RegisterPageState extends State<RegisterPage> {
           keyboardType: keyboardType,
           textInputAction: TextInputAction.next,
           textCapitalization: TextCapitalization.words,
-          validator: validator,
+          readOnly: readOnly,
+          validator: readOnly
+              ? (_) => _isLrnValid
+                    ? null
+                    : 'Verify your LRN to load your official name.'
+              : validator,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, color: const Color(0xFF4D89FF)),
             hintText: hintText,
