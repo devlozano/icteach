@@ -1,3 +1,4 @@
+import 'widgets/staff_mobile_nav.dart';
 import 'screens/staff_management_page.dart';
 import 'widgets/workspace_intro.dart';
 import 'widgets/persistent_workspace.dart';
@@ -11,7 +12,6 @@ import 'admin_login.dart';
 import 'widgets/staff_sidebar.dart';
 import 'services/workspace_preferences.dart';
 import 'join_class.dart';
-import 'class_detail_page.dart';
 import '../screens/teacher/manage_modules_page.dart';
 import '../screens/teacher/manage_quizzes_page.dart';
 import '../screens/teacher/manage_assignments_page.dart';
@@ -178,17 +178,25 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           },
           child: Scaffold(
             backgroundColor: const Color(0xFFF4F7FA),
-            appBar: MediaQuery.sizeOf(context).width >= 1000
+            appBar: kIsWeb && MediaQuery.sizeOf(context).width >= 1000
                 ? null
                 : AppBar(
                     backgroundColor: primaryColor,
                     elevation: 0,
-                    title: const Text(
-                      "ICTEACH",
-                      style: TextStyle(
+                    automaticallyImplyLeading: false,
+                    title: Text(
+                      const [
+                        'Home',
+                        'Discussions',
+                        'Profile',
+                        'Class Monitoring',
+                        'Feedback',
+                        'Students',
+                        'Modules',
+                      ][_selectedIndex],
+                      style: const TextStyle(
                         color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     actions: [
@@ -210,55 +218,42 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                           tooltip: 'Notifications',
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.logout_rounded,
-                          color: Colors.white,
-                        ),
-                        onPressed: _logout,
-                        tooltip: 'Logout',
-                      ),
                     ],
                   ),
             body: LayoutBuilder(
               builder: (context, constraints) {
                 final workspace = Column(
                   children: [
-                    Material(
-                      color: Colors.white,
-                      child: SizedBox(
-                        height: 76,
-                        child: Row(
-                          children: [
-                            if (_selectedIndex != 0)
-                              TextButton.icon(
-                                onPressed: () => _selectTab(0),
-                                icon: const Icon(Icons.arrow_back),
-                                label: const Text('Overview'),
-                              ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Text(
-                                const [
-                                  'Overview',
-                                  'Discussions',
-                                  'Profile',
-                                  'Class Monitoring',
-                                  'Feedback',
-                                  'Student Management',
-                                  'Module Management',
-                                ][_selectedIndex],
-                                style: const TextStyle(
-                                  color: Color(0xFF102A43),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
+                    if (kIsWeb && constraints.maxWidth >= 1000)
+                      Material(
+                        color: Colors.white,
+                        child: SizedBox(
+                          height: 76,
+                          child: Row(
+                            children: [
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Text(
+                                  const [
+                                    'Overview',
+                                    'Discussions',
+                                    'Profile',
+                                    'Class Monitoring',
+                                    'Feedback',
+                                    'Student Management',
+                                    'Module Management',
+                                  ][_selectedIndex],
+                                  style: const TextStyle(
+                                    color: Color(0xFF102A43),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                     Expanded(
                       child: IndexedStack(
                         index: _selectedIndex,
@@ -291,7 +286,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     ),
                   ],
                 );
-                if (constraints.maxWidth < 1000) return workspace;
+                if (!kIsWeb || constraints.maxWidth < 1000) return workspace;
                 return Row(
                   children: [
                     _TrainerDesktopNav(
@@ -312,42 +307,13 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 );
               },
             ),
-            bottomNavigationBar: MediaQuery.sizeOf(context).width >= 1000
+            bottomNavigationBar:
+                kIsWeb && MediaQuery.sizeOf(context).width >= 1000
                 ? null
-                : BottomNavigationBar(
-                    type: BottomNavigationBarType.fixed,
+                : StaffMobileNav(
                     currentIndex: _selectedIndex,
-                    onTap: (index) => _selectTab(index),
-                    items: const [
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.home_rounded),
-                        label: 'Home',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.forum_rounded),
-                        label: 'Discussions',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.person_rounded),
-                        label: 'Profile',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.insights_outlined),
-                        label: 'Class Monitoring',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.rate_review_outlined),
-                        label: 'Feedback',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.groups_outlined),
-                        label: 'Students',
-                      ),
-                      BottomNavigationBarItem(
-                        icon: Icon(Icons.menu_book_outlined),
-                        label: 'Modules',
-                      ),
-                    ],
+                    onChanged: _selectTab,
+                    trainer: true,
                   ),
           ),
         );
@@ -360,7 +326,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     String trainerName,
     String userId,
   ) {
-    final desktop = MediaQuery.sizeOf(context).width >= 1000;
+    final desktop = kIsWeb && MediaQuery.sizeOf(context).width >= 1000;
     return SingleChildScrollView(
       padding: desktop ? const EdgeInsets.all(22) : EdgeInsets.zero,
       child: Column(
@@ -488,7 +454,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               children: [
                 _buildStatsRow(primaryColor),
                 SizedBox(
-                  height: MediaQuery.sizeOf(context).width >= 1000 ? 14 : 24,
+                  height: kIsWeb && MediaQuery.sizeOf(context).width >= 1000
+                      ? 14
+                      : 24,
                 ),
                 const Text(
                   'Trainer Tools',
@@ -1122,297 +1090,16 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             ),
           ),
           const SizedBox(height: 16),
-          FutureBuilder<QuerySnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('users')
-                .doc(user.uid)
-                .collection('classes')
-                .get(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 100,
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              final hasClass =
-                  snapshot.hasData && snapshot.data!.docs.isNotEmpty;
-              final classDocs = snapshot.data?.docs ?? [];
-
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.purple.shade100,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(
-                                Icons.class_rounded,
-                                color: Colors.purple,
-                                size: 22,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            const Text(
-                              'Assigned Classes',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (!hasClass)
-                          GestureDetector(
-                            onTap: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const JoinClassPage(),
-                                ),
-                              );
-                              if (result == true && mounted) {
-                                setState(() {});
-                              }
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.shade100,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.amber.shade300,
-                                ),
-                              ),
-                              child: Text(
-                                'Join Now',
-                                style: TextStyle(
-                                  color: Colors.amber.shade900,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (hasClass) ...[
-                      ...classDocs.map((doc) {
-                        final data = doc.data() as Map<String, dynamic>? ?? {};
-                        final className =
-                            data['className']?.toString() ??
-                            data['name']?.toString() ??
-                            'Unnamed Class';
-                        final teacherName =
-                            data['teacherName']?.toString() ??
-                            'Unknown Teacher';
-                        final schoolYear = data['schoolYear']?.toString() ?? '';
-                        final classId = data['classId']?.toString() ?? '';
-
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.purple.shade200),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: Colors.purple.shade100,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Icon(
-                                      Icons.class_rounded,
-                                      color: Colors.purple,
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          className,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        Text(
-                                          'Teacher: $teacherName',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade600,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (schoolYear.isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today,
-                                      size: 12,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      'School Year: $schoolYear',
-                                      style: TextStyle(
-                                        color: Colors.grey.shade500,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                              const SizedBox(height: 10),
-                              SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    if (classId.isNotEmpty) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => ClassDetailPage(
-                                            classId: classId,
-                                            className: className,
-                                          ),
-                                        ),
-                                      );
-                                    } else {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Class information not available',
-                                          ),
-                                          duration: Duration(seconds: 2),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  icon: const Icon(
-                                    Icons.arrow_forward,
-                                    size: 16,
-                                  ),
-                                  label: const Text("View Class"),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.purple.shade700,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    textStyle: const TextStyle(fontSize: 13),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: Colors.amber.shade700,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'You haven\'t been assigned to a class yet. Join a class to start training students.',
-                                style: TextStyle(
-                                  color: Colors.amber.shade900,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const JoinClassPage(),
-                              ),
-                            );
-                            if (result == true && mounted) {
-                              setState(() {});
-                            }
-                          },
-                          icon: const Icon(Icons.add_circle_outline, size: 18),
-                          label: const Text('Join a Class as Trainer'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.purple.shade700,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            },
-          ),
+          if (!(kIsWeb && MediaQuery.sizeOf(context).width >= 1000))
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _logout,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Logout'),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+              ),
+            ),
         ],
       ),
     );

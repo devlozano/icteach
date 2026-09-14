@@ -1,3 +1,4 @@
+import 'widgets/staff_mobile_nav.dart';
 import 'screens/staff_management_page.dart';
 import 'widgets/workspace_intro.dart';
 import 'widgets/persistent_workspace.dart';
@@ -259,88 +260,24 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           ),
           const SizedBox(height: 16),
 
-          // Stats Card
-          FutureBuilder<QuerySnapshot>(
-            future: FirebaseFirestore.instance
-                .collection('classes')
-                .where('teacherId', isEqualTo: user.uid)
-                .get(),
-            builder: (context, snapshot) {
-              final classCount = snapshot.hasData
-                  ? snapshot.data!.docs.length
-                  : 0;
-
-              int totalStudents = 0;
-              int pendingReviews = 0;
-              if (snapshot.hasData && snapshot.data != null) {
-                for (final doc in snapshot.data!.docs) {
-                  final data = doc.data() as Map<String, dynamic>? ?? {};
-                  final enrolledIds = List<String>.from(
-                    data['enrolledStudentIds'] ?? [],
-                  );
-                  totalStudents += enrolledIds.length;
-                  pendingReviews += data['pendingReviews'] as int? ?? 0;
-                }
-              }
-
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+          // App account action; desktop has sign-out in its sidebar.
+          if (!(kIsWeb && MediaQuery.sizeOf(context).width >= 1000))
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _logout,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Logout'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red.shade600,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: BorderSide(color: Colors.red.shade300),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _ProfileStat(
-                      label: 'Classes',
-                      value: '$classCount',
-                      icon: Icons.class_,
-                      color: const Color(0xFF2F80ED),
-                    ),
-                    _ProfileStat(
-                      label: 'Students',
-                      value: '$totalStudents',
-                      icon: Icons.people,
-                      color: Colors.green,
-                    ),
-                    _ProfileStat(
-                      label: 'Pending',
-                      value: '$pendingReviews',
-                      icon: Icons.pending,
-                      color: Colors.orange,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-
-          // Logout Button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout_rounded),
-              label: const Text('Logout'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red.shade600,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                side: BorderSide(color: Colors.red.shade300),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -399,54 +336,78 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               },
               child: Scaffold(
                 backgroundColor: const Color(0xFFF4F7FA),
+                appBar: kIsWeb && MediaQuery.sizeOf(context).width >= 1000
+                    ? null
+                    : AppBar(
+                        automaticallyImplyLeading: false,
+                        backgroundColor: const Color(0xFF0B2B4A),
+                        foregroundColor: Colors.white,
+                        title: Text(
+                          const [
+                            'Home',
+                            'Classes',
+                            'Discussions',
+                            'Class Monitoring',
+                            'Profile',
+                            'Feedback',
+                            'Students',
+                            'Modules',
+                          ][_currentTabIndex],
+                        ),
+                        actions: [
+                          NotificationBadge(
+                            child: IconButton(
+                              tooltip: 'Notifications',
+                              icon: const Icon(
+                                Icons.notifications_none_rounded,
+                              ),
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const NotificationPage(),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                 body: SafeArea(
                   top: false,
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final desktop = constraints.maxWidth >= 1000;
+                      final desktop = kIsWeb && constraints.maxWidth >= 1000;
                       final workspace = Column(
                         children: [
-                          Material(
-                            color: Colors.white,
-                            child: SizedBox(
-                              height: 76,
-                              child: Row(
-                                children: [
-                                  if (_currentTabIndex != 0)
-                                    TextButton.icon(
-                                      onPressed: () => _selectTab(0),
-                                      icon: const Icon(Icons.arrow_back),
-                                      label: const Text('Overview'),
-                                    ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      const [
-                                        'Overview',
-                                        'Classes',
-                                        'Discussions',
-                                        'Class Monitoring',
-                                        'Profile',
-                                        'Feedback',
-                                        'Student Management',
-                                        'Module Management',
-                                      ][_currentTabIndex],
-                                      style: const TextStyle(
-                                        color: Color(0xFF102A43),
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
+                          if (desktop)
+                            Material(
+                              color: Colors.white,
+                              child: SizedBox(
+                                height: 76,
+                                child: Row(
+                                  children: [
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        const [
+                                          'Overview',
+                                          'Classes',
+                                          'Discussions',
+                                          'Class Monitoring',
+                                          'Profile',
+                                          'Feedback',
+                                          'Student Management',
+                                          'Module Management',
+                                        ][_currentTabIndex],
+                                        style: const TextStyle(
+                                          color: Color(0xFF102A43),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w700,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                          ),
-                          if (!desktop)
-                            _TeacherHeader(
-                              name: name,
-                              onLogout: _logout,
-                              classStream: _classesStream,
                             ),
                           Expanded(
                             child: IndexedStack(
@@ -495,7 +456,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     },
                   ),
                 ),
-                bottomNavigationBar: MediaQuery.sizeOf(context).width >= 1000
+                bottomNavigationBar:
+                    kIsWeb && MediaQuery.sizeOf(context).width >= 1000
                     ? null
                     : _TeacherBottomNavBar(
                         currentIndex: _currentTabIndex,
@@ -539,14 +501,14 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     return SingleChildScrollView(
       padding: EdgeInsets.fromLTRB(
         22,
-        MediaQuery.sizeOf(context).width >= 1000 ? 16 : 24,
+        kIsWeb && MediaQuery.sizeOf(context).width >= 1000 ? 16 : 24,
         22,
         16,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (MediaQuery.sizeOf(context).width >= 1000)
+          if (kIsWeb && MediaQuery.sizeOf(context).width >= 1000)
             const WorkspaceIntro(
               title: 'Your classroom, at a glance.',
               description:
@@ -557,7 +519,11 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             totalEnrolled: totalEnrolled,
             pendingReviewCount: pendingReviewCount,
           ),
-          SizedBox(height: MediaQuery.sizeOf(context).width >= 1000 ? 14 : 22),
+          SizedBox(
+            height: kIsWeb && MediaQuery.sizeOf(context).width >= 1000
+                ? 14
+                : 22,
+          ),
           Text(
             'Teacher Tools',
             style: Theme.of(
@@ -697,146 +663,6 @@ class _TeacherClassData {
   }
 }
 
-class _TeacherHeader extends StatelessWidget {
-  const _TeacherHeader({
-    required this.name,
-    required this.onLogout,
-    required this.classStream,
-  });
-
-  final String name;
-  final VoidCallback onLogout;
-  final Stream<QuerySnapshot<Map<String, dynamic>>> classStream;
-
-  @override
-  Widget build(BuildContext context) {
-    final desktop = MediaQuery.sizeOf(context).width >= 1000;
-    return Container(
-      height: desktop ? 178 : 170,
-      width: double.infinity,
-      margin: desktop ? const EdgeInsets.fromLTRB(22, 22, 22, 0) : null,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: [Color(0xFF3D8EF7), Color(0xFF245A9E)],
-        ),
-        borderRadius: desktop
-            ? BorderRadius.circular(20)
-            : const BorderRadius.only(
-                bottomLeft: Radius.circular(24),
-                bottomRight: Radius.circular(24),
-              ),
-        boxShadow: desktop
-            ? [
-                BoxShadow(
-                  color: const Color(0xFF245A9E).withValues(alpha: 0.18),
-                  blurRadius: 24,
-                  offset: const Offset(0, 10),
-                ),
-              ]
-            : null,
-      ),
-      padding: EdgeInsets.fromLTRB(
-        desktop ? 44 : 23,
-        desktop ? 28 : 48,
-        desktop ? 34 : 23,
-        desktop ? 28 : 24,
-      ),
-      child: Row(
-        children: [
-          if (!desktop) ...[
-            Container(
-              padding: const EdgeInsets.all(2),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child: const CircleAvatar(
-                radius: 30,
-                backgroundColor: Colors.white,
-                child: Icon(
-                  Icons.co_present_rounded,
-                  color: Color(0xFF2F80ED),
-                  size: 32,
-                ),
-              ),
-            ),
-            const SizedBox(width: 13),
-          ],
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Teacher workspace',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.84),
-                    fontSize: desktop ? 17 : 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                SizedBox(height: desktop ? 5 : 3),
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: desktop ? 29 : 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: desktop ? 5 : 4),
-                const Text(
-                  'CSS NC II - Computer Systems Servicing',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          NotificationBadge(
-            child: IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NotificationPage(),
-                  ),
-                );
-              },
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: Colors.white,
-                size: 26,
-              ),
-              tooltip: 'Notifications',
-            ),
-          ),
-          if (!desktop)
-            IconButton(
-              onPressed: onLogout,
-              icon: const Icon(
-                Icons.logout_rounded,
-                color: Colors.white,
-                size: 26,
-              ),
-              tooltip: 'Logout',
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-// ✅ UPDATED: _TeacherSummary with totalEnrolled
 class _TeacherSummary extends StatelessWidget {
   const _TeacherSummary({
     required this.classStream,
@@ -1168,97 +994,11 @@ class _TeacherBottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        currentIndex: currentIndex,
-        onTap: onTabChanged,
-        selectedItemColor: const Color(0xFF2F80ED),
-        unselectedItemColor: Colors.grey.shade400,
-        type: BottomNavigationBarType.fixed,
-        elevation: 0,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.class_rounded),
-            label: 'Classes',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.forum_rounded),
-            label: 'Discussion',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: 'Class Monitoring',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_rounded),
-            label: 'Profile',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.rate_review_outlined),
-            label: 'Feedback',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.groups_outlined),
-            label: 'Students',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book_outlined),
-            label: 'Modules',
-          ),
-        ],
-      ),
-    );
+    return StaffMobileNav(currentIndex: currentIndex, onChanged: onTabChanged);
   }
 }
 
 // Profile Stat Widget
-class _ProfileStat extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  const _ProfileStat({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, size: 22, color: color),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      ],
-    );
-  }
-}
-
 // Module Class Selector with Forums Support
 class _ModuleClassSelector extends StatefulWidget {
   final String moduleType;

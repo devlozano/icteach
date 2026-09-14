@@ -55,15 +55,19 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Choose the lesson that actually teaches this activity. Students must complete it before practice. Simulation assessment also requires the selected theory quiz. Simulations remain fixed, not editable quiz questions.',
+                    Text(
+                      type == 'simulation'
+                          ? 'Choose the lesson students must complete before simulation practice, and the theory quiz required before simulation assessment.'
+                          : 'This lesson link is an optional reference. Published, unlocked quizzes are available to enrolled students without a lesson prerequisite. Quizzes have no practice mode.',
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       initialValue: moduleId,
                       isExpanded: true,
-                      decoration: const InputDecoration(
-                        labelText: 'Required published module',
+                      decoration: InputDecoration(
+                        labelText: type == 'simulation'
+                            ? 'Required published module'
+                            : 'Reference lesson',
                       ),
                       items: modules
                           .map(

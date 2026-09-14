@@ -114,7 +114,9 @@ class StaffSidebar extends StatelessWidget {
                 style: TextStyle(color: Colors.white),
                 child: SchoolIdentity(compact: true),
               )
-            else
+            else if (selectedIndex < 0 ||
+                selectedIndex >= items.length ||
+                items[selectedIndex].$2 != 'Profile')
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const CircleAvatar(child: Icon(Icons.person_outline)),

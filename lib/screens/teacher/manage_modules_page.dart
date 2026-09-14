@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../widgets/summary_print_button.dart';
 import '../../services/class_summary_service.dart';
 import '../../widgets/module_access_panel.dart';
@@ -26,6 +27,21 @@ class ManageModulesPage extends StatefulWidget {
 
 class _ManageModulesPageState extends State<ManageModulesPage> {
   final ModuleService _moduleService = ModuleService();
+  late Stream<List<ModuleModel>> _modules;
+
+  @override
+  void initState() {
+    super.initState();
+    _modules = _moduleService.getModulesForClass(widget.classId);
+  }
+
+  @override
+  void didUpdateWidget(covariant ManageModulesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.classId != widget.classId) {
+      _modules = _moduleService.getModulesForClass(widget.classId);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -84,9 +100,10 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
         ],
       ),
       body: StreamBuilder<List<ModuleModel>>(
-        stream: _moduleService.getModulesForClass(widget.classId),
+        stream: _modules,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData &&
+              snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -100,7 +117,11 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
                   Text('Error: ${snapshot.error}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => setState(() {}),
+                    onPressed: () => setState(() {
+                      _modules = _moduleService.getModulesForClass(
+                        widget.classId,
+                      );
+                    }),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -262,6 +283,7 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
           ),
         );
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('❌ Error deleting module: $e'),
@@ -285,9 +307,8 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
       if (!module.isPublished) {
         try {
           final notificationService = NotificationService();
-          await notificationService.notifyNewModule(
-            widget.classId,
-            module.title,
+          unawaited(
+            notificationService.notifyNewModule(widget.classId, module.title),
           );
         } catch (e) {
           print('Error sending notification: $e');
@@ -297,14 +318,13 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            module.isPublished
-                ? 'Module unpublished'
-                : '✅ Module published and notifications sent!',
+            module.isPublished ? 'Module unpublished' : '✅ Module published!',
           ),
           backgroundColor: module.isPublished ? Colors.orange : Colors.green,
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
       );

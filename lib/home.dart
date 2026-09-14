@@ -91,7 +91,6 @@ class _HomePageState extends State<HomePage> {
           .snapshots(),
       builder: (context, snapshot) {
         final profile = snapshot.data?.data();
-        final fullName = _getFullName(profile);
         final course =
             profile?['course'] as String? ??
             'CSS NC II - Computer System Servicing';
@@ -121,11 +120,17 @@ class _HomePageState extends State<HomePage> {
               },
               child: Scaffold(
                 backgroundColor: const Color(0xFFF4F7FA),
+                // Modules and Forum own their headers once a class is available.
+                appBar:
+                    (_currentTabIndex == 1 || _currentTabIndex == 2) &&
+                        _classId != null &&
+                        _classId!.isNotEmpty
+                    ? null
+                    : _buildAppBar(),
                 body: SafeArea(
                   top: false,
                   child: Column(
                     children: [
-                      _buildHeader(fullName, user.photoURL),
                       Expanded(
                         child: IndexedStack(
                           index: _currentTabIndex,
@@ -151,98 +156,35 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ UPDATED HEADER WITH NOTIFICATION BADGE
-  Widget _buildHeader(String name, String? photoUrl) {
-    final timeOfDay = DateTime.now().hour;
-    String greeting = 'Good Morning';
-    if (timeOfDay >= 12 && timeOfDay < 17) {
-      greeting = 'Good Afternoon';
-    } else if (timeOfDay >= 17) {
-      greeting = 'Good Evening';
-    }
-
-    return Container(
-      height: 130,
-      width: double.infinity,
-      color: const Color(0xFF428DEB),
-      padding: const EdgeInsets.fromLTRB(24, 40, 24, 20),
-      child: Row(
-        children: [
-          const UserRolesButton(),
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.white,
-            backgroundImage: photoUrl == null ? null : NetworkImage(photoUrl),
-            child: photoUrl == null
-                ? const Icon(
-                    Icons.person_rounded,
-                    color: Color(0xFF428DEB),
-                    size: 32,
-                  )
-                : null,
+  // Compact header for tabs without their own page header.
+  PreferredSizeWidget _buildAppBar() => AppBar(
+    automaticallyImplyLeading: false,
+    backgroundColor: const Color(0xFF428DEB),
+    foregroundColor: Colors.white,
+    title: Text(
+      const [
+        'Home',
+        'Modules',
+        'Forum',
+        'Progress',
+        'Profile',
+        'Feedback',
+      ][_currentTabIndex],
+    ),
+    actions: [
+      NotificationBadge(
+        child: IconButton(
+          tooltip: 'Notifications',
+          icon: const Icon(Icons.notifications_none_rounded),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const NotificationPage()),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$greeting,',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // ✅ NOTIFICATION BADGE WITH ICON
-          NotificationBadge(
-            child: IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NotificationPage(),
-                  ),
-                );
-              },
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: Colors.white,
-                size: 26,
-              ),
-              tooltip: 'Notifications',
-            ),
-          ),
-          IconButton(
-            onPressed: _logout,
-            icon: const Icon(
-              Icons.logout_rounded,
-              color: Colors.white,
-              size: 26,
-            ),
-            tooltip: 'Logout',
-          ),
-        ],
+        ),
       ),
-    );
-  }
+    ],
+  );
 
-  // ✅ NEW: Forum Content Tab
   Widget _buildForumContent() {
     if (_classId == null || _classId!.isEmpty) {
       return Center(
@@ -1383,7 +1325,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ UPDATED: Profile Content with Debug Tools
+  // Account details and account actions.
   Widget _buildProfileContent(Map<String, dynamic>? profile, User user) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -1463,195 +1405,13 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 16),
 
-          // Class Info Card
-          FutureBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-            future: SchoolYearService.activeMemberships(user.uid),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 100,
-                  child: Center(child: CircularProgressIndicator()),
-                );
-              }
-
-              final hasClass = snapshot.hasData && snapshot.data!.isNotEmpty;
-
-              String className = '';
-              String teacherName = '';
-              String schoolYear = '';
-              String classId = '';
-
-              if (hasClass) {
-                final doc = snapshot.data!.first;
-                final data = doc.data() as Map<String, dynamic>?;
-                if (data != null) {
-                  className =
-                      data['className']?.toString() ??
-                      data['name']?.toString() ??
-                      '';
-                  teacherName = data['teacherName']?.toString() ?? '';
-                  schoolYear = data['schoolYear']?.toString() ?? '';
-                  classId = data['classId']?.toString() ?? '';
-                }
-              }
-
-              return Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.06),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF428DEB,
-                            ).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.class_rounded,
-                            color: Color(0xFF428DEB),
-                            size: 22,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'My Class',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    if (hasClass) ...[
-                      Text(
-                        className.isNotEmpty ? className : 'No Class Name',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.person_outline,
-                            size: 14,
-                            color: Color(0xFF6B7280),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Teacher: ${teacherName.isNotEmpty ? teacherName : "Unknown"}',
-                            style: const TextStyle(
-                              color: Color(0xFF6B7280),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (schoolYear.isNotEmpty)
-                        Text(
-                          'School Year: $schoolYear',
-                          style: const TextStyle(
-                            color: Color(0xFF6B7280),
-                            fontSize: 13,
-                          ),
-                        ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            _navigateToClass(context, classId, className);
-                          },
-                          icon: const Icon(Icons.arrow_forward, size: 18),
-                          label: const Text("Go to Class"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF428DEB),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ] else ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.info_outline,
-                              color: Colors.amber.shade700,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'You haven\'t joined a class yet.',
-                                style: TextStyle(
-                                  color: Colors.amber.shade900,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const JoinClassPage(),
-                              ),
-                            );
-                            if (result == true && context.mounted) {
-                              setState(() {});
-                            }
-                          },
-                          icon: const Icon(Icons.add_circle_outline, size: 18),
-                          label: const Text('Join a Class'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF428DEB),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              );
-            },
-          ),
-
-          // ✅ ADDED: Debug Tools Section
-          const SizedBox(height: 16),
           Card(
             child: Column(
               children: [
+                const ListTile(
+                  leading: UserRolesButton(),
+                  title: Text('About ICTeach roles'),
+                ),
                 const Divider(height: 1),
                 ListTile(
                   leading: const Icon(Icons.logout, color: Colors.red),

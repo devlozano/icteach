@@ -108,6 +108,13 @@ class QuizService {
     String quizId,
     bool isPublished,
   ) async {
+    await LearningPathService.requireActive(classId);
+    if (isPublished) {
+      final quiz = await getQuiz(classId, quizId);
+      if (quiz == null || quiz.questions.isEmpty) {
+        throw StateError('Add questions before publishing a quiz.');
+      }
+    }
     await _firestore
         .collection('classes')
         .doc(classId)

@@ -1,3 +1,4 @@
+import '../../widgets/grading_weights_card.dart';
 import '../../widgets/summary_print_button.dart';
 import '../../services/class_summary_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -335,6 +336,8 @@ class _OverviewTab extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
+        const GradingWeightsCard(),
+        const SizedBox(height: 16),
         Wrap(
           spacing: 14,
           runSpacing: 14,

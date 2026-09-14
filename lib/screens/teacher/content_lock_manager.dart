@@ -144,12 +144,7 @@ class _ContentLockManagerState extends State<ContentLockManager> {
                 ),
                 for (final type in ['module', 'quiz', 'simulation']) ...[
                   const Divider(),
-                  _tile(
-                    type,
-                    '*',
-                    'All ${type == 'quiz' ? 'practice quizzes' : '${type}s'}',
-                    records,
-                  ),
+                  _tile(type, '*', 'All ${type}s', records),
                   if (type == 'simulation')
                     for (final sim in SimulationData.getAllSimulations())
                       _tile(

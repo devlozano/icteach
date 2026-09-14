@@ -232,6 +232,12 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                   ),
                   child: Row(
                     children: [
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          'Publish a quiz with questions and unlock it in Content Lock Settings. Enrolled students can then take it. Quizzes have one scored attempt and no practice mode. No lesson link is required.',
+                        ),
+                      ),
                       Icon(Icons.class_, color: Colors.blue.shade700),
                       const SizedBox(width: 8),
                       Expanded(

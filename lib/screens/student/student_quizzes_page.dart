@@ -21,9 +21,21 @@ class StudentQuizzesPage extends StatefulWidget {
 
 class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
   final QuizService _quizService = QuizService();
+  late Stream<List<QuizModel>> _quizzes;
   @override
   void initState() {
     super.initState();
+    _refreshQuizzes();
+  }
+
+  void _refreshQuizzes() {
+    _quizzes = _quizService.getPublishedQuizzesForClass(widget.classId);
+  }
+
+  @override
+  void didUpdateWidget(covariant StudentQuizzesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.classId != widget.classId) _refreshQuizzes();
   }
 
   Future<void> _takeQuiz(QuizModel quiz) async {
@@ -145,16 +157,17 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
         actions: [
           // ✅ NEW: Refresh button
           IconButton(
-            onPressed: () => setState(() {}),
+            onPressed: () => setState(_refreshQuizzes),
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
           ),
         ],
       ),
       body: StreamBuilder<List<QuizModel>>(
-        stream: _quizService.getPublishedQuizzesForClass(widget.classId),
+        stream: _quizzes,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData &&
+              snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
@@ -168,7 +181,7 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
                   Text('Error: ${snapshot.error}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => setState(() {}),
+                    onPressed: () => setState(_refreshQuizzes),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -209,6 +222,7 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
             itemBuilder: (context, index) {
               final quiz = quizzes[index];
               return _QuizCard(
+                key: ValueKey(quiz.id),
                 quiz: quiz,
                 onTakeQuiz: () => _takeQuiz(quiz),
                 userId: user.uid,
@@ -230,6 +244,7 @@ class _QuizCard extends StatefulWidget {
   final QuizService quizService;
 
   const _QuizCard({
+    super.key,
     required this.quiz,
     required this.onTakeQuiz,
     required this.userId,
@@ -261,11 +276,13 @@ class _QuizCardState extends State<_QuizCard> {
           widget.userId,
         );
         final result = results.firstWhere((r) => r.quizId == widget.quiz.id);
+        if (!mounted) return;
         setState(() {
           _hasTaken = true;
           _result = result;
         });
       } else {
+        if (!mounted) return;
         setState(() => _hasTaken = false);
       }
     } catch (e) {

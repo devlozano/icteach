@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -138,6 +139,7 @@ class _CreateModulePageState extends State<CreateModulePage> {
   Future<void> _loadModuleCount() async {
     try {
       final count = await _moduleService.getModuleCount(widget.classId);
+      if (!mounted) return;
       setState(() {
         _order = count;
       });
@@ -216,7 +218,7 @@ class _CreateModulePageState extends State<CreateModulePage> {
   }
 
   Future<void> _saveModule() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (_isLoading || !_formKey.currentState!.validate()) return;
 
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) {
@@ -267,7 +269,10 @@ class _CreateModulePageState extends State<CreateModulePage> {
           folder: CloudinaryService.modulesFolder,
         );
         if (!mounted) return;
-        setState(() => _uploadProgress = 0.9);
+        setState(() {
+          _uploadProgress = 1;
+          _isUploading = false;
+        });
       }
 
       final attachmentUrl =
@@ -303,22 +308,15 @@ class _CreateModulePageState extends State<CreateModulePage> {
 
       if (_isEditing) {
         await _moduleService.updateModule(widget.classId, _moduleId!, module);
-
-        if (_isPublished) {
-          await _notificationService.notifyNewModule(
-            widget.classId,
-            _titleController.text.trim(),
-          );
-        }
       } else {
         await _moduleService.createModule(module);
-
-        if (_isPublished) {
-          await _notificationService.notifyNewModule(
-            widget.classId,
-            _titleController.text.trim(),
-          );
-        }
+      }
+      // Saving completes at write acknowledgement, independently of notifications.
+      // NotificationService handles delivery errors.
+      if (module.isPublished) {
+        unawaited(
+          _notificationService.notifyNewModule(widget.classId, module.title),
+        );
       }
 
       if (!mounted) return;
@@ -332,7 +330,7 @@ class _CreateModulePageState extends State<CreateModulePage> {
         SnackBar(
           content: Text(
             _isPublished
-                ? '✅ Module ${_isEditing ? 'updated' : 'created'} and notifications sent!'
+                ? '✅ Module ${_isEditing ? 'updated' : 'created'} and published!'
                 : '✅ Module ${_isEditing ? 'updated' : 'saved'} as draft!',
           ),
           backgroundColor: Colors.green,
@@ -341,6 +339,7 @@ class _CreateModulePageState extends State<CreateModulePage> {
 
       Navigator.pop(context, true);
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -372,9 +371,11 @@ class _CreateModulePageState extends State<CreateModulePage> {
         actions: [
           Switch(
             value: _isPublished,
-            onChanged: (value) {
-              setState(() => _isPublished = value);
-            },
+            onChanged: _isLoading
+                ? null
+                : (value) {
+                    setState(() => _isPublished = value);
+                  },
             activeThumbColor: Colors.green,
           ),
           const SizedBox(width: 8),
@@ -1043,7 +1044,9 @@ class _CreateModulePageState extends State<CreateModulePage> {
                       : const Icon(Icons.cloud_upload),
                   label: Text(
                     _isLoading
-                        ? 'Uploading...'
+                        ? (_isUploading
+                              ? 'Uploading file...'
+                              : 'Saving module...')
                         : _isEditing
                         ? (_isPublished ? 'Update & Publish' : 'Update Draft')
                         : (_isPublished

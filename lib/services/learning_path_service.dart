@@ -10,6 +10,11 @@ class LearningPathService {
     String id, {
     required bool practice,
   }) async {
+    if (type == 'quiz') {
+      if (practice) throw StateError('Quizzes only support scored attempts.');
+      await requireQuizAvailable(classId, id);
+      return;
+    }
     await requireActive(classId);
     final db = FirebaseFirestore.instance;
     final user = db
@@ -71,25 +76,66 @@ class LearningPathService {
     }
   }
 
-  static Future<void> requireActive(String classId) async {
-    final data =
-        (await FirebaseFirestore.instance
+  /// Published quizzes do not depend on simulation lesson/practice setup.
+  static Future<void> requireQuizAvailable(
+    String classId,
+    String quizId, {
+    FirebaseFirestore? firestore,
+    String? studentId,
+  }) async {
+    final db = firestore ?? FirebaseFirestore.instance;
+    await requireActive(classId, firestore: db, userId: studentId);
+    final quiz =
+        (await db
                 .collection('classes')
                 .doc(classId)
+                .collection('quizzes')
+                .doc(quizId)
                 .get())
             .data();
+    if (quiz?['isPublished'] != true) {
+      throw StateError(
+        'This quiz is not published. Ask your teacher to publish it.',
+      );
+    }
+    if ((quiz?['questions'] as List? ?? []).isEmpty) {
+      throw StateError(
+        'This quiz has no questions yet. Ask your teacher to add questions.',
+      );
+    }
+    final locks = await db
+        .collection('content_locks')
+        .where('classId', isEqualTo: classId)
+        .get();
+    for (final doc in locks.docs) {
+      final lock = doc.data();
+      if (lock['isLocked'] == true &&
+          (lock['contentType'] == 'quiz' ||
+              lock['contentType'] == 'practice') &&
+          (lock['contentId'] == quizId || lock['contentId'] == '*')) {
+        throw StateError('Your teacher/trainer has locked this quiz.');
+      }
+    }
+  }
+
+  static Future<void> requireActive(
+    String classId, {
+    FirebaseFirestore? firestore,
+    String? userId,
+  }) async {
+    final db = firestore ?? FirebaseFirestore.instance;
+    final data = (await db.collection('classes').doc(classId).get()).data();
     if (data == null || data['status'] == 'archived') {
       throw StateError(
         'This class is archived or unavailable. Previous records are preserved.',
       );
     }
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = userId ?? FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw StateError('Please sign in.');
     if (data['teacherId'] != uid &&
         !(data['enrolledStudentIds'] as List? ?? []).contains(uid)) {
-      final role =
-          (await FirebaseFirestore.instance.collection('users').doc(uid).get())
-              .data()?['role'];
+      final role = (await db.collection('users').doc(uid).get())
+          .data()?['role'];
       if (role != 'admin')
         throw StateError('Join this class before accessing its activities.');
     }

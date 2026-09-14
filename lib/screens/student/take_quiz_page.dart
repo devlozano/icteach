@@ -24,22 +24,16 @@ class TakeQuizPage extends StatelessWidget {
       type: 'quiz',
       contentId: quiz.id,
       title: quiz.title,
-      sessionBuilder: (practice) =>
-          _QuizSession(classId: classId, quiz: quiz, practice: practice),
+      sessionBuilder: (_) => _QuizSession(classId: classId, quiz: quiz),
     ),
   );
 }
 
 class _QuizSession extends StatefulWidget {
-  final bool practice;
   final String classId;
   final QuizModel quiz;
 
-  const _QuizSession({
-    required this.classId,
-    required this.quiz,
-    required this.practice,
-  });
+  const _QuizSession({required this.classId, required this.quiz});
 
   @override
   State<_QuizSession> createState() => _TakeQuizPageState();
@@ -62,7 +56,7 @@ class _TakeQuizPageState extends State<_QuizSession> {
       widget.quiz.questions.map((q) => q.options.length).toList(),
     );
     _selectedAnswers = List.filled(widget.quiz.questions.length, null);
-    if (!widget.practice && widget.quiz.timeLimit > 0) {
+    if (widget.quiz.timeLimit > 0) {
       _timeRemaining = widget.quiz.timeLimit * 60;
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
         setState(() {
@@ -152,20 +146,9 @@ class _TakeQuizPageState extends State<_QuizSession> {
         widget.classId,
         'quiz',
         widget.quiz.id,
-        practice: widget.practice,
+        practice: false,
       );
-      if (widget.practice) {
-        await LearningPathService.savePractice(
-          widget.classId,
-          'quiz',
-          widget.quiz.id,
-          widget.quiz.title,
-          correctCount,
-          result.totalPoints,
-        );
-      } else {
-        await _quizService.saveQuizResult(result);
-      }
+      await _quizService.saveQuizResult(result);
 
       if (!mounted) return;
 
@@ -176,9 +159,7 @@ class _TakeQuizPageState extends State<_QuizSession> {
           builder: (context) => QuizResultsPage(
             result: result,
             questions: widget.quiz.questions,
-            quizTitle: widget.practice
-                ? 'PRACTICE (ungraded): ${widget.quiz.title}'
-                : widget.quiz.title,
+            quizTitle: widget.quiz.title,
           ),
         ),
       );
@@ -212,16 +193,12 @@ class _TakeQuizPageState extends State<_QuizSession> {
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
-        title: Text(
-          widget.practice
-              ? 'Practice (ungraded): ${widget.quiz.title}'
-              : widget.quiz.title,
-        ),
+        title: Text(widget.quiz.title),
         backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          if (!widget.practice && widget.quiz.timeLimit > 0)
+          if (widget.quiz.timeLimit > 0)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Center(
@@ -288,9 +265,7 @@ class _TakeQuizPageState extends State<_QuizSession> {
                     return GestureDetector(
                       onTap:
                           _isSubmitting ||
-                              (!widget.practice &&
-                                  widget.quiz.timeLimit > 0 &&
-                                  _timeRemaining <= 0)
+                              (widget.quiz.timeLimit > 0 && _timeRemaining <= 0)
                           ? null
                           : () {
                               setState(() {

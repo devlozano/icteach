@@ -1,3 +1,4 @@
+import 'package:icteach/models/quiz_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/widgets/activity_preparation_gate.dart';
@@ -19,7 +20,7 @@ void main() {
   for (final learned in [false, true]) {
     for (final practiced in [false, true]) {
       testWidgets(
-        'assessment requires lesson=$learned and practice=$practiced',
+        'quiz is scored-only regardless of lesson=$learned and practice=$practiced',
         (tester) async {
           await tester.pumpWidget(
             MaterialApp(
@@ -46,18 +47,69 @@ void main() {
               'Start scored quiz (one attempt)',
             ),
           );
+          expect(button.onPressed, isNotNull);
+          expect(find.textContaining('Practice'), findsNothing);
+          expect(find.byType(OutlinedButton), findsNothing);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
+  for (final learned in [false, true]) {
+    for (final practiced in [false, true]) {
+      testWidgets(
+        'simulation still needs lesson=$learned practice=$practiced',
+        (tester) async {
+          final quiz = QuizModel(
+            id: 'q',
+            classId: 'c',
+            title: 'Theory',
+            description: '',
+            questions: [],
+            timeLimit: 0,
+            totalPoints: 0,
+            isPublished: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+          await tester.pumpWidget(
+            MaterialApp(
+              home: ActivityPreparationGate(
+                classId: 'c',
+                type: 'simulation',
+                contentId: 's',
+                title: 'Simulation',
+                stateLoader: () async => {
+                  'configured': true,
+                  'module': 'Lesson',
+                  'learned': learned,
+                  'practiced': practiced,
+                  'theoryDone': true,
+                  'quiz': quiz,
+                },
+                sessionBuilder: (_) => const SizedBox(),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          final button = tester.widget<FilledButton>(
+            find.widgetWithText(
+              FilledButton,
+              'Part 2: interactive simulation assessment',
+            ),
+          );
           expect(button.onPressed != null, learned && practiced);
           expect(tester.takeException(), isNull);
         },
       );
     }
   }
-  testWidgets('missing instructor mapping blocks activity', (tester) async {
+  testWidgets('missing instructor mapping blocks simulation', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: ActivityPreparationGate(
           classId: 'class',
-          type: 'quiz',
+          type: 'simulation',
           contentId: 'quiz',
           title: 'Theory quiz',
           stateLoader: () async => {'configured': false},

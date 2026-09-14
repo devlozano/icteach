@@ -38,16 +38,24 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
         practice: practice,
       );
       final user = FirebaseAuth.instance.currentUser!;
-      await FirebaseFirestore.instance.collection('activity_events').add({
-        'classId': widget.classId,
-        'studentId': user.uid,
-        'studentName': user.displayName ?? user.email ?? 'Student',
-        'contentId': widget.contentId,
-        'title': widget.title,
-        'event': 'activity_opened',
-        'mode': practice ? 'practice' : 'assessment',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      FirebaseFirestore.instance
+          .collection('activity_events')
+          .add({
+            'classId': widget.classId,
+            'studentId': user.uid,
+            'studentName': user.displayName ?? user.email ?? 'Student',
+            'contentId': widget.contentId,
+            'title': widget.title,
+            'event': 'activity_opened',
+            'mode': practice ? 'practice' : 'assessment',
+            'createdAt': FieldValue.serverTimestamp(),
+          })
+          .then<void>(
+            (_) {},
+            onError: (Object error) {
+              debugPrint('Could not record activity opening: $error');
+            },
+          );
       if (!mounted) return;
       await _open(
         ContentAccessGate(
@@ -79,6 +87,13 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
   }
 
   Future<Map<String, dynamic>> _load() async {
+    if (widget.type == 'quiz') {
+      await LearningPathService.requireQuizAvailable(
+        widget.classId,
+        widget.contentId,
+      );
+      return {'configured': true};
+    }
     await LearningPathService.requireActive(widget.classId);
     final db = FirebaseFirestore.instance;
     final uid = FirebaseAuth.instance.currentUser!.uid;
@@ -142,7 +157,18 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(widget.title)),
+    appBar: AppBar(
+      title: Text(widget.title),
+      actions: [
+        IconButton(
+          tooltip: 'Refresh access',
+          icon: const Icon(Icons.refresh),
+          onPressed: () => setState(() {
+            _state = _refresh();
+          }),
+        ),
+      ],
+    ),
     body: FutureBuilder<Map<String, dynamic>>(
       future: _state,
       builder: (context, snapshot) {
@@ -179,6 +205,27 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
               ),
             ),
           );
+        if (widget.type == 'quiz') {
+          return ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              const Text(
+                'Ready to take the quiz',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'You have one scored attempt. Your answers will be submitted for grading.',
+              ),
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                onPressed: () => _start(false),
+                icon: const Icon(Icons.quiz),
+                label: const Text('Start scored quiz (one attempt)'),
+              ),
+            ],
+          );
+        }
         final learned = state['learned'] == true;
         final practiced = state['practiced'] == true;
         final theoryDone = state['theoryDone'] == true;
