@@ -1,3 +1,4 @@
+import '../../services/feedback_eligibility.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -8,10 +9,12 @@ class StudentQuestionnairesPage extends StatelessWidget {
     super.key,
     required this.classId,
     required this.className,
+    this.systemOnly = false,
   });
 
   final String classId;
   final String className;
+  final bool systemOnly;
 
   Future<void> _answer(
     BuildContext context,
@@ -20,6 +23,13 @@ class StudentQuestionnairesPage extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     final data = questionnaire.data();
+    if (data['type'] == 'system_evaluation') {
+      try {
+        await FeedbackEligibility.requireQualified();
+      } catch (_) {
+        return;
+      }
+    }
     final questions = List<Map<String, dynamic>>.from(
       (data['questions'] as List? ?? const []).map(
         (item) => Map<String, dynamic>.from(item as Map),
@@ -36,6 +46,7 @@ class StudentQuestionnairesPage extends StatelessWidget {
       }
     }
 
+    if (!context.mounted) return;
     final submitted = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
@@ -121,6 +132,13 @@ class StudentQuestionnairesPage extends StatelessWidget {
     );
     if (submitted != true || !context.mounted) return;
 
+    if (data['type'] == 'system_evaluation') {
+      try {
+        await FeedbackEligibility.requireQualified();
+      } catch (_) {
+        return;
+      }
+    }
     final userSnapshot = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
@@ -159,37 +177,49 @@ class StudentQuestionnairesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!systemOnly) return _buildPage(context);
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return const SizedBox.shrink();
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .snapshots(),
+      builder: (context, snapshot) =>
+          FeedbackEligibility.isQualified(snapshot.data?.data())
+          ? _buildPage(context)
+          : Scaffold(
+              appBar: AppBar(title: const Text('System evaluations')),
+              body: const SizedBox.shrink(),
+            ),
+    );
+  }
+
+  Widget _buildPage(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7FB),
       appBar: AppBar(
-        title: const Text('Questionnaires & Evaluations'),
+        title: Text(
+          systemOnly ? 'System evaluations' : 'Questionnaires & Evaluations',
+        ),
         backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
         actions: [
-          IconButton(
-            tooltip: 'Teaching difficulty check-in',
-            icon: const Icon(Icons.school),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CourseFeedbackPage(
-                  classId: classId,
-                  systemEvaluation: false,
+          if (!systemOnly)
+            IconButton(
+              tooltip: 'Teaching difficulty check-in',
+              icon: const Icon(Icons.school),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CourseFeedbackPage(
+                    classId: classId,
+                    systemEvaluation: false,
+                  ),
                 ),
               ),
             ),
-          ),
-          IconButton(
-            tooltip: 'End-of-lessons system evaluation',
-            icon: const Icon(Icons.rate_review),
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => CourseFeedbackPage(classId: classId),
-              ),
-            ),
-          ),
         ],
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
@@ -203,7 +233,16 @@ class StudentQuestionnairesPage extends StatelessWidget {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final questionnaires = snapshot.data!.docs;
+          final questionnaires = snapshot.data!.docs
+              .where(
+                (doc) =>
+                    (doc.data()['type'] == 'system_evaluation') == systemOnly,
+              )
+              .toList();
+          if (systemOnly && questionnaires.isEmpty)
+            return const Center(
+              child: Text('No system evaluations available.'),
+            );
           if (questionnaires.isEmpty) {
             return Center(
               child: Padding(
@@ -212,7 +251,7 @@ class StudentQuestionnairesPage extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Text(
-                      'Share your learning difficulties or evaluate ICTeach after completing your lessons.',
+                      'Share your teaching and learning difficulties.',
                     ),
                     FilledButton.icon(
                       icon: const Icon(Icons.school),
@@ -224,16 +263,6 @@ class StudentQuestionnairesPage extends StatelessWidget {
                             classId: classId,
                             systemEvaluation: false,
                           ),
-                        ),
-                      ),
-                    ),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.rate_review),
-                      label: const Text('End-of-lessons evaluation'),
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CourseFeedbackPage(classId: classId),
                         ),
                       ),
                     ),

@@ -1,3 +1,5 @@
+import 'screens/student/student_questionnaires_page.dart';
+import 'services/feedback_eligibility.dart';
 import 'widgets/summary_print_button.dart';
 import 'services/personal_summary_service.dart';
 import 'widgets/persistent_workspace.dart';
@@ -36,7 +38,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _currentTabIndex = WorkspacePreferences.tab('student', 6);
+  int _currentTabIndex = WorkspacePreferences.tab('student', 5);
   void _selectTab(int index) {
     setState(() => _currentTabIndex = index);
     WorkspacePreferences.saveTab('student', index);
@@ -140,7 +142,6 @@ class _HomePageState extends State<HomePage> {
                             _buildForumContent(),
                             _buildProgressContent(user.uid),
                             _buildProfileContent(profile, user),
-                            const HelpfulnessSurvey(),
                           ],
                         ),
                       ),
@@ -168,7 +169,6 @@ class _HomePageState extends State<HomePage> {
         'Forum',
         'Progress',
         'Profile',
-        'Feedback',
       ][_currentTabIndex],
     ),
     actions: [
@@ -1405,6 +1405,56 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 16),
 
+          if (FeedbackEligibility.isQualified(profile))
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.rate_review_outlined),
+                title: const Text('System feedback'),
+                subtitle: const Text('Share your experience with ICTeach'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => Scaffold(
+                      appBar: AppBar(title: const Text('System feedback')),
+                      body:
+                          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            stream: FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(user.uid)
+                                .snapshots(),
+                            builder: (context, snapshot) =>
+                                FeedbackEligibility.isQualified(
+                                  snapshot.data?.data(),
+                                )
+                                ? const HelpfulnessSurvey()
+                                : const SizedBox.shrink(),
+                          ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (FeedbackEligibility.isQualified(profile) &&
+              _classId != null &&
+              _classId!.isNotEmpty)
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.assignment_outlined),
+                title: const Text('Class system evaluations'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StudentQuestionnairesPage(
+                      classId: _classId!,
+                      className: _className ?? 'My Class',
+                      systemOnly: true,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Card(
             child: Column(
               children: [
@@ -1436,7 +1486,6 @@ class _HomePageState extends State<HomePage> {
       {'icon': Icons.forum_outlined, 'label': 'Forum', 'index': 2},
       {'icon': Icons.bar_chart_rounded, 'label': 'Progress', 'index': 3},
       {'icon': Icons.person_outline_rounded, 'label': 'Profile', 'index': 4},
-      {'icon': Icons.rate_review_outlined, 'label': 'Feedback', 'index': 5},
     ];
 
     return Container(
@@ -1459,7 +1508,7 @@ class _HomePageState extends State<HomePage> {
           return InkWell(
             onTap: () => _selectTab(index),
             child: SizedBox(
-              width: MediaQuery.sizeOf(context).width / 6,
+              width: MediaQuery.sizeOf(context).width / items.length,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

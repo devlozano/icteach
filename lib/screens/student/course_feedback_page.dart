@@ -1,3 +1,4 @@
+import '../../services/feedback_eligibility.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -34,25 +35,8 @@ class _CourseFeedbackPageState extends State<CourseFeedbackPage> {
   Future<bool> _checkLessons() async {
     await LearningPathService.requireActive(widget.classId);
     if (!widget.systemEvaluation) return true;
-    final db = FirebaseFirestore.instance;
-    final modules = await db
-        .collection('classes')
-        .doc(widget.classId)
-        .collection('modules')
-        .where('isPublished', isEqualTo: true)
-        .get();
-    final progress = await db
-        .collection('users')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .collection('module_progress')
-        .where('classId', isEqualTo: widget.classId)
-        .get();
-    final complete = progress.docs
-        .where((p) => p.data()['completed'] == true)
-        .map((p) => p.data()['moduleId'])
-        .toSet();
-    return modules.docs.isNotEmpty &&
-        modules.docs.every((m) => complete.contains(m.id));
+    await FeedbackEligibility.requireQualified();
+    return true;
   }
 
   Future<void> _save() async {
@@ -70,7 +54,7 @@ class _CourseFeedbackPageState extends State<CourseFeedbackPage> {
     setState(() => _saving = true);
     try {
       if (!await _checkLessons())
-        throw StateError('Complete all published lessons first.');
+        throw StateError('NC II qualification must be recorded first.');
       final db = FirebaseFirestore.instance;
       final user = FirebaseAuth.instance.currentUser!;
       final type = widget.systemEvaluation
@@ -155,7 +139,7 @@ class _CourseFeedbackPageState extends State<CourseFeedbackPage> {
             child: Padding(
               padding: EdgeInsets.all(24),
               child: Text(
-                'The system evaluation opens after you complete all published lessons. Mark each module complete, then return here.',
+                'System feedback is available in Profile after your NC II qualification is recorded.',
               ),
             ),
           );

@@ -8,7 +8,6 @@ import '../../models/module_model.dart';
 import '../../services/module_service.dart';
 import 'instructional_videos_page.dart';
 import 'pre_assessment_page.dart';
-import 'course_feedback_page.dart';
 import '../../services/learning_path_service.dart';
 import '../../services/workspace_preferences.dart';
 import '../../widgets/content_access_gate.dart';
@@ -154,22 +153,9 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
       if (mounted) {
         setState(() => _progress[module.id] = savedCompleted);
         if (completed)
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Lesson complete. Finished all lessons? Share your system evaluation.',
-              ),
-              action: SnackBarAction(
-                label: 'Evaluate',
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => CourseFeedbackPage(classId: widget.classId),
-                  ),
-                ),
-              ),
-            ),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: const Text('Lesson complete.')));
       }
       return true;
     } catch (_) {

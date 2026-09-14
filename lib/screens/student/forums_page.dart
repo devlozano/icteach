@@ -11,11 +11,7 @@ class ForumsPage extends StatefulWidget {
   final String classId;
   final String className;
 
-  const ForumsPage({
-    super.key,
-    required this.classId,
-    required this.className,
-  });
+  const ForumsPage({super.key, required this.classId, required this.className});
 
   @override
   State<ForumsPage> createState() => _ForumsPageState();
@@ -36,11 +32,9 @@ class _ForumsPageState extends State<ForumsPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       _currentUserId = user.uid;
-      FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get()
-          .then((doc) {
+      FirebaseFirestore.instance.collection('users').doc(user.uid).get().then((
+        doc,
+      ) {
         if (doc.exists) {
           final data = doc.data();
           setState(() {
@@ -115,8 +109,11 @@ class _ForumsPageState extends State<ForumsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.forum_outlined,
-                      size: 64, color: Colors.grey.shade300),
+                  Icon(
+                    Icons.forum_outlined,
+                    size: 64,
+                    color: Colors.grey.shade300,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'No posts yet',
@@ -214,15 +211,13 @@ class _ForumsPageState extends State<ForumsPage> {
         if (userDoc.exists) {
           final userData = userDoc.data();
           final actualRole = userData?['role']?.toString() ?? 'student';
-          final displayName = userData?['displayName']?.toString() ??
+          final displayName =
+              userData?['displayName']?.toString() ??
               userData?['name']?.toString() ??
               post.authorName;
 
           // Return a new post with corrected role and name
-          return post.copyWith(
-            authorRole: actualRole,
-            authorName: displayName,
-          );
+          return post.copyWith(authorRole: actualRole, authorName: displayName);
         }
       } catch (e) {
         print('Error fetching user role: $e');
@@ -236,10 +231,8 @@ class _ForumsPageState extends State<ForumsPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ForumDetailPage(
-          classId: widget.classId,
-          postId: post.id,
-        ),
+        builder: (context) =>
+            ForumDetailPage(classId: widget.classId, postId: post.id),
       ),
     ).then((_) => setState(() {}));
   }
@@ -298,10 +291,7 @@ class _ForumsPageState extends State<ForumsPage> {
         );
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -379,8 +369,8 @@ class _ForumPostCard extends StatelessWidget {
                     backgroundColor: post.authorRole == 'teacher'
                         ? Colors.blue.shade100
                         : post.authorRole == 'trainer'
-                            ? Colors.purple.shade100
-                            : Colors.grey.shade100,
+                        ? Colors.purple.shade100
+                        : Colors.grey.shade100,
                     radius: 16,
                     child: Text(
                       post.authorName.isNotEmpty
@@ -392,8 +382,8 @@ class _ForumPostCard extends StatelessWidget {
                         color: post.authorRole == 'teacher'
                             ? Colors.blue.shade700
                             : post.authorRole == 'trainer'
-                                ? Colors.purple.shade700
-                                : Colors.grey.shade700,
+                            ? Colors.purple.shade700
+                            : Colors.grey.shade700,
                       ),
                     ),
                   ),
@@ -418,10 +408,7 @@ class _ForumPostCard extends StatelessWidget {
                   ),
                   Text(
                     _formatDate(post.createdAt),
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
                   ),
                 ],
               ),
@@ -442,10 +429,7 @@ class _ForumPostCard extends StatelessWidget {
               // Content Preview
               Text(
                 post.content,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey.shade700,
-                ),
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -492,26 +476,16 @@ class _ForumPostCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     '${post.replyCount}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                   const SizedBox(width: 16),
 
                   // Views
-                  Icon(
-                    Icons.visibility,
-                    size: 14,
-                    color: Colors.grey.shade500,
-                  ),
+                  Icon(Icons.visibility, size: 14, color: Colors.grey.shade500),
                   const SizedBox(width: 4),
                   Text(
                     '${post.viewCount}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                   const SizedBox(width: 16),
 

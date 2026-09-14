@@ -1,3 +1,4 @@
+import '../../services/feedback_eligibility.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -23,6 +24,7 @@ class _HelpfulnessSurveyState extends State<HelpfulnessSurvey> {
 
   Future<void> _load() async {
     try {
+      await FeedbackEligibility.requireQualified();
       final data =
           (await FirebaseFirestore.instance
                   .collection('app_helpfulness_surveys')
@@ -56,6 +58,7 @@ class _HelpfulnessSurveyState extends State<HelpfulnessSurvey> {
     }
     setState(() => saving = true);
     try {
+      await FeedbackEligibility.requireQualified();
       final uid = FirebaseAuth.instance.currentUser!.uid;
       await FirebaseFirestore.instance
           .collection('app_helpfulness_surveys')
