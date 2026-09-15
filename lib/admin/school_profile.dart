@@ -1,3 +1,5 @@
+import 'package:file_picker/file_picker.dart';
+import '../services/cloudinary_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -70,6 +72,7 @@ class _SchoolProfileEditorState extends State<SchoolProfileEditor> {
   final name = TextEditingController();
   final logo = TextEditingController();
   final form = GlobalKey<FormState>();
+  PlatformFile? selectedLogo;
   bool loading = true, saving = false;
   String? error;
   @override
@@ -100,10 +103,43 @@ class _SchoolProfileEditorState extends State<SchoolProfileEditor> {
     }
   }
 
+  Future<void> _pickLogo() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['png', 'jpg', 'jpeg', 'webp'],
+        withData: true,
+      );
+      if (result == null || !mounted) return;
+      final file = result.files.single;
+      if (file.bytes == null || file.size > 5 * 1024 * 1024) {
+        throw StateError('Choose an image up to 5 MB.');
+      }
+      final image = await decodeImageFromList(file.bytes!);
+      image.dispose();
+      if (mounted && !saving) setState(() => selectedLogo = file);
+    } catch (_) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Choose a valid PNG, JPG or WebP image up to 5 MB.'),
+          ),
+        );
+    }
+  }
+
   Future<void> _save() async {
     if (!form.currentState!.validate()) return;
     setState(() => saving = true);
     try {
+      if (selectedLogo != null) {
+        final uploaded = await CloudinaryService.uploadFile(
+          file: selectedLogo!,
+          folder: 'icteach/school',
+        );
+        logo.text = uploaded.url;
+        selectedLogo = null;
+      }
       await FirebaseFirestore.instance
           .collection('settings')
           .doc('school_profile')
@@ -160,7 +196,15 @@ class _SchoolProfileEditorState extends State<SchoolProfileEditor> {
                 'The school name and logo represent the administrator throughout the workspace.',
               ),
               const SizedBox(height: 20),
-              SchoolLogo(url: logo.text.trim(), size: 90),
+              if (selectedLogo?.bytes != null)
+                Image.memory(
+                  selectedLogo!.bytes!,
+                  width: 90,
+                  height: 90,
+                  fit: BoxFit.contain,
+                )
+              else
+                SchoolLogo(url: logo.text.trim(), size: 90),
               const SizedBox(height: 20),
               TextFormField(
                 controller: name,
@@ -175,23 +219,13 @@ class _SchoolProfileEditorState extends State<SchoolProfileEditor> {
                     : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: logo,
-                enabled: !saving,
-                decoration: const InputDecoration(
-                  labelText: 'School logo image URL (HTTPS)',
-                  border: OutlineInputBorder(),
-                ),
-                onChanged: (_) => setState(() {}),
-                validator: (v) {
-                  final uri = Uri.tryParse(v?.trim() ?? '');
-                  return uri == null ||
-                          uri.scheme != 'https' ||
-                          uri.host.isEmpty
-                      ? 'Enter a valid HTTPS image URL.'
-                      : null;
-                },
+              OutlinedButton.icon(
+                onPressed: saving ? null : _pickLogo,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Choose logo image'),
               ),
+              if (selectedLogo != null) Text(selectedLogo!.name),
+              const Text('PNG, JPG or WebP, up to 5 MB.'),
               const SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: saving ? null : _save,

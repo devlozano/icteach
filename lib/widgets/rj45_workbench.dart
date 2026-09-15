@@ -1,3 +1,4 @@
+import 'rj45_connector_detail.dart';
 import 'rj45_art.dart';
 import 'dart:async';
 import 'dart:math' as math;
@@ -113,56 +114,87 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
       );
     }
     final s = session!;
-    return Column(
-      children: [
-        SizedBox(
-          height: 44,
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  s.kind == CableKind.straight
-                      ? 'Straight-through • A/A or B/B'
-                      : 'Crossover • A/B or B/A',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+    return ColoredBox(
+      color: const Color(0xFFF1F6FA),
+      child: Column(
+        children: [
+          SizedBox(
+            height: 44,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    s.kind == CableKind.straight
+                        ? 'Straight-through • A/A or B/B'
+                        : 'Crossover • A/B or B/A',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              IconButton(
-                tooltip: 'Wiring reference',
-                onPressed: showReference,
-                icon: const Icon(Icons.menu_book_outlined),
-              ),
-              IconButton(
-                tooltip: 'Start a new cable',
-                onPressed: testing
-                    ? null
-                    : () => setState(() {
-                        session = null;
-                        active = 0;
-                        tested = false;
-                        lit = -1;
-                      }),
-                icon: const Icon(Icons.restart_alt),
-              ),
-            ],
+                IconButton(
+                  tooltip: 'Inspect connector',
+                  onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('RJ45 connector inspection'),
+                      content: SizedBox(
+                        width: 760,
+                        height: 340,
+                        child: ColoredBox(
+                          color: const Color(0xFF10283F),
+                          child: InteractiveViewer(
+                            minScale: 1,
+                            maxScale: 4,
+                            child: Rj45ConnectorDetail(end: end),
+                          ),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Back to work'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  icon: const Icon(Icons.zoom_in),
+                ),
+                IconButton(
+                  tooltip: 'Wiring reference',
+                  onPressed: showReference,
+                  icon: const Icon(Icons.menu_book_outlined),
+                ),
+                IconButton(
+                  tooltip: 'Start a new cable',
+                  onPressed: testing
+                      ? null
+                      : () => setState(() {
+                          session = null;
+                          active = 0;
+                          tested = false;
+                          lit = -1;
+                        }),
+                  icon: const Icon(Icons.restart_alt),
+                ),
+              ],
+            ),
           ),
-        ),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final work = s.prepared ? testerPanel() : preparationPanel();
-              if (constraints.maxWidth < 500) {
-                return SingleChildScrollView(
-                  child: SizedBox(height: 600, child: work),
-                );
-              }
-              return work;
-            },
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final work = s.prepared ? testerPanel() : preparationPanel();
+                if (constraints.maxWidth < 500) {
+                  return SingleChildScrollView(
+                    child: SizedBox(height: 600, child: work),
+                  );
+                }
+                return work;
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -227,8 +259,8 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                       builder: (context, candidates, rejected) => Container(
                         key: const ValueKey('cable-work-area'),
                         height: MediaQuery.sizeOf(context).width >= 900
-                            ? 220
-                            : 140,
+                            ? 260
+                            : 180,
                         decoration: BoxDecoration(
                           color: candidates.isEmpty
                               ? const Color(0xff10283f)
@@ -623,6 +655,9 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
   }
 
   Widget cableArt(double value) {
+    if (end.stage.index >= CableStage.arrange.index) {
+      return Rj45ConnectorDetail(end: end, progress: value);
+    }
     String? photo;
     if (end.stage == CableStage.jacket) photo = 'cable_intact';
     if (end.stage == CableStage.spline) photo = 'cable_spline';
@@ -630,7 +665,10 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
       photo = 'cable_pairs';
     }
     if (photo != null) {
-      return Opacity(opacity: .6 + .4 * value, child: Rj45Art.image(photo));
+      return Transform.translate(
+        offset: Offset((1 - value) * 28, 0),
+        child: Opacity(opacity: .6 + .4 * value, child: Rj45Art.image(photo)),
+      );
     }
     return Stack(
       children: [

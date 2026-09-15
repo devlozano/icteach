@@ -340,6 +340,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     ? null
                     : AppBar(
                         automaticallyImplyLeading: false,
+                        leading: !kIsWeb && _currentTabIndex == 4
+                            ? BackButton(onPressed: () => _selectTab(0))
+                            : null,
                         backgroundColor: const Color(0xFF0B2B4A),
                         foregroundColor: Colors.white,
                         title: Text(
@@ -537,7 +540,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               _selectTab(1);
             },
             onSwitchTab: () {
-              _selectTab(1);
+              _selectTab(6);
             },
           ),
         ],

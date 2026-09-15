@@ -1107,79 +1107,113 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     ),
   );
 
-  Widget _buildStatusBar() => Container(
-    height: 40,
-    padding: const EdgeInsets.only(left: 12, right: 2),
-    decoration: BoxDecoration(
-      color: const Color(0xFFEAF0F7),
-      borderRadius: BorderRadius.circular(10),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.task_alt_rounded, size: 18, color: Color(0xFF2563EB)),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '${_placements.length}/${_requiredItems.length} placed  ·  $_mistakes errors  ·  $_formattedElapsed',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF334E68),
-            ),
+  Widget _buildStatusBar() => Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        height: 40,
+        padding: const EdgeInsets.only(left: 12, right: 2),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF102D49), Color(0xFF164665)],
+          ),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: IconTheme(
+          data: const IconThemeData(color: Color(0xFFBAE6FD)),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.task_alt_rounded,
+                size: 18,
+                color: Color(0xFF67E8F9),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${_placements.length}/${_requiredItems.length} placed  ·  $_mistakes errors  ·  $_formattedElapsed',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Guided process',
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) =>
+                      SimulationProcessGuide(simulation: widget.simulation),
+                ),
+                icon: const Icon(Icons.play_circle_outline, size: 20),
+              ),
+              IconButton(
+                tooltip: 'Workbench guide',
+                onPressed: _showWorkbenchGuide,
+                icon: const Icon(Icons.help_outline_rounded, size: 20),
+              ),
+              if (widget.simulation.type == 'identification')
+                IconButton(
+                  tooltip: 'Identification confidence',
+                  onPressed: _showConfidence,
+                  icon: const Icon(Icons.psychology_outlined, size: 20),
+                ),
+              IconButton(
+                tooltip: _cableZoom > 1 ? 'Reset view' : 'Zoom in',
+                onPressed: () => _setCableZoom(_cableZoom > 1 ? 1 : 1.8),
+                icon: Icon(
+                  _cableZoom > 1
+                      ? Icons.center_focus_strong
+                      : Icons.zoom_in_rounded,
+                  size: 20,
+                ),
+              ),
+              IconButton(
+                tooltip: _voiceEnabled
+                    ? 'Mute voice guidance'
+                    : 'Enable voice guidance',
+                onPressed: () {
+                  setState(() => _voiceEnabled = !_voiceEnabled);
+                  if (!_voiceEnabled) _tts.stop();
+                },
+                icon: Icon(
+                  _voiceEnabled
+                      ? Icons.volume_up_outlined
+                      : Icons.volume_off_outlined,
+                  size: 20,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Reset activity',
+                onPressed: _resetSimulation,
+                icon: const Icon(Icons.restart_alt_rounded, size: 20),
+              ),
+            ],
           ),
         ),
-        IconButton(
-          tooltip: 'Guided process',
-          onPressed: () => showDialog<void>(
-            context: context,
-            builder: (_) =>
-                SimulationProcessGuide(simulation: widget.simulation),
-          ),
-          icon: const Icon(Icons.play_circle_outline, size: 20),
+      ),
+      const SizedBox(height: 4),
+      TweenAnimationBuilder<double>(
+        tween: Tween(
+          end: _requiredItems.isEmpty
+              ? 0
+              : _placements.length / _requiredItems.length,
         ),
-        IconButton(
-          tooltip: 'Workbench guide',
-          onPressed: _showWorkbenchGuide,
-          icon: const Icon(Icons.help_outline_rounded, size: 20),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 400),
+        builder: (_, value, _) => LinearProgressIndicator(
+          value: value,
+          minHeight: 3,
+          borderRadius: BorderRadius.circular(8),
+          color: const Color(0xFF0891B2),
+          backgroundColor: const Color(0xFFDDEAF1),
         ),
-        if (widget.simulation.type == 'identification')
-          IconButton(
-            tooltip: 'Identification confidence',
-            onPressed: _showConfidence,
-            icon: const Icon(Icons.psychology_outlined, size: 20),
-          ),
-        IconButton(
-          tooltip: _cableZoom > 1 ? 'Reset view' : 'Zoom in',
-          onPressed: () => _setCableZoom(_cableZoom > 1 ? 1 : 1.8),
-          icon: Icon(
-            _cableZoom > 1 ? Icons.center_focus_strong : Icons.zoom_in_rounded,
-            size: 20,
-          ),
-        ),
-        IconButton(
-          tooltip: _voiceEnabled
-              ? 'Mute voice guidance'
-              : 'Enable voice guidance',
-          onPressed: () {
-            setState(() => _voiceEnabled = !_voiceEnabled);
-            if (!_voiceEnabled) _tts.stop();
-          },
-          icon: Icon(
-            _voiceEnabled
-                ? Icons.volume_up_outlined
-                : Icons.volume_off_outlined,
-            size: 20,
-          ),
-        ),
-        IconButton(
-          tooltip: 'Reset activity',
-          onPressed: _resetSimulation,
-          icon: const Icon(Icons.restart_alt_rounded, size: 20),
-        ),
-      ],
-    ),
+      ),
+    ],
   );
 
   String get _formattedElapsed {

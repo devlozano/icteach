@@ -1,3 +1,4 @@
+import 'screens/student/classmates_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -12,7 +13,6 @@ import '../screens/student/forums_page.dart';
 import '../screens/teacher/manage_quizzes_page.dart';
 import '../screens/teacher/manage_assignments_page.dart';
 import '../screens/teacher/manage_modules_page.dart';
-import '../screens/teacher/quiz_results_page.dart';
 import '../screens/teacher/manage_questionnaires_page.dart';
 import '../screens/teacher/progress_tracker_page.dart';
 import '../screens/student/student_questionnaires_page.dart';
@@ -447,15 +447,18 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
   }
 
   void _navigateToResults() {
+    // Each quiz supplies its real ID to the result screen; never use an empty ID.
     NavigationService.navigateTo(
       context,
-      TeacherQuizResultsPage(
-        classId: widget.classId,
-        quizId: '',
-        quizTitle: _userRole == 'teacher' || _userRole == 'trainer'
-            ? 'Quiz Results - ${widget.className}'
-            : 'My Quiz Results',
-      ),
+      _userRole == 'teacher' || _userRole == 'trainer'
+          ? ManageQuizzesPage(
+              classId: widget.classId,
+              className: widget.className,
+            )
+          : StudentQuizzesPage(
+              classId: widget.classId,
+              className: widget.className,
+            ),
     );
   }
 
@@ -483,11 +486,9 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
   }
 
   void _navigateToClassmates() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('View Classmates feature coming soon!'),
-        duration: Duration(seconds: 2),
-      ),
+    NavigationService.navigateTo(
+      context,
+      ClassmatesPage(classId: widget.classId, className: widget.className),
     );
   }
 

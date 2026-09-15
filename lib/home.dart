@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'screens/student/student_questionnaires_page.dart';
 import 'services/feedback_eligibility.dart';
 import 'widgets/summary_print_button.dart';
@@ -160,6 +161,9 @@ class _HomePageState extends State<HomePage> {
   // Compact header for tabs without their own page header.
   PreferredSizeWidget _buildAppBar() => AppBar(
     automaticallyImplyLeading: false,
+    leading: !kIsWeb && _currentTabIndex == 4
+        ? BackButton(onPressed: () => _selectTab(0))
+        : null,
     backgroundColor: const Color(0xFF428DEB),
     foregroundColor: Colors.white,
     title: Text(

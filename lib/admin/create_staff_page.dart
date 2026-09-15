@@ -1,4 +1,5 @@
-import 'dart:math';
+import 'package:firebase_core/firebase_core.dart';
+import '../utils/staff_password.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -47,13 +48,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
         : '${middleName.trim()[0].toUpperCase()}.';
   }
 
-  String generatePassword() {
-    const chars =
-        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    final rand = Random.secure();
-
-    return List.generate(12, (_) => chars[rand.nextInt(chars.length)]).join();
-  }
+  String generatePassword() => generateStaffPassword();
 
   InputDecoration fieldDecoration({
     required String hint,
@@ -70,10 +65,24 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
     required String email,
     required String password,
   }) async {
-    return await FirebaseAuth.instance.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
+    final app = await Firebase.initializeApp(
+      name:
+          'staff-creation-' + DateTime.now().microsecondsSinceEpoch.toString(),
+      options: Firebase.app().options,
     );
+    final auth = FirebaseAuth.instanceFor(app: app);
+    try {
+      return await auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+    } finally {
+      try {
+        await auth.signOut();
+      } finally {
+        await app.delete();
+      }
+    }
   }
 
   // ✅ NEW: Reset form method
@@ -268,12 +277,14 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
       );
 
       // ✅ Additional reset after dialog (in case of issues)
-      _resetForm();
+      if (mounted) _resetForm();
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.message ?? 'Auth error occurred')),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Error: $e')));

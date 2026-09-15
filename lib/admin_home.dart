@@ -1,3 +1,5 @@
+import 'admin/manage_teachers_page.dart';
+import 'widgets/performance_pie_chart.dart';
 import 'widgets/summary_print_button.dart';
 import 'services/personal_summary_service.dart';
 import 'widgets/persistent_workspace.dart';
@@ -43,8 +45,11 @@ class AdminHomePage extends StatefulWidget {
 
 class _AdminHomePageState extends State<AdminHomePage> {
   String _currentSelectedLabel =
-      WorkspacePreferences.selection('admin_panel') ?? 'Dashboard';
+      (WorkspacePreferences.selection('admin_panel') ?? 'Dashboard')
+          .replaceFirst('LRN Registry', 'LRN Registration');
+  String? _staffDirectory;
   void _selectPanel(String label) {
+    _staffDirectory = null;
     setState(() => _currentSelectedLabel = label);
     WorkspacePreferences.saveSelection('admin_panel', label);
   }
@@ -67,13 +72,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
         const labels = [
           'Dashboard',
           'Manage Users',
+          'LRN Registration',
           'Manage Classes',
           'Content Overview',
           'Performance',
           'Reports',
           'Feedback',
           'School Profile',
-          'LRN Registry',
           'Settings',
         ];
         PersistentWorkspace.register(
@@ -85,13 +90,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
             items: const [
               (Icons.dashboard_outlined, 'Dashboard'),
               (Icons.people_outline, 'Manage Users'),
+              (Icons.badge_outlined, 'LRN Registration'),
               (Icons.school_outlined, 'Manage Classes'),
               (Icons.menu_book_outlined, 'Content Overview'),
               (Icons.insights_outlined, 'Performance'),
               (Icons.assessment_outlined, 'Reports'),
               (Icons.rate_review_outlined, 'Feedback'),
               (Icons.school_outlined, 'School Profile'),
-              (Icons.badge_outlined, 'LRN Registry'),
               (Icons.settings_outlined, 'Settings'),
             ],
             onSelected: (index) => PersistentWorkspace.returnHome(
@@ -203,7 +208,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return 'Track student quiz performance and leaderboards';
       case 'Reports':
         return 'Student counts and NC II pass monitoring';
-      case 'LRN Registry':
+      case 'LRN Registration':
         return 'Manage LRN registration and master records';
       case 'Settings':
         return 'Manage your account and app preferences';
@@ -222,7 +227,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return Icons.analytics_outlined;
       case 'Reports':
         return Icons.description_outlined;
-      case 'LRN Registry':
+      case 'LRN Registration':
         return Icons.badge_outlined;
       case 'Settings':
         return Icons.settings_outlined;
@@ -245,7 +250,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return const _PerformanceContent();
       case 'Reports':
         return const StaffOutcomes(admin: true);
-      case 'LRN Registry':
+      case 'LRN Registration':
         return const _LRNRegistryContent();
       case 'Feedback':
         return const Column(
@@ -266,6 +271,50 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   // ── Manage Users ────────────────────────────────────────────────────────────
   Widget _ManageUsersContent() {
+    if (_staffDirectory != null) {
+      final teacher = _staffDirectory == 'teacher';
+      return _buildCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () => setState(() => _staffDirectory = null),
+                  icon: const Icon(Icons.arrow_back),
+                  label: const Text('Back to Manage Users'),
+                ),
+                Text(
+                  teacher ? 'Manage Teachers' : 'Manage Trainers',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          CreateStaffPage(selectedRole: _staffDirectory!),
+                    ),
+                  ),
+                  icon: const Icon(Icons.add),
+                  label: Text(teacher ? 'Add Teacher' : 'Add Trainer'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            teacher
+                ? const ManageTeachersPage(embedded: true)
+                : const ManageTrainersPage(embedded: true),
+          ],
+        ),
+      );
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -402,11 +451,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
                           );
                         },
                       ),
-                      if (teachers.length > 5)
+                      if (teachers.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: TextButton.icon(
-                            onPressed: () {},
+                            onPressed: () =>
+                                setState(() => _staffDirectory = 'teacher'),
                             icon: const Icon(Icons.arrow_forward, size: 16),
                             label: Text('View all ${teachers.length} teachers'),
                           ),
@@ -481,14 +531,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ManageTrainersPage(),
-                      ),
-                    );
-                  },
+                  onPressed: () => setState(() => _staffDirectory = 'trainer'),
                   icon: const Icon(Icons.verified_user, color: Colors.purple),
                   label: const Text('View & Manage All Trainers'),
                   style: OutlinedButton.styleFrom(
@@ -542,12 +585,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ManageLRNPage()),
-                    );
-                  },
+                  onPressed: () => _selectPanel('LRN Registration'),
                   icon: const Icon(Icons.numbers, color: Color(0xFF0B2B4A)),
                   label: const Text('Open LRN Master List'),
                   style: OutlinedButton.styleFrom(
@@ -867,6 +905,12 @@ class _SideNav extends StatelessWidget {
                   onTap: () => onSelected('Manage Users'),
                 ),
                 _NavTile(
+                  icon: Icons.numbers_rounded,
+                  label: 'LRN Registration',
+                  selected: currentSelection == 'LRN Registration',
+                  onTap: () => onSelected('LRN Registration'),
+                ),
+                _NavTile(
                   icon: Icons.class_rounded,
                   label: 'Manage Classes',
                   selected: currentSelection == 'Manage Classes',
@@ -901,12 +945,6 @@ class _SideNav extends StatelessWidget {
                   label: 'School Profile',
                   selected: currentSelection == 'School Profile',
                   onTap: () => onSelected('School Profile'),
-                ),
-                _NavTile(
-                  icon: Icons.numbers_rounded,
-                  label: 'LRN Registry',
-                  selected: currentSelection == 'LRN Registry',
-                  onTap: () => onSelected('LRN Registry'),
                 ),
               ],
             ),
@@ -2672,138 +2710,7 @@ class _PerformanceContentState extends State<_PerformanceContent> {
           );
         }
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _kCardBorder),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(18),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.emoji_events_rounded,
-                        color: Colors.amber,
-                        size: 20,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    const Expanded(
-                      child: Text(
-                        'Global Leaderboard',
-                        maxLines: 2,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _kAccentBlue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '${leaderboard.length} students',
-                        style: const TextStyle(
-                          color: _kAccentBlue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: leaderboard.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final data = leaderboard[index];
-                  final isTop3 = index < 3;
-                  final medalColors = [
-                    Colors.amber.shade600,
-                    Colors.grey.shade500,
-                    Colors.brown.shade400,
-                  ];
-                  final color = isTop3 ? medalColors[index] : _kNavColor;
-
-                  return ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: isTop3
-                            ? LinearGradient(
-                                colors: [
-                                  color.withOpacity(0.2),
-                                  color.withOpacity(0.05),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              )
-                            : null,
-                        color: isTop3 ? null : color.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Center(
-                        child: isTop3
-                            ? Icon(Icons.emoji_events, color: color, size: 22)
-                            : Text(
-                                '${index + 1}',
-                                style: TextStyle(
-                                  color: color,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                      ),
-                    ),
-                    title: Text(
-                      data['studentName'] as String,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text('${data['quizCount']} quizzes taken'),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${data['percentage']}%',
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
+        return PerformancePieChart(entries: leaderboard);
       },
     );
   }

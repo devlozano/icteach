@@ -116,6 +116,15 @@ void main() {
       await tester.pumpAndSettle();
       await drag('cutters', find.byKey(const ValueKey('cable-work-area')));
       await drag('bundle', find.byKey(const ValueKey('empty-rj45')));
+      if (e == 0) {
+        await screenshot('rj45-contact-detail');
+        await tester.tap(find.byTooltip('Inspect connector'));
+        await tester.pumpAndSettle();
+        expect(find.text('RJ45 connector inspection'), findsOneWidget);
+        await screenshot('rj45-zoom-detail');
+        await tester.tap(find.text('Back to work'));
+        await tester.pumpAndSettle();
+      }
       await drag('crimper', find.byKey(const ValueKey('cable-work-area')));
       if (e == 0) {
         await tester.tap(find.text('Prepare the other end'));

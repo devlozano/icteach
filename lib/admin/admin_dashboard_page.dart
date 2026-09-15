@@ -50,7 +50,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.numbers),
-                label: Text('LRN'),
+                label: Text('LRN Registration'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.settings),
@@ -60,9 +60,7 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
           ),
           const VerticalDivider(thickness: 1, width: 1),
           // Page Content
-          Expanded(
-            child: _pages[_selectedIndex],
-          ),
+          Expanded(child: _pages[_selectedIndex]),
         ],
       ),
     );
@@ -80,9 +78,7 @@ class _DashboardOverview extends StatelessWidget {
         backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
       ),
-      body: const Center(
-        child: Text('Welcome to Admin Dashboard'),
-      ),
+      body: const Center(child: Text('Welcome to Admin Dashboard')),
     );
   }
 }
@@ -98,9 +94,7 @@ class _SystemSettingsPage extends StatelessWidget {
         backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
       ),
-      body: const Center(
-        child: Text('System Settings'),
-      ),
+      body: const Center(child: Text('System Settings')),
     );
   }
 }

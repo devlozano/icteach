@@ -479,26 +479,10 @@ class _StudentAssignmentCardState extends State<_StudentAssignmentCard> {
                   ),
                 )
               else if (isOverdue)
-                // ✅ Smaller "Closed" button
-                SizedBox(
-                  height: 28,
-                  child: ElevatedButton(
-                    onPressed: null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade300,
-                      foregroundColor: Colors.grey.shade600,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      textStyle: const TextStyle(fontSize: 11),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    child: const Text('Closed'),
-                  ),
+                const Chip(
+                  label: Text('Closed'),
+                  avatar: Icon(Icons.lock_clock, size: 16),
+                  visualDensity: VisualDensity.compact,
                 )
               else
                 // ✅ Smaller "Submit" button

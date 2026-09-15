@@ -1,3 +1,4 @@
+import 'simulation_motion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -49,184 +50,189 @@ class DropTargetWidget extends StatelessWidget {
         final hasRejected =
             rejectedData.isNotEmpty ||
             (candidateData.isNotEmpty && !candidateCompatible);
-        return AnimatedContainer(
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 250),
-          width: width,
-          height: height,
-          decoration: BoxDecoration(
-            color: specimenItem != null
-                ? const Color(0xFF132C46)
-                : immersive && isFilled
-                ? Colors.transparent
-                : isFilled
-                ? _getColorForCategory(
-                    placedItem!.category,
-                  ).withValues(alpha: 0.1)
-                : (hasCandidate
-                      ? Colors.green.withValues(alpha: 0.25)
-                      : hasRejected
-                      ? Colors.red.withValues(alpha: 0.25)
-                      : immersive
-                      ? Colors.black.withValues(alpha: 0.22)
-                      : Colors.grey.shade100),
-            borderRadius: BorderRadius.circular(immersive ? 5 : 10),
-            border: Border.all(
+        return SimulationPlacementMotion(
+          identity: (slotId, placedItem?.id, isComplete),
+          child: AnimatedContainer(
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 250),
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
               color: specimenItem != null
                   ? const Color(0xFF132C46)
                   : immersive && isFilled
                   ? Colors.transparent
                   : isFilled
-                  ? _getColorForCategory(placedItem!.category)
+                  ? _getColorForCategory(
+                      placedItem!.category,
+                    ).withValues(alpha: 0.1)
                   : (hasCandidate
-                        ? Colors.greenAccent
+                        ? Colors.green.withValues(alpha: 0.25)
                         : hasRejected
-                        ? Colors.redAccent
+                        ? Colors.red.withValues(alpha: 0.25)
                         : immersive
-                        ? Colors.white70
-                        : Colors.grey.shade300),
-              width: isFilled ? (immersive ? 0 : 2) : 1,
-            ),
-            boxShadow: [
-              if (hasCandidate || hasRejected)
-                BoxShadow(
-                  color: (hasCandidate ? Colors.green : Colors.red).withValues(
-                    alpha: 0.35,
+                        ? Colors.black.withValues(alpha: 0.22)
+                        : Colors.grey.shade100),
+              borderRadius: BorderRadius.circular(immersive ? 5 : 10),
+              border: Border.all(
+                color: specimenItem != null
+                    ? const Color(0xFF132C46)
+                    : immersive && isFilled
+                    ? Colors.transparent
+                    : isFilled
+                    ? _getColorForCategory(placedItem!.category)
+                    : (hasCandidate
+                          ? Colors.greenAccent
+                          : hasRejected
+                          ? Colors.redAccent
+                          : immersive
+                          ? Colors.white70
+                          : Colors.grey.shade300),
+                width: isFilled ? (immersive ? 0 : 2) : 1,
+              ),
+              boxShadow: [
+                if (hasCandidate || hasRejected)
+                  BoxShadow(
+                    color: (hasCandidate ? Colors.green : Colors.red)
+                        .withValues(alpha: 0.35),
+                    blurRadius: 14,
                   ),
-                  blurRadius: 14,
-                ),
-            ],
-          ),
-          child: compact && specimenItem == null
-              ? Tooltip(
-                  message: placedItem?.name ?? _getSlotLabel(slotId),
-                  child: _compactContent(),
-                )
-              : isFilled
-              ? workflowMode
-                    ? _buildWorkflowComplete()
-                    : specimenItem != null
-                    ? _buildIdentifiedSpecimen()
-                    : immersive
-                    ? Center(
-                        child: _buildImage(
-                          placedItem!,
-                          imageWidth: width,
-                          imageHeight: height,
-                        ),
-                      )
-                    : Stack(
-                        children: [
-                          Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _buildImage(
-                                  placedItem!,
-                                  imageWidth: width * 0.88,
-                                  imageHeight: height * 0.76,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  placedItem!.name,
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: _getColorForCategory(
-                                      placedItem!.category,
-                                    ),
+              ],
+            ),
+            child: compact && specimenItem == null
+                ? Tooltip(
+                    message: placedItem?.name ?? _getSlotLabel(slotId),
+                    child: _compactContent(),
+                  )
+                : isFilled
+                ? workflowMode
+                      ? _buildWorkflowComplete()
+                      : specimenItem != null
+                      ? _buildIdentifiedSpecimen()
+                      : immersive
+                      ? Center(
+                          child: _buildImage(
+                            placedItem!,
+                            imageWidth: width,
+                            imageHeight: height,
+                          ),
+                        )
+                      : Stack(
+                          children: [
+                            Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  _buildImage(
+                                    placedItem!,
+                                    imageWidth: width * 0.88,
+                                    imageHeight: height * 0.76,
                                   ),
-                                  textAlign: TextAlign.center,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                if (isComplete)
-                                  Container(
-                                    margin: const EdgeInsets.only(top: 2),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: placedItem!.correctSlot == slotId
-                                          ? Colors.green.shade100
-                                          : Colors.red.shade100,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      placedItem!.correctSlot == slotId
-                                          ? '✓'
-                                          : '✗',
-                                      style: TextStyle(
-                                        color: placedItem!.correctSlot == slotId
-                                            ? Colors.green.shade700
-                                            : Colors.red.shade700,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    placedItem!.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: _getColorForCategory(
+                                        placedItem!.category,
                                       ),
                                     ),
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                              ],
-                            ),
-                          ),
-                          if (isComplete)
-                            Positioned(
-                              top: 4,
-                              right: 4,
-                              child: Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  color: placedItem!.correctSlot == slotId
-                                      ? Colors.green
-                                      : Colors.red,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  placedItem!.correctSlot == slotId
-                                      ? Icons.check
-                                      : Icons.close,
-                                  color: Colors.white,
-                                  size: 12,
-                                ),
+                                  if (isComplete)
+                                    Container(
+                                      margin: const EdgeInsets.only(top: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: placedItem!.correctSlot == slotId
+                                            ? Colors.green.shade100
+                                            : Colors.red.shade100,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        placedItem!.correctSlot == slotId
+                                            ? '✓'
+                                            : '✗',
+                                        style: TextStyle(
+                                          color:
+                                              placedItem!.correctSlot == slotId
+                                              ? Colors.green.shade700
+                                              : Colors.red.shade700,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                        ],
-                      )
-              : specimenItem != null
-              ? _buildSpecimenCard()
-              : immersive && slotId.startsWith('pin')
-              ? Center(
-                  child: Text(
-                    'PIN ${slotId.replaceFirst('pin', '')}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      _getSlotIcon(slotId),
-                      color: Colors.grey.shade400,
-                      size: 24,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _getSlotLabel(slotId),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: immersive ? Colors.white : Colors.grey.shade500,
-                        fontWeight: immersive
-                            ? FontWeight.w700
-                            : FontWeight.normal,
+                            if (isComplete)
+                              Positioned(
+                                top: 4,
+                                right: 4,
+                                child: Container(
+                                  padding: const EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: placedItem!.correctSlot == slotId
+                                        ? Colors.green
+                                        : Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    placedItem!.correctSlot == slotId
+                                        ? Icons.check
+                                        : Icons.close,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        )
+                : specimenItem != null
+                ? _buildSpecimenCard()
+                : immersive && slotId.startsWith('pin')
+                ? Center(
+                    child: Text(
+                      'PIN ${slotId.replaceFirst('pin', '')}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.w900,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                  ],
-                ),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _getSlotIcon(slotId),
+                        color: Colors.grey.shade400,
+                        size: 24,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _getSlotLabel(slotId),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: immersive
+                              ? Colors.white
+                              : Colors.grey.shade500,
+                          fontWeight: immersive
+                              ? FontWeight.w700
+                              : FontWeight.normal,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+          ),
         );
       },
     );

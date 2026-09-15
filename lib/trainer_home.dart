@@ -1,3 +1,6 @@
+import 'services/trainer_account_deletion.dart';
+import 'widgets/delete_trainer_account_dialog.dart';
+import 'utils/trainer_destinations.dart';
 import 'widgets/staff_mobile_nav.dart';
 import 'screens/staff_management_page.dart';
 import 'widgets/workspace_intro.dart';
@@ -12,13 +15,9 @@ import 'admin_login.dart';
 import 'widgets/staff_sidebar.dart';
 import 'services/workspace_preferences.dart';
 import 'join_class.dart';
-import '../screens/teacher/manage_modules_page.dart';
-import '../screens/teacher/manage_quizzes_page.dart';
-import '../screens/teacher/manage_assignments_page.dart';
 import 'package:icteach/screens/notification_page.dart';
 import 'package:icteach/widgets/notification_badge.dart';
 import 'package:icteach/screens/student/forums_page.dart';
-import 'package:icteach/screens/teacher/progress_tracker_page.dart';
 
 class TrainerHomePage extends StatefulWidget {
   const TrainerHomePage({super.key});
@@ -32,6 +31,24 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   void _selectTab(int index) {
     setState(() => _selectedIndex = index);
     WorkspacePreferences.saveTab('trainer', index);
+  }
+
+  Future<void> _deleteAccount() async {
+    final deleted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) =>
+          DeleteTrainerAccountDialog(onDelete: TrainerAccountDeletion.delete),
+    );
+    if (deleted != true) return;
+    PersistentWorkspace.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => kIsWeb ? const AdminLoginPage() : const LoginPage(),
+      ),
+      (route) => false,
+    );
   }
 
   Future<void> _logout() async {
@@ -184,6 +201,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     backgroundColor: primaryColor,
                     elevation: 0,
                     automaticallyImplyLeading: false,
+                    leading: !kIsWeb && _selectedIndex == 2
+                        ? BackButton(onPressed: () => _selectTab(0))
+                        : null,
                     title: Text(
                       const [
                         'Home',
@@ -572,7 +592,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       ),
       _TrainerToolItem(
         title: 'Instructional Videos',
-        subtitle: 'Manage video resources',
+        subtitle: 'Add videos to lessons',
         icon: Icons.video_library_rounded,
         color: Colors.purple,
         bgColor: Colors.purple.shade50,
@@ -608,14 +628,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         icon: Icons.verified_user_rounded,
         color: Colors.green.shade700,
         bgColor: Colors.green.shade50,
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Competency Validation coming soon!'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-        },
+        onTap: () => _showClassSelector(context, 'competency'),
       ),
     ];
 
@@ -830,7 +843,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 ? 'Assignments'
                 : actionType == 'progress'
                 ? 'Progress'
-                : 'Content';
+                : actionType == 'competency'
+                ? 'Competency Validation'
+                : 'Instructional Videos';
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -963,59 +978,12 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     String classId,
     String className,
   ) {
-    switch (actionType) {
-      case 'modules':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                ManageModulesPage(classId: classId, className: className),
-          ),
-        );
-        break;
-      case 'progress':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                ProgressTrackerPage(classId: classId, className: className),
-          ),
-        );
-        break;
-      case 'quizzes':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                ManageQuizzesPage(classId: classId, className: className),
-          ),
-        );
-        break;
-      case 'assignments':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) =>
-                ManageAssignmentsPage(classId: classId, className: className),
-          ),
-        );
-        break;
-      case 'videos':
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Instructional Videos page coming soon!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-        break;
-      default:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$actionType management coming soon!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-    }
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => trainerDestination(actionType, classId, className),
+      ),
+    );
   }
 
   Widget _buildProfileContent(Map<String, dynamic>? profile, User user) {
@@ -1090,6 +1058,17 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             ),
           ),
           const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _deleteAccount,
+              icon: const Icon(Icons.delete_forever_outlined),
+              label: const Text('Delete Account'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red.shade700,
+              ),
+            ),
+          ),
           if (!(kIsWeb && MediaQuery.sizeOf(context).width >= 1000))
             SizedBox(
               width: double.infinity,
