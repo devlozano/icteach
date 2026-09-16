@@ -6,10 +6,12 @@ import 'teacher/manage_modules_page.dart';
 
 class StaffManagementPage extends StatelessWidget {
   final bool modules, trainer;
+  final bool embedded;
   const StaffManagementPage({
     super.key,
     this.modules = false,
     this.trainer = false,
+    this.embedded = false,
   });
   @override
   Widget build(BuildContext context) {
@@ -56,7 +58,9 @@ class StaffManagementPage extends StatelessWidget {
           .where((d) => ids == null || ids.contains(d.id))
           .toList();
       return ListView(
-        padding: const EdgeInsets.all(24),
+        shrinkWrap: embedded,
+        physics: embedded ? const NeverScrollableScrollPhysics() : null,
+        padding: embedded ? EdgeInsets.zero : const EdgeInsets.all(24),
         children: [
           Text(
             modules ? 'Module Management' : 'Student Management',

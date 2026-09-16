@@ -1,3 +1,8 @@
+import 'widgets/admin_workspace_layout.dart';
+import 'widgets/admin_workspace_sidebar.dart';
+import 'widgets/staff_workspace_header.dart';
+import 'widgets/workspace_stat.dart';
+import 'widgets/workspace_dashboard.dart';
 import 'services/trainer_account_deletion.dart';
 import 'widgets/delete_trainer_account_dialog.dart';
 import 'utils/trainer_destinations.dart';
@@ -31,6 +36,47 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   void _selectTab(int index) {
     setState(() => _selectedIndex = index);
     WorkspacePreferences.saveTab('trainer', index);
+  }
+
+  static const _webItems = [
+    (Icons.dashboard_rounded, 'Dashboard'),
+    (Icons.forum_outlined, 'Discussions'),
+    (Icons.person_outline, 'Profile'),
+    (Icons.insights_outlined, 'Class Monitoring'),
+    (Icons.rate_review_outlined, 'Feedback'),
+    (Icons.groups_outlined, 'Student Management'),
+    (Icons.menu_book_outlined, 'Module Management'),
+  ];
+  static const _webOrder = [0, 1, 3, 4, 5, 6, 2];
+  Widget _webSidebar(String name, ValueChanged<int> select) =>
+      AdminWorkspaceSidebar(
+        role: 'Trainer',
+        identity: const Text('Sign out'),
+        items: [for (final index in _webOrder) _webItems[index]],
+        selectedIndex: _webOrder.indexOf(_selectedIndex),
+        onSelected: (index) => select(_webOrder[index]),
+        onLogout: _logout,
+      );
+
+  Widget _buildWebWorkspace(String name, Widget content) {
+    return AdminWorkspaceLayout(
+      sidebarBuilder: (close) => _webSidebar(name, (index) {
+        _selectTab(index);
+        close();
+      }),
+      topBarBuilder: (showMenu) => StaffTopBar(
+        name: name,
+        role: 'Trainer',
+        showMenuButton: showMenu,
+        showIdentity: _selectedIndex != 2,
+      ),
+      title: _webItems[_selectedIndex].$2,
+      subtitle: _selectedIndex == 0
+          ? 'Welcome back to ICTeach Trainer'
+          : 'Manage your ' + _webItems[_selectedIndex].$2.toLowerCase(),
+      icon: _webItems[_selectedIndex].$1,
+      child: content,
+    );
   }
 
   Future<void> _deleteAccount() async {
@@ -186,6 +232,75 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             onLogout: _logout,
           ),
         );
+
+        if (kIsWeb) {
+          PersistentWorkspace.register(
+            context,
+            _webSidebar(
+              trainerName,
+              (index) => PersistentWorkspace.returnHome(
+                context,
+                () => _selectTab(index),
+              ),
+            ),
+          );
+          return _buildWebWorkspace(trainerName, switch (_selectedIndex) {
+            0 => WorkspaceDashboard(
+              stats: _buildStatsRow(primaryColor),
+              content: const StaffManagementPage(trainer: true, embedded: true),
+              actions: [
+                (
+                  Icons.add,
+                  'Join Class',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const JoinClassPage()),
+                  ),
+                ),
+                (
+                  Icons.menu_book_outlined,
+                  'Training Modules',
+                  () => _showClassSelector(context, 'modules'),
+                ),
+                (
+                  Icons.video_library_outlined,
+                  'Instructional Videos',
+                  () => _showClassSelector(context, 'videos'),
+                ),
+                (
+                  Icons.quiz_outlined,
+                  'Quizzes & Assessments',
+                  () => _showClassSelector(context, 'quizzes'),
+                ),
+                (
+                  Icons.assignment_outlined,
+                  'Performance Activities',
+                  () => _showClassSelector(context, 'assignments'),
+                ),
+                (
+                  Icons.analytics_outlined,
+                  'Progress Tracker',
+                  () => _showClassSelector(context, 'progress'),
+                ),
+                (
+                  Icons.verified_user_outlined,
+                  'Competency Validation',
+                  () => _showClassSelector(context, 'competency'),
+                ),
+              ],
+            ),
+            1 => _buildDiscussionForums(primaryColor),
+            2 => _buildProfileContent(profile, user),
+            3 => const StaffOutcomes(trainer: true),
+            4 => const StaffOutcomes(trainer: true, feedback: true),
+            5 => const StaffManagementPage(trainer: true, embedded: true),
+            _ => const StaffManagementPage(
+              trainer: true,
+              embedded: true,
+              modules: true,
+            ),
+          });
+        }
 
         return PopScope(
           canPop: _selectedIndex == 0,
@@ -515,6 +630,25 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           builder: (context, studentSnapshot) {
             final totalStudents = studentSnapshot.data ?? 0;
 
+            if (kIsWeb)
+              return WorkspaceStats(
+                cards: [
+                  WorkspaceStatData(
+                    title: 'Classes',
+                    value: '$classCount',
+                    subtitle: 'Your assigned classes',
+                    icon: Icons.class_rounded,
+                    color: const Color(0xFF0891B2),
+                  ),
+                  WorkspaceStatData(
+                    title: 'Students',
+                    value: '$totalStudents',
+                    subtitle: 'Currently enrolled',
+                    icon: Icons.people_alt_rounded,
+                    color: const Color(0xFF28C76F),
+                  ),
+                ],
+              );
             return Row(
               children: [
                 Expanded(
@@ -696,7 +830,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          shrinkWrap: kIsWeb,
+          physics: kIsWeb ? const NeverScrollableScrollPhysics() : null,
+          padding: kIsWeb ? EdgeInsets.zero : const EdgeInsets.all(16),
           itemCount: classDocs.length,
           itemBuilder: (context, index) {
             final doc = classDocs[index];

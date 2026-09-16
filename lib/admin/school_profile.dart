@@ -1,36 +1,62 @@
+import '../services/workspace_preferences.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/cloudinary_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class SchoolIdentity extends StatelessWidget {
+class SchoolIdentity extends StatefulWidget {
   final bool compact;
   const SchoolIdentity({super.key, this.compact = false});
   @override
+  State<SchoolIdentity> createState() => _SchoolIdentityState();
+}
+
+class _SchoolIdentityState extends State<SchoolIdentity> {
+  late final Stream<DocumentSnapshot<Map<String, dynamic>>> _profileStream =
+      FirebaseFirestore.instance
+          .collection('settings')
+          .doc('school_profile')
+          .snapshots();
+  @override
   Widget build(BuildContext context) =>
       StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('settings')
-            .doc('school_profile')
-            .snapshots(),
+        stream: _profileStream,
         builder: (context, snapshot) {
-          final data = snapshot.data?.data() ?? {};
+          final data = snapshot.data?.data();
+          final loadedName = data?['name']?.toString().trim();
+          if (loadedName != null &&
+              loadedName.isNotEmpty &&
+              loadedName != WorkspacePreferences.selection('school_name')) {
+            WorkspacePreferences.saveSelection('school_name', loadedName);
+          }
+          final schoolName = loadedName?.isNotEmpty == true
+              ? loadedName
+              : data == null
+              ? WorkspacePreferences.selection('school_name')
+              : null;
           return Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SchoolLogo(
-                url: data['logoUrl']?.toString(),
-                size: compact ? 34 : 64,
+                url: data?['logoUrl']?.toString(),
+                size: widget.compact ? 34 : 64,
               ),
               const SizedBox(width: 10),
               Flexible(
-                child: Text(
-                  data['name']?.toString() ?? 'School profile',
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
+                child:
+                    schoolName == null &&
+                        snapshot.connectionState == ConnectionState.waiting
+                    ? const SizedBox(
+                        width: 120,
+                        child: LinearProgressIndicator(minHeight: 3),
+                      )
+                    : Text(
+                        schoolName ?? 'School name not set',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
               ),
             ],
           );
@@ -149,6 +175,7 @@ class _SchoolProfileEditorState extends State<SchoolProfileEditor> {
             'updatedBy': FirebaseAuth.instance.currentUser!.uid,
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
+      await WorkspacePreferences.saveSelection('school_name', name.text.trim());
       if (mounted) {
         ScaffoldMessenger.of(
           context,

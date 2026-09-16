@@ -1,3 +1,8 @@
+import 'widgets/admin_workspace_layout.dart';
+import 'widgets/admin_workspace_sidebar.dart';
+import 'widgets/staff_workspace_header.dart';
+import 'widgets/workspace_stat.dart';
+import 'widgets/workspace_dashboard.dart';
 import 'widgets/staff_mobile_nav.dart';
 import 'screens/staff_management_page.dart';
 import 'widgets/workspace_intro.dart';
@@ -33,6 +38,48 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   void _selectTab(int index) {
     setState(() => _currentTabIndex = index);
     WorkspacePreferences.saveTab('teacher', index);
+  }
+
+  static const _webItems = [
+    (Icons.dashboard_rounded, 'Dashboard'),
+    (Icons.class_rounded, 'Manage Classes'),
+    (Icons.forum_outlined, 'Discussions'),
+    (Icons.insights_outlined, 'Class Monitoring'),
+    (Icons.person_outline, 'Profile'),
+    (Icons.rate_review_outlined, 'Feedback'),
+    (Icons.groups_outlined, 'Student Management'),
+    (Icons.menu_book_outlined, 'Module Management'),
+  ];
+  static const _webOrder = [0, 1, 2, 3, 5, 6, 7, 4];
+  Widget _webSidebar(String name, ValueChanged<int> select) =>
+      AdminWorkspaceSidebar(
+        role: 'Teacher',
+        identity: const Text('Sign out'),
+        items: [for (final index in _webOrder) _webItems[index]],
+        selectedIndex: _webOrder.indexOf(_currentTabIndex),
+        onSelected: (index) => select(_webOrder[index]),
+        onLogout: _logout,
+      );
+
+  Widget _buildWebWorkspace(String name, Widget content) {
+    return AdminWorkspaceLayout(
+      sidebarBuilder: (close) => _webSidebar(name, (index) {
+        _selectTab(index);
+        close();
+      }),
+      topBarBuilder: (showMenu) => StaffTopBar(
+        name: name,
+        role: 'Teacher',
+        showMenuButton: showMenu,
+        showIdentity: _currentTabIndex != 4,
+      ),
+      title: _webItems[_currentTabIndex].$2,
+      subtitle: _currentTabIndex == 0
+          ? 'Welcome back to ICTeach Teacher'
+          : 'Manage your ' + _webItems[_currentTabIndex].$2.toLowerCase(),
+      icon: _webItems[_currentTabIndex].$1,
+      child: content,
+    );
   }
 
   late final Stream<QuerySnapshot<Map<String, dynamic>>> _classesStream;
@@ -132,7 +179,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             .toList();
 
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          shrinkWrap: kIsWeb,
+          physics: kIsWeb ? const NeverScrollableScrollPhysics() : null,
+          padding: kIsWeb ? EdgeInsets.zero : const EdgeInsets.all(16),
           itemCount: classes.length,
           itemBuilder: (context, index) {
             final classData = classes[index];
@@ -327,6 +376,109 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               0,
               (total, item) => total + (item.pendingReviews ?? 0),
             );
+
+            if (kIsWeb) {
+              PersistentWorkspace.register(
+                context,
+                _webSidebar(
+                  name,
+                  (index) => PersistentWorkspace.returnHome(
+                    context,
+                    () => _selectTab(index),
+                  ),
+                ),
+              );
+              return _buildWebWorkspace(name, switch (_currentTabIndex) {
+                0 => WorkspaceDashboard(
+                  stats: WorkspaceStats(
+                    cards: [
+                      WorkspaceStatData(
+                        title: 'Classes',
+                        value: '$classCount',
+                        subtitle: 'Your active classes',
+                        icon: Icons.class_rounded,
+                        color: const Color(0xFF0891B2),
+                      ),
+                      WorkspaceStatData(
+                        title: 'Students',
+                        value: '$totalEnrolled',
+                        subtitle: 'Currently enrolled',
+                        icon: Icons.people_alt_rounded,
+                        color: const Color(0xFF28C76F),
+                      ),
+                      WorkspaceStatData(
+                        title: 'Pending Reviews',
+                        value: '$pendingReviewCount',
+                        subtitle: 'Awaiting review',
+                        icon: Icons.pending_actions,
+                        color: const Color(0xFFE94560),
+                      ),
+                    ],
+                  ),
+                  content: buildClassesTab(),
+                  actions: [
+                    (
+                      Icons.add,
+                      'Create Class',
+                      () =>
+                          AppNavigation.push(context, const CreateClassPage()),
+                    ),
+                    (
+                      Icons.groups_outlined,
+                      'Manage Students',
+                      () => _selectTab(6),
+                    ),
+                    (
+                      Icons.menu_book_outlined,
+                      'Manage Modules',
+                      () => _selectTab(7),
+                    ),
+                    (
+                      Icons.quiz_outlined,
+                      'Manage Quizzes',
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const _ModuleClassSelector(moduleType: 'quizzes'),
+                        ),
+                      ),
+                    ),
+                    (
+                      Icons.assignment_outlined,
+                      'Assignments',
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const _ModuleClassSelector(
+                            moduleType: 'assignments',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                1 => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    FilledButton.icon(
+                      onPressed: () =>
+                          AppNavigation.push(context, const CreateClassPage()),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create Class'),
+                    ),
+                    const SizedBox(height: 16),
+                    buildClassesTab(),
+                  ],
+                ),
+                2 => _buildDiscussionTab(),
+                3 => const StaffOutcomes(),
+                4 => _buildTeacherProfile(user, profile),
+                5 => const StaffOutcomes(feedback: true),
+                6 => const StaffManagementPage(embedded: true),
+                _ => const StaffManagementPage(embedded: true, modules: true),
+              });
+            }
 
             return PopScope(
               canPop: _currentTabIndex == 0,
@@ -587,7 +739,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             .toList();
 
         return ListView.builder(
-          padding: const EdgeInsets.all(16),
+          shrinkWrap: kIsWeb,
+          physics: kIsWeb ? const NeverScrollableScrollPhysics() : null,
+          padding: kIsWeb ? EdgeInsets.zero : const EdgeInsets.all(16),
           itemCount: classes.length,
           itemBuilder: (context, index) {
             final classData = classes[index];

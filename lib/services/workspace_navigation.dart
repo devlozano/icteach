@@ -33,6 +33,14 @@ class WorkspaceNavigation extends NavigatorObserver {
   String? _role;
   bool _ready = false;
 
+  Future<void> startFreshSession(String uid) async {
+    // Stop the old observer from saving its route stack during login routing.
+    _ready = false;
+    _role = null;
+    _pages.clear();
+    await WorkspacePreferences.resetForSignIn(uid);
+  }
+
   Map<String, dynamic>? describe(Widget page) {
     if (page is _RestoredDestination) return page.data;
     String? kind, classId, className;

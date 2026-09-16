@@ -1,3 +1,4 @@
+import 'services/workspace_navigation.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -91,6 +92,7 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
+      await WorkspaceNavigation.instance.startFreshSession(user.uid);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,

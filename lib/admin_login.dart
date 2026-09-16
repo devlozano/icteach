@@ -1,3 +1,4 @@
+import 'services/workspace_navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -100,6 +101,7 @@ class _AdminLoginPageState extends State<AdminLoginPage>
         return;
       }
 
+      await WorkspaceNavigation.instance.startFreshSession(user.uid);
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).clearSnackBars();
