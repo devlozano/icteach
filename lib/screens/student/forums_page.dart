@@ -1,3 +1,4 @@
+import '../../widgets/fullscreen_image_viewer.dart';
 // screens/student/forums_page.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -165,6 +166,7 @@ class _ForumsPageState extends State<ForumsPage> {
                     post: displayPost,
                     currentUserId: _currentUserId,
                     onTap: () => _viewPost(context, displayPost),
+                    onViews: () => _showViewers(context, displayPost),
                     onLike: () => _toggleLike(displayPost),
                     onDelete: () => _deletePost(displayPost),
                   );
@@ -194,6 +196,60 @@ class _ForumsPageState extends State<ForumsPage> {
   }
 
   // ✅ Helper method to ensure correct role
+  Future<void> _showViewers(BuildContext context, ForumPost post) async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.visibility_outlined),
+            const SizedBox(width: 8),
+            Text('Viewed by (' + post.viewCount.toString() + ')'),
+          ],
+        ),
+        content: SizedBox(
+          width: 360,
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _forumService.getPostViewers(widget.classId, post.id),
+            builder: (context, snapshot) {
+              if (snapshot.hasError)
+                return const Text('Could not load viewers.');
+              if (!snapshot.hasData)
+                return const Center(child: CircularProgressIndicator());
+              final viewers = snapshot.data!;
+              if (viewers.isEmpty) return const Text('No views yet.');
+              return ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 360),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: viewers.length,
+                  itemBuilder: (_, index) {
+                    final viewer = viewers[index];
+                    final name = viewer['name']?.toString() ?? 'User';
+                    return ListTile(
+                      dense: true,
+                      leading: CircleAvatar(
+                        child: Text(name.substring(0, 1).toUpperCase()),
+                      ),
+                      title: Text(name),
+                      subtitle: Text(viewer['role']?.toString() ?? 'student'),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<ForumPost> _ensureCorrectRole(ForumPost post) async {
     // If role is already set correctly (teacher or trainer), return as is
     if (post.authorRole == 'teacher' || post.authorRole == 'trainer') {
@@ -304,6 +360,7 @@ class _ForumPostCard extends StatelessWidget {
   final String? currentUserId;
   final VoidCallback onTap;
   final VoidCallback onLike;
+  final VoidCallback onViews;
   final VoidCallback onDelete;
 
   const _ForumPostCard({
@@ -311,6 +368,7 @@ class _ForumPostCard extends StatelessWidget {
     this.currentUserId,
     required this.onTap,
     required this.onLike,
+    required this.onViews,
     required this.onDelete,
   });
 
@@ -447,14 +505,21 @@ class _ForumPostCard extends StatelessWidget {
                       final imageUrl = post.imageUrls[index];
                       return ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          imageUrl,
-                          width: 180,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => Container(
+                        child: InkWell(
+                          onTap: () => showFullscreenImageGallery(
+                            context,
+                            post.imageUrls,
+                            initialIndex: index,
+                          ),
+                          child: Image.network(
+                            imageUrl,
                             width: 180,
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.broken_image_outlined),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Container(
+                              width: 180,
+                              color: Colors.grey.shade200,
+                              child: const Icon(Icons.broken_image_outlined),
+                            ),
                           ),
                         ),
                       );
@@ -481,11 +546,32 @@ class _ForumPostCard extends StatelessWidget {
                   const SizedBox(width: 16),
 
                   // Views
-                  Icon(Icons.visibility, size: 14, color: Colors.grey.shade500),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${post.viewCount}',
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+                  InkWell(
+                    onTap: onViews,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 3,
+                        vertical: 2,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.visibility,
+                            size: 14,
+                            color: Colors.grey.shade500,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            post.viewCount.toString(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 16),
 

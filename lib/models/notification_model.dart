@@ -27,15 +27,22 @@ class NotificationModel {
     final data = doc.data() as Map<String, dynamic>;
     return NotificationModel(
       id: doc.id,
-      userId: data['userId'] ?? '',
-      title: data['title'] ?? '',
-      message: data['message'] ?? '',
-      type: data['type'] ?? 'general',
-      referenceId: data['referenceId'],
-      isRead: data['isRead'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      readAt: (data['readAt'] as Timestamp?)?.toDate(),
+      userId: data['userId']?.toString() ?? '',
+      title: data['title']?.toString() ?? '',
+      message: data['message']?.toString() ?? '',
+      type: data['type']?.toString() ?? 'general',
+      referenceId: data['referenceId']?.toString(),
+      isRead: data['isRead'] == true,
+      createdAt: _date(data['createdAt']) ?? DateTime.now(),
+      readAt: _date(data['readAt']),
     );
+  }
+
+  static DateTime? _date(Object? value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toFirestore() {

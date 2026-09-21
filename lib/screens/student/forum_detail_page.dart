@@ -1,3 +1,5 @@
+import '../../widgets/forum_viewers_dialog.dart';
+import '../../widgets/fullscreen_image_viewer.dart';
 // screens/student/forum_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -344,13 +346,20 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                             itemBuilder: (context, index) {
                               return ClipRRect(
                                 borderRadius: BorderRadius.circular(10),
-                                child: Image.network(
-                                  post.imageUrls[index],
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Container(
-                                    color: Colors.grey.shade200,
-                                    child: const Icon(
-                                      Icons.broken_image_outlined,
+                                child: InkWell(
+                                  onTap: () => showFullscreenImageGallery(
+                                    context,
+                                    post.imageUrls,
+                                    initialIndex: index,
+                                  ),
+                                  child: Image.network(
+                                    post.imageUrls[index],
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => Container(
+                                      color: Colors.grey.shade200,
+                                      child: const Icon(
+                                        Icons.broken_image_outlined,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -363,22 +372,33 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                         // Stats (views, replies, likes)
                         Row(
                           children: [
-                            // Views
-                            Icon(
-                              Icons.visibility,
-                              size: 16,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${post.viewCount}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
+                            InkWell(
+                              onTap: () => showForumViewersDialog(
+                                context,
+                                _forumService,
+                                widget.classId,
+                                widget.postId,
+                                post.viewCount,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.visibility,
+                                    size: 16,
+                                    color: Colors.grey.shade400,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    post.viewCount.toString(),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade500,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             const SizedBox(width: 16),
-
                             // Replies
                             Icon(
                               Icons.chat_bubble_outline,

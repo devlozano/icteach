@@ -1,3 +1,4 @@
+import '../services/workspace_data.dart';
 // widgets/notification_badge.dart
 import 'package:flutter/material.dart';
 import '../services/notification_service.dart';
@@ -5,10 +6,7 @@ import '../services/notification_service.dart';
 class NotificationBadge extends StatefulWidget {
   final Widget child;
 
-  const NotificationBadge({
-    super.key,
-    required this.child,
-  });
+  const NotificationBadge({super.key, required this.child});
 
   @override
   State<NotificationBadge> createState() => _NotificationBadgeState();
@@ -20,14 +18,20 @@ class _NotificationBadgeState extends State<NotificationBadge> {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<int>(
-      stream: _notificationService.getUnreadCount(),
+      stream: WorkspaceData.watch(
+        'unreadNotifications',
+        () => WorkspaceData.watch(
+          'notifications',
+          _notificationService.getNotifications,
+        ).map((items) => items.where((item) => !item.isRead).length),
+      ),
       builder: (context, snapshot) {
         final count = snapshot.data ?? 0;
 
         return Stack(
           children: [
             widget.child,
-            if (count > 0)
+            if (count > 0 || snapshot.hasError)
               Positioned(
                 right: 0,
                 top: 0,
@@ -42,7 +46,11 @@ class _NotificationBadgeState extends State<NotificationBadge> {
                     minHeight: 16,
                   ),
                   child: Text(
-                    count > 99 ? '99+' : count.toString(),
+                    snapshot.hasError
+                        ? '!'
+                        : count > 99
+                        ? '99+'
+                        : count.toString(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,

@@ -1,3 +1,4 @@
+import 'workspace_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'learning_path_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,39 +10,45 @@ class QuizService {
 
   // ✅ Get quizzes with offline support
   Stream<List<QuizModel>> getQuizzesForClass(String classId) {
-    return _firestore
-        .collection('classes')
-        .doc(classId)
-        .collection('quizzes')
-        .snapshots(
-          includeMetadataChanges: true,
-        ) // ✅ Include metadata for offline
-        .map((snapshot) {
-          final quizzes = snapshot.docs
-              .map((doc) => QuizModel.fromFirestore(doc))
-              .toList();
-          quizzes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return quizzes;
-        });
+    return WorkspaceData.watch(
+      'quizzes/$classId',
+      () => _firestore
+          .collection('classes')
+          .doc(classId)
+          .collection('quizzes')
+          .snapshots(
+            includeMetadataChanges: true,
+          ) // ✅ Include metadata for offline
+          .map((snapshot) {
+            final quizzes = snapshot.docs
+                .map((doc) => QuizModel.fromFirestore(doc))
+                .toList();
+            quizzes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+            return quizzes;
+          }),
+    );
   }
 
   // ✅ Get published quizzes with offline support
   Stream<List<QuizModel>> getPublishedQuizzesForClass(String classId) {
-    return _firestore
-        .collection('classes')
-        .doc(classId)
-        .collection('quizzes')
-        .where('isPublished', isEqualTo: true)
-        .snapshots(
-          includeMetadataChanges: true,
-        ) // ✅ Include metadata for offline
-        .map((snapshot) {
-          final quizzes = snapshot.docs
-              .map((doc) => QuizModel.fromFirestore(doc))
-              .toList();
-          quizzes.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-          return quizzes;
-        });
+    return WorkspaceData.watch(
+      'publishedQuizzes/$classId',
+      () => _firestore
+          .collection('classes')
+          .doc(classId)
+          .collection('quizzes')
+          .where('isPublished', isEqualTo: true)
+          .snapshots(
+            includeMetadataChanges: true,
+          ) // ✅ Include metadata for offline
+          .map((snapshot) {
+            final quizzes = snapshot.docs
+                .map((doc) => QuizModel.fromFirestore(doc))
+                .toList();
+            quizzes.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+            return quizzes;
+          }),
+    );
   }
 
   // Create a new quiz

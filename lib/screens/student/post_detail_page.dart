@@ -1,3 +1,4 @@
+import '../../widgets/forum_viewers_dialog.dart';
 // screens/student/forum_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -53,6 +54,11 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
 
       // Increment view count
       await _forumService.incrementViewCount(widget.classId, widget.postId);
+      final refreshed = await _forumService.getForumPost(
+        widget.classId,
+        widget.postId,
+      );
+      if (mounted) setState(() => _post = refreshed);
     } catch (e) {
       print('Error loading post: $e');
       if (mounted) {
@@ -250,17 +256,30 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                               // Stats (views, replies, likes)
                               Row(
                                 children: [
-                                  Icon(
-                                    Icons.visibility,
-                                    size: 16,
-                                    color: Colors.grey.shade400,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${_post.viewCount}',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade500,
+                                  InkWell(
+                                    onTap: () => showForumViewersDialog(
+                                      context,
+                                      _forumService,
+                                      widget.classId,
+                                      widget.postId,
+                                      _post.viewCount,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.visibility,
+                                          size: 16,
+                                          color: Colors.grey.shade400,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          _post.viewCount.toString(),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                   const SizedBox(width: 16),

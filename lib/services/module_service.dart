@@ -1,3 +1,4 @@
+import 'workspace_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'learning_path_service.dart';
 import '../models/module_model.dart';
@@ -7,37 +8,43 @@ class ModuleService {
 
   // Get modules for a specific class (with ordering in memory)
   Stream<List<ModuleModel>> getModulesForClass(String classId) {
-    return _firestore
-        .collection('classes')
-        .doc(classId)
-        .collection('modules')
-        .snapshots()
-        .map((snapshot) {
-          final modules = snapshot.docs
-              .map((doc) => ModuleModel.fromFirestore(doc))
-              .toList();
-          // Sort in memory by 'order' field
-          modules.sort((a, b) => a.order.compareTo(b.order));
-          return modules;
-        });
+    return WorkspaceData.watch(
+      'modules/$classId',
+      () => _firestore
+          .collection('classes')
+          .doc(classId)
+          .collection('modules')
+          .snapshots()
+          .map((snapshot) {
+            final modules = snapshot.docs
+                .map((doc) => ModuleModel.fromFirestore(doc))
+                .toList();
+            // Sort in memory by 'order' field
+            modules.sort((a, b) => a.order.compareTo(b.order));
+            return modules;
+          }),
+    );
   }
 
   // Get published modules for students (with ordering in memory)
   Stream<List<ModuleModel>> getPublishedModulesForClass(String classId) {
-    return _firestore
-        .collection('classes')
-        .doc(classId)
-        .collection('modules')
-        .where('isPublished', isEqualTo: true)
-        .snapshots()
-        .map((snapshot) {
-          final modules = snapshot.docs
-              .map((doc) => ModuleModel.fromFirestore(doc))
-              .toList();
-          // Sort in memory by 'order' field
-          modules.sort((a, b) => a.order.compareTo(b.order));
-          return modules;
-        });
+    return WorkspaceData.watch(
+      'publishedModules/$classId',
+      () => _firestore
+          .collection('classes')
+          .doc(classId)
+          .collection('modules')
+          .where('isPublished', isEqualTo: true)
+          .snapshots()
+          .map((snapshot) {
+            final modules = snapshot.docs
+                .map((doc) => ModuleModel.fromFirestore(doc))
+                .toList();
+            // Sort in memory by 'order' field
+            modules.sort((a, b) => a.order.compareTo(b.order));
+            return modules;
+          }),
+    );
   }
 
   // Create a new module

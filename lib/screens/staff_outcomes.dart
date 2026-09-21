@@ -1,3 +1,4 @@
+import '../services/workspace_data.dart';
 import '../widgets/summary_print_button.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,57 +19,20 @@ class StaffOutcomes extends StatelessWidget {
   Widget build(BuildContext context) {
     if (admin) return _content(null);
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    if (trainer) {
-      return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(uid)
-            .collection('classes')
-            .snapshots(),
-        builder: (context, memberships) {
-          if (memberships.hasError) {
-            return const Text('Could not load your classes.');
-          }
-          if (!memberships.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final ids = memberships.data!.docs
-              .map((d) => d.data()['classId']?.toString() ?? d.id)
-              .toSet();
-          return _classes(
-            FirebaseFirestore.instance.collection('classes').snapshots(),
-            ids,
-          );
-        },
-      );
-    }
-    return _classes(
-      FirebaseFirestore.instance
-          .collection('classes')
-          .where('teacherId', isEqualTo: uid)
-          .snapshots(),
-      null,
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+      stream: trainer
+          ? WorkspaceData.assignedClasses(uid)
+          : WorkspaceData.teacherClassDocs(uid),
+      builder: (context, snapshot) {
+        if (snapshot.hasError)
+          return const Text('Could not load class monitoring.');
+        if (!snapshot.hasData)
+          return const Center(child: CircularProgressIndicator());
+        return _content(snapshot.data!);
+      },
     );
   }
 
-  Widget _classes(
-    Stream<QuerySnapshot<Map<String, dynamic>>> stream,
-    Set<String>? ids,
-  ) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: stream,
-    builder: (context, snapshot) {
-      if (snapshot.hasError) {
-        return const Text('Could not load class monitoring.');
-      }
-      if (!snapshot.hasData) {
-        return const Center(child: CircularProgressIndicator());
-      }
-      final classes = snapshot.data!.docs
-          .where((d) => ids == null || ids.contains(d.id))
-          .toList();
-      return _content(classes);
-    },
-  );
   Widget _content(List<QueryDocumentSnapshot<Map<String, dynamic>>>? classes) {
     final studentClasses = <String, String>{};
     for (final c
@@ -79,11 +43,10 @@ class StaffOutcomes extends StatelessWidget {
         studentClasses[id] = c.id;
       }
     }
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .where('role', isEqualTo: 'student')
-          .snapshots(),
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+      stream: WorkspaceData.students(
+        admin ? null : studentClasses.keys.toSet(),
+      ),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const Text(
@@ -93,9 +56,7 @@ class StaffOutcomes extends StatelessWidget {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final students = snapshot.data!.docs
-            .where((d) => admin || studentClasses.containsKey(d.id))
-            .toList();
+        final students = snapshot.data!;
         if (feedback) {
           return _SurveySummary(
             studentIds: students.map((d) => d.id).toSet(),

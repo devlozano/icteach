@@ -1,3 +1,5 @@
+import 'widgets/lazy_indexed_stack.dart';
+import 'services/workspace_data.dart';
 import 'widgets/admin_workspace_layout.dart';
 import 'widgets/admin_workspace_sidebar.dart';
 import 'widgets/staff_workspace_header.dart';
@@ -50,7 +52,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     (Icons.groups_outlined, 'Student Management'),
     (Icons.menu_book_outlined, 'Module Management'),
   ];
-  static const _webOrder = [0, 1, 2, 3, 5, 6, 7, 4];
+  // Keep Feedback directly above Profile in the website sidebar.
+  static const _webOrder = [0, 1, 2, 3, 6, 7, 5, 4];
   Widget _webSidebar(String name, ValueChanged<int> select) =>
       AdminWorkspaceSidebar(
         role: 'Teacher',
@@ -96,10 +99,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       return Stream.empty();
     }
 
-    return FirebaseFirestore.instance
-        .collection('classes')
-        .where('teacherId', isEqualTo: user.uid)
-        .snapshots();
+    return WorkspaceData.teacherClasses(user.uid);
   }
 
   String _teacherName(Map<String, dynamic>? profile, User user) {
@@ -340,10 +340,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .snapshots(),
+      stream: WorkspaceData.profile(user.uid),
       builder: (context, snapshot) {
         final profile = snapshot.data?.data();
         final name = _teacherName(profile, user);
@@ -565,28 +562,28 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                               ),
                             ),
                           Expanded(
-                            child: IndexedStack(
+                            child: LazyIndexedStack(
                               index: _currentTabIndex,
                               children: [
-                                _buildHomeTab(
+                                () => _buildHomeTab(
                                   context,
                                   classCount,
                                   totalEnrolled,
                                   pendingReviewCount,
                                 ),
-                                buildClassesTab(),
-                                _buildDiscussionTab(),
-                                SingleChildScrollView(
+                                () => buildClassesTab(),
+                                () => _buildDiscussionTab(),
+                                () => SingleChildScrollView(
                                   padding: const EdgeInsets.all(24),
                                   child: const StaffOutcomes(),
                                 ),
-                                _buildTeacherProfile(user, profile),
-                                SingleChildScrollView(
+                                () => _buildTeacherProfile(user, profile),
+                                () => SingleChildScrollView(
                                   padding: const EdgeInsets.all(24),
                                   child: const StaffOutcomes(feedback: true),
                                 ),
-                                const StaffManagementPage(trainer: false),
-                                const StaffManagementPage(
+                                () => const StaffManagementPage(trainer: false),
+                                () => const StaffManagementPage(
                                   modules: true,
                                   trainer: false,
                                 ),
@@ -1181,10 +1178,7 @@ class _ModuleClassSelectorState extends State<_ModuleClassSelector> {
       return Stream.empty();
     }
 
-    return FirebaseFirestore.instance
-        .collection('classes')
-        .where('teacherId', isEqualTo: user.uid)
-        .snapshots();
+    return WorkspaceData.teacherClasses(user.uid);
   }
 
   @override

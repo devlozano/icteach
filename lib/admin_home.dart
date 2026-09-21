@@ -1,3 +1,4 @@
+import 'services/workspace_data.dart';
 import 'widgets/staff_workspace_header.dart';
 import 'admin/manage_teachers_page.dart';
 import 'widgets/performance_pie_chart.dart';
@@ -61,10 +62,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .snapshots(),
+      stream: WorkspaceData.profile(user.uid),
       builder: (context, snapshot) {
         final profile = snapshot.data?.data();
         final name = _adminName(profile, user);
@@ -376,10 +374,13 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
               const SizedBox(height: 16),
               StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .where('role', isEqualTo: 'teacher')
-                    .snapshots(),
+                stream: WorkspaceData.watch(
+                  'adminUsers/teacher',
+                  () => FirebaseFirestore.instance
+                      .collection('users')
+                      .where('role', isEqualTo: 'teacher')
+                      .snapshots(),
+                ),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const _LoadingShimmer(height: 150);
@@ -870,18 +871,24 @@ class _SideNav extends StatelessWidget {
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.only(left: 14),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: _kAccentBlue.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Admin Panel',
-                style: TextStyle(
-                  color: _kAccentBlue,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: _kAccentBlue.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Admin Panel',
+                  style: TextStyle(
+                    color: _kAccentBlue,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -2506,11 +2513,12 @@ class _PerformanceContent extends StatefulWidget {
 
 class _PerformanceContentState extends State<_PerformanceContent> {
   final QuizService _quizService = QuizService();
+  late final _leaderboard = _quizService.getGlobalLeaderboard();
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _quizService.getGlobalLeaderboard(),
+      future: _leaderboard,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const _LoadingShimmer(height: 300);

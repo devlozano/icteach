@@ -21,10 +21,16 @@ class PersonalSummaryService {
           .toList();
     }
 
-    final quizzes = await records('quiz_results');
-    final modules = await records('module_progress', nested: true);
-    final simulations = await records('simulation_progress', nested: true);
-    final pre = await records('pre_assessments');
+    final results = await Future.wait([
+      records('quiz_results'),
+      records('module_progress', nested: true),
+      records('simulation_progress', nested: true),
+      records('pre_assessments'),
+    ]);
+    final quizzes = results[0],
+        modules = results[1],
+        simulations = results[2],
+        pre = results[3];
     return [
       SummarySection(
         'Student',
@@ -78,20 +84,29 @@ class PersonalSummaryService {
 class AdminSummaryService {
   static Future<List<SummarySection>> load() async {
     final db = FirebaseFirestore.instance;
-    final students =
-        (await db.collection('users').where('role', isEqualTo: 'student').get())
-            .docs;
-    final classes = (await db.collection('classes').get()).docs;
-    final quizzes = (await db.collection('quiz_results').get()).docs;
+    final data = await Future.wait([
+      db.collection('users').where('role', isEqualTo: 'student').get(),
+      db.collection('classes').get(),
+      db.collection('quiz_results').get(),
+    ]);
+    final students = data[0].docs,
+        classes = data[1].docs,
+        quizzes = data[2].docs;
     final ids = students.map((s) => s.id).toSet();
     final moduleRows = <List<Object?>>[];
-    for (final c in classes) {
-      final modules = (await c.reference.collection('modules').get()).docs;
-      moduleRows.add([
-        c.data()['name'] ?? c.id,
-        modules.length,
-        modules.where((m) => m.data()['isPublished'] == true).length,
-      ]);
+    for (var offset = 0; offset < classes.length; offset += 10) {
+      final batch = classes.skip(offset).take(10).toList();
+      final content = await Future.wait(
+        batch.map((c) => c.reference.collection('modules').get()),
+      );
+      for (var i = 0; i < batch.length; i++) {
+        final modules = content[i].docs;
+        moduleRows.add([
+          batch[i].data()['name'] ?? batch[i].id,
+          modules.length,
+          modules.where((m) => m.data()['isPublished'] == true).length,
+        ]);
+      }
     }
     return [
       SummarySection(

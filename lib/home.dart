@@ -1,3 +1,6 @@
+import 'widgets/retained_future_builder.dart';
+import 'widgets/lazy_indexed_stack.dart';
+import 'services/workspace_data.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'screens/student/student_questionnaires_page.dart';
 import 'services/feedback_eligibility.dart';
@@ -27,7 +30,6 @@ import 'package:intl/intl.dart';
 import 'widgets/leaderboard_chart.dart';
 import 'data/simulation_data.dart';
 import 'data/pre_assessment_data.dart';
-import 'services/school_year_service.dart';
 import 'widgets/user_roles_button.dart';
 import 'services/workspace_preferences.dart';
 
@@ -88,18 +90,15 @@ class _HomePageState extends State<HomePage> {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .snapshots(),
+      stream: WorkspaceData.profile(user.uid),
       builder: (context, snapshot) {
         final profile = snapshot.data?.data();
         final course =
             profile?['course'] as String? ??
             'CSS NC II - Computer System Servicing';
 
-        return FutureBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-          future: SchoolYearService.activeMemberships(user.uid),
+        return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+          stream: WorkspaceData.activeMemberships(user.uid),
           builder: (context, classSnapshot) {
             _classId = null;
             _className = null;
@@ -135,14 +134,14 @@ class _HomePageState extends State<HomePage> {
                   child: Column(
                     children: [
                       Expanded(
-                        child: IndexedStack(
+                        child: LazyIndexedStack(
                           index: _currentTabIndex,
                           children: [
-                            _buildHomeContent(course),
-                            _buildModulesContent(),
-                            _buildForumContent(),
-                            _buildProgressContent(user.uid),
-                            _buildProfileContent(profile, user),
+                            () => _buildHomeContent(course),
+                            () => _buildModulesContent(),
+                            () => _buildForumContent(),
+                            () => _buildProgressContent(user.uid),
+                            () => _buildProfileContent(profile, user),
                           ],
                         ),
                       ),
@@ -236,10 +235,8 @@ class _HomePageState extends State<HomePage> {
   Widget _buildModulesContent() {
     final user = FirebaseAuth.instance.currentUser;
 
-    return FutureBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-      future: user != null
-          ? SchoolYearService.activeMemberships(user.uid)
-          : null,
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+      stream: user != null ? WorkspaceData.activeMemberships(user.uid) : null,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -378,10 +375,8 @@ class _HomePageState extends State<HomePage> {
   Widget _buildProgressCard() {
     final user = FirebaseAuth.instance.currentUser;
 
-    return FutureBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-      future: user != null
-          ? SchoolYearService.activeMemberships(user.uid)
-          : null,
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+      stream: user != null ? WorkspaceData.activeMemberships(user.uid) : null,
       builder: (context, snapshot) {
         final hasClass = snapshot.hasData && snapshot.data!.isNotEmpty;
 
@@ -402,8 +397,10 @@ class _HomePageState extends State<HomePage> {
           }
         }
 
-        return FutureBuilder<int>(
-          future: hasClass
+        return RetainedFutureBuilder<int>(
+          requestKey: _classId,
+          active: _currentTabIndex == 0,
+          load: () => hasClass
               ? ModuleService().getModuleCount(classId)
               : Future.value(0),
           builder: (context, moduleSnap) {
@@ -604,8 +601,10 @@ class _HomePageState extends State<HomePage> {
 
   // ✅ Updated Quick Access Grid with Quizzes
   Widget _buildQuickAccessGrid() {
-    return FutureBuilder(
-      future: (_classId != null && _classId!.isNotEmpty)
+    return RetainedFutureBuilder(
+      requestKey: _classId,
+      active: _currentTabIndex == 0,
+      load: () => (_classId != null && _classId!.isNotEmpty)
           ? Future.wait([
               ModuleService().getModuleCount(_classId!),
               _quizService
@@ -787,8 +786,10 @@ class _HomePageState extends State<HomePage> {
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
-          FutureBuilder<List<dynamic>>(
-            future: Future.wait([
+          RetainedFutureBuilder<List<dynamic>>(
+            requestKey: _classId,
+            active: _currentTabIndex == 3,
+            load: () => Future.wait([
               (_classId != null && _classId!.isNotEmpty)
                   ? _quizService.getStudentQuizResultsForClass(
                       userId,
@@ -987,8 +988,10 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           const SizedBox(height: 16),
-          FutureBuilder<List<QuizResult>>(
-            future: _quizService.getStudentQuizResults(userId),
+          RetainedFutureBuilder<List<QuizResult>>(
+            requestKey: _classId,
+            active: _currentTabIndex == 3,
+            load: () => _quizService.getStudentQuizResults(userId),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const SizedBox(
@@ -1105,8 +1108,10 @@ class _HomePageState extends State<HomePage> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                FutureBuilder<List<Map<String, dynamic>>>(
-                  future: (_classId != null && _classId!.isNotEmpty)
+                RetainedFutureBuilder<List<Map<String, dynamic>>>(
+                  requestKey: _classId,
+                  active: _currentTabIndex == 3,
+                  load: () => (_classId != null && _classId!.isNotEmpty)
                       ? _quizService.getClassLeaderboard(_classId!)
                       : Future.value([]),
                   builder: (context, snapshot) {
@@ -1423,10 +1428,7 @@ class _HomePageState extends State<HomePage> {
                       appBar: AppBar(title: const Text('System feedback')),
                       body:
                           StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                            stream: FirebaseFirestore.instance
-                                .collection('users')
-                                .doc(user.uid)
-                                .snapshots(),
+                            stream: WorkspaceData.profile(user.uid),
                             builder: (context, snapshot) =>
                                 FeedbackEligibility.isQualified(
                                   snapshot.data?.data(),

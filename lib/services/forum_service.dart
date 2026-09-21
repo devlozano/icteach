@@ -1,3 +1,4 @@
+import 'workspace_data.dart';
 // services/forum_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -10,15 +11,20 @@ class ForumService {
 
   // Get forum posts for a class
   Stream<List<ForumPost>> getForumPosts(String classId) {
-    return _firestore
-        .collection('classes')
-        .doc(classId)
-        .collection('forum_posts')
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) => ForumPost.fromFirestore(doc)).toList();
-    });
+    return WorkspaceData.watch(
+      'forumPosts/$classId',
+      () => _firestore
+          .collection('classes')
+          .doc(classId)
+          .collection('forum_posts')
+          .orderBy('createdAt', descending: true)
+          .snapshots()
+          .map((snapshot) {
+            return snapshot.docs
+                .map((doc) => ForumPost.fromFirestore(doc))
+                .toList();
+          }),
+    );
   }
 
   // Get a single post with replies
@@ -47,7 +53,8 @@ class ForumService {
     final userData = userDoc.data() ?? {};
 
     String authorRole = userData['role']?.toString() ?? 'student';
-    String authorName = userData['displayName']?.toString() ??
+    String authorName =
+        userData['displayName']?.toString() ??
         userData['name']?.toString() ??
         user.displayName ??
         'Unknown';
@@ -117,17 +124,54 @@ class ForumService {
     }
   }
 
-  // Increment view count
+  // Count one view per signed-in user for each post. The viewer document is the idempotency key.
   Future<void> incrementViewCount(String classId, String postId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
     final postRef = _firestore
         .collection('classes')
         .doc(classId)
         .collection('forum_posts')
         .doc(postId);
-
-    await postRef.update({
-      'viewCount': FieldValue.increment(1),
+    final viewerRef = postRef.collection('viewers').doc(user.uid);
+    await _firestore.runTransaction((transaction) async {
+      final viewer = await transaction.get(viewerRef);
+      if (viewer.exists) return;
+      final profileRef = _firestore.collection('users').doc(user.uid);
+      final profile = await transaction.get(profileRef);
+      final data = profile.data() ?? const <String, dynamic>{};
+      transaction.set(viewerRef, {
+        'userId': user.uid,
+        'name':
+            data['displayName']?.toString() ??
+            data['name']?.toString() ??
+            user.displayName ??
+            user.email ??
+            'User',
+        'role': data['role']?.toString() ?? 'student',
+        'viewedAt': FieldValue.serverTimestamp(),
+      });
+      transaction.update(postRef, {'viewCount': FieldValue.increment(1)});
     });
+  }
+
+  Stream<List<Map<String, dynamic>>> getPostViewers(
+    String classId,
+    String postId,
+  ) {
+    return _firestore
+        .collection('classes')
+        .doc(classId)
+        .collection('forum_posts')
+        .doc(postId)
+        .collection('viewers')
+        .orderBy('viewedAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => {'id': doc.id, ...doc.data()})
+              .toList(),
+        );
   }
 
   // Get replies for a post
@@ -141,8 +185,10 @@ class ForumService {
         .orderBy('createdAt', descending: false)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) => ForumReply.fromFirestore(doc)).toList();
-    });
+          return snapshot.docs
+              .map((doc) => ForumReply.fromFirestore(doc))
+              .toList();
+        });
   }
 
   // Add a reply with notification
@@ -157,7 +203,8 @@ class ForumService {
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
     final userData = userDoc.data() ?? {};
     final authorRole = userData['role']?.toString() ?? 'student';
-    final authorName = userData['displayName']?.toString() ??
+    final authorName =
+        userData['displayName']?.toString() ??
         userData['name']?.toString() ??
         user.displayName ??
         'Unknown';
@@ -192,9 +239,9 @@ class ForumService {
         .collection('forum_posts')
         .doc(postId)
         .update({
-      'replyCount': FieldValue.increment(1),
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+          'replyCount': FieldValue.increment(1),
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
 
     // ✅ Send notification to all users in class EXCEPT the replier
     await _notificationService.notifyNewForumReply(
@@ -210,7 +257,10 @@ class ForumService {
 
   // Like a reply
   Future<void> toggleLikeReply(
-      String classId, String postId, String replyId) async {
+    String classId,
+    String postId,
+    String replyId,
+  ) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 

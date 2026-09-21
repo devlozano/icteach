@@ -1,3 +1,5 @@
+import '../join_class.dart';
+import '../services/workspace_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -16,47 +18,23 @@ class StaffManagementPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    if (!trainer)
-      return _classes(
-        FirebaseFirestore.instance
-            .collection('classes')
-            .where('teacherId', isEqualTo: uid)
-            .snapshots(),
-      );
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('classes')
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.hasError)
-          return const Center(child: Text('Could not load assigned classes.'));
-        if (!snapshot.hasData)
-          return const Center(child: CircularProgressIndicator());
-        return _classes(
-          FirebaseFirestore.instance.collection('classes').snapshots(),
-          ids: snapshot.data!.docs
-              .map((d) => d.data()['classId']?.toString() ?? d.id)
-              .toSet(),
-        );
-      },
+    return _classes(
+      trainer
+          ? WorkspaceData.assignedClasses(uid)
+          : WorkspaceData.teacherClassDocs(uid),
     );
   }
 
   Widget _classes(
-    Stream<QuerySnapshot<Map<String, dynamic>>> stream, {
-    Set<String>? ids,
-  }) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> stream,
+  ) => StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
     stream: stream,
     builder: (context, snapshot) {
       if (snapshot.hasError)
         return const Center(child: Text('Could not load class management.'));
       if (!snapshot.hasData)
         return const Center(child: CircularProgressIndicator());
-      final classes = snapshot.data!.docs
-          .where((d) => ids == null || ids.contains(d.id))
-          .toList();
+      final classes = snapshot.data!;
       return ListView(
         shrinkWrap: embedded,
         physics: embedded ? const NeverScrollableScrollPhysics() : null,
@@ -73,6 +51,18 @@ class StaffManagementPage extends StatelessWidget {
                 : 'Choose a class to view and manage enrolled students.',
           ),
           const SizedBox(height: 20),
+          if (trainer)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: FilledButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const JoinClassPage()),
+                ),
+                icon: const Icon(Icons.add),
+                label: const Text('Join Class'),
+              ),
+            ),
+          if (trainer) const SizedBox(height: 16),
           if (classes.isEmpty) const Text('No assigned classes yet.'),
           for (final c in classes)
             Card(

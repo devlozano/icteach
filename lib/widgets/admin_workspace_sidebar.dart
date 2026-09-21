@@ -32,9 +32,8 @@ class AdminWorkspaceSidebar extends StatelessWidget {
             colors: [Color(0xFF0F172A), Color(0xFF162A3D)],
           ),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
           children: [
             const SizedBox(height: 4),
             Row(
@@ -54,12 +53,14 @@ class AdminWorkspaceSidebar extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'ICTeach',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 18,
+                const Expanded(
+                  child: Text(
+                    'ICTeach',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
               ],
@@ -67,41 +68,37 @@ class AdminWorkspaceSidebar extends StatelessWidget {
             const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.only(left: 14),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _kAccentBlue.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  '$role Panel',
-                  style: TextStyle(
-                    color: _kAccentBlue,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _kAccentBlue.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$role Panel',
+                    style: const TextStyle(
+                      color: _kAccentBlue,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
               ),
             ),
             const SizedBox(height: 24),
 
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  for (var i = 0; i < items.length; i++)
-                    _NavTile(
-                      icon: items[i].$1,
-                      label: items[i].$2,
-                      selected: selectedIndex == i,
-                      onTap: () => onSelected(i),
-                    ),
-                ],
+            for (var i = 0; i < items.length; i++)
+              _NavTile(
+                icon: items[i].$1,
+                label: items[i].$2,
+                selected: selectedIndex == i,
+                onTap: () => onSelected(i),
               ),
-            ),
             const Divider(color: Colors.white24, height: 20),
             const SizedBox(height: 12),
             Container(

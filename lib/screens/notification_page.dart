@@ -1,3 +1,4 @@
+import '../services/workspace_data.dart';
 // screens/notification_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,23 +14,33 @@ import '../screens/teacher/manage_assignments_page.dart';
 import '../screens/teacher/manage_modules_page.dart';
 
 class NotificationPage extends StatefulWidget {
-  const NotificationPage({super.key});
+  const NotificationPage({super.key, this.service, this.loadRole});
+  final NotificationService? service;
+  final Future<String?> Function()? loadRole;
 
   @override
   State<NotificationPage> createState() => _NotificationPageState();
 }
 
 class _NotificationPageState extends State<NotificationPage> {
-  final NotificationService _notificationService = NotificationService();
+  late final NotificationService _notificationService;
+  late Stream<List<NotificationModel>> _notifications;
   String? _userRole;
+  late final Future<void> _roleReady;
 
   @override
   void initState() {
     super.initState();
-    _getCurrentUser();
+    _notificationService = widget.service ?? NotificationService();
+    _notifications = _notificationService.getNotifications();
+    _roleReady = _getCurrentUser();
   }
 
   Future<void> _getCurrentUser() async {
+    if (widget.loadRole != null) {
+      _userRole = await widget.loadRole!();
+      return;
+    }
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
@@ -37,7 +48,7 @@ class _NotificationPageState extends State<NotificationPage> {
             .collection('users')
             .doc(user.uid)
             .get();
-        if (doc.exists) {
+        if (doc.exists && mounted) {
           final data = doc.data();
           setState(() {
             _userRole = data?['role']?.toString() ?? 'student';
@@ -55,9 +66,15 @@ class _NotificationPageState extends State<NotificationPage> {
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
         title: const Text('Notifications'),
-        backgroundColor: const Color(0xFF0B2B4A),
-        foregroundColor: Colors.white,
+        backgroundColor: _userRole == 'admin'
+            ? Colors.white
+            : const Color(0xFF0B2B4A),
+        foregroundColor: _userRole == 'admin'
+            ? const Color(0xFF0F172A)
+            : Colors.white,
         elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        shadowColor: const Color(0xFFDCE4EC),
         actions: [
           TextButton(
             onPressed: _markAllAsRead,
@@ -69,7 +86,12 @@ class _NotificationPageState extends State<NotificationPage> {
         ],
       ),
       body: StreamBuilder<List<NotificationModel>>(
-        stream: _notificationService.getNotifications(),
+        stream: widget.service != null
+            ? _notifications
+            : WorkspaceData.watch(
+                'notifications',
+                _notificationService.getNotifications,
+              ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -85,7 +107,10 @@ class _NotificationPageState extends State<NotificationPage> {
                   Text('Error: ${snapshot.error}'),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => setState(() {}),
+                    onPressed: () => setState(
+                      () => _notifications = _notificationService
+                          .getNotifications(),
+                    ),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -121,7 +146,7 @@ class _NotificationPageState extends State<NotificationPage> {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
             itemCount: notifications.length,
             itemBuilder: (context, index) {
               final notification = notifications[index];
@@ -138,185 +163,61 @@ class _NotificationPageState extends State<NotificationPage> {
   }
 
   void _handleNotificationTap(NotificationModel notification) async {
-    // Mark as read
-    await _notificationService.markAsRead(notification.id);
-
-    // ✅ Get the class ID from the notification's referenceId
-    final classId = notification.referenceId;
-
-    if (classId == null || classId.isEmpty) {
-      _showErrorSnackbar('Class information not available');
-      return;
-    }
-
-    // ✅ Get class name from the class document
-    String className = 'Class';
     try {
-      final classDoc = await FirebaseFirestore.instance
+      await _notificationService.markAsRead(notification.id);
+      await _roleReady;
+      if (!mounted) return;
+      if (notification.type == 'grade' || notification.type == 'general') {
+        _showGradeDialog(context, notification);
+        return;
+      }
+      final classId = notification.referenceId;
+      if (classId == null || classId.isEmpty) {
+        _showErrorSnackbar('Class information not available');
+        return;
+      }
+      final classroom = await FirebaseFirestore.instance
           .collection('classes')
           .doc(classId)
           .get();
-      if (classDoc.exists) {
-        final data = classDoc.data();
-        className =
-            data?['name']?.toString() ??
-            data?['className']?.toString() ??
-            'Class';
+      if (!mounted) return;
+      if (!classroom.exists) {
+        _showErrorSnackbar('This class is no longer available.');
+        return;
       }
-    } catch (e) {
-      print('Error getting class name: $e');
+      final className =
+          (classroom.data()?['name'] ??
+                  classroom.data()?['className'] ??
+                  'Class')
+              .toString();
+      final staff = ['admin', 'teacher', 'trainer'].contains(_userRole);
+      final Widget? destination = switch (notification.type) {
+        'quiz' =>
+          staff
+              ? ManageQuizzesPage(classId: classId, className: className)
+              : StudentQuizzesPage(classId: classId, className: className),
+        'assignment' =>
+          staff
+              ? ManageAssignmentsPage(classId: classId, className: className)
+              : StudentAssignmentsPage(classId: classId, className: className),
+        'module' =>
+          staff
+              ? ManageModulesPage(classId: classId, className: className)
+              : ModuleViewPage(classId: classId, className: className),
+        'forum' => ForumsPage(classId: classId, className: className),
+        _ => null,
+      };
+      if (destination != null) {
+        Navigator.of(
+          context,
+        ).pushReplacement(MaterialPageRoute<void>(builder: (_) => destination));
+      } else {
+        _showGradeDialog(context, notification);
+      }
+    } catch (_) {
+      if (mounted)
+        _showErrorSnackbar('Could not open this notification. Please retry.');
     }
-
-    // Navigate based on notification type and user role
-    switch (notification.type) {
-      case 'quiz':
-        _navigateToQuiz(context, notification, classId, className);
-        break;
-      case 'assignment':
-        _navigateToAssignment(context, notification, classId, className);
-        break;
-      case 'forum':
-        _navigateToForum(context, notification, classId, className);
-        break;
-      case 'module':
-        _navigateToModule(context, notification, classId, className);
-        break;
-      case 'grade':
-        _navigateToGrade(context, notification);
-        break;
-      default:
-        Navigator.pop(context);
-    }
-  }
-
-  void _navigateToQuiz(
-    BuildContext context,
-    NotificationModel notification,
-    String classId,
-    String className,
-  ) {
-    // Close notification page
-    Navigator.pop(context);
-
-    // Navigate based on user role
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_userRole == 'teacher' || _userRole == 'trainer') {
-        // Teacher/Trainer: Go to manage quizzes
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ManageQuizzesPage(classId: classId, className: className),
-          ),
-        );
-      } else {
-        // Student: Go to take quizzes
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                StudentQuizzesPage(classId: classId, className: className),
-          ),
-        );
-      }
-    });
-  }
-
-  void _navigateToAssignment(
-    BuildContext context,
-    NotificationModel notification,
-    String classId,
-    String className,
-  ) {
-    // Close notification page
-    Navigator.pop(context);
-
-    // Navigate based on user role
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_userRole == 'teacher' || _userRole == 'trainer') {
-        // Teacher/Trainer: Go to manage assignments
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ManageAssignmentsPage(classId: classId, className: className),
-          ),
-        );
-      } else {
-        // Student: Go to view assignments
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                StudentAssignmentsPage(classId: classId, className: className),
-          ),
-        );
-      }
-    });
-  }
-
-  void _navigateToForum(
-    BuildContext context,
-    NotificationModel notification,
-    String classId,
-    String className,
-  ) {
-    // Close notification page
-    Navigator.pop(context);
-
-    // ✅ Navigate to forums for all roles
-    Future.delayed(const Duration(milliseconds: 100), () {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              ForumsPage(classId: classId, className: className),
-        ),
-      );
-    });
-  }
-
-  void _navigateToModule(
-    BuildContext context,
-    NotificationModel notification,
-    String classId,
-    String className,
-  ) {
-    // Close notification page
-    Navigator.pop(context);
-
-    // Navigate based on user role
-    Future.delayed(const Duration(milliseconds: 100), () {
-      if (_userRole == 'teacher' || _userRole == 'trainer') {
-        // Teacher/Trainer: Go to manage modules
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ManageModulesPage(classId: classId, className: className),
-          ),
-        );
-      } else {
-        // Student: Go to view modules
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ModuleViewPage(classId: classId, className: className),
-          ),
-        );
-      }
-    });
-  }
-
-  void _navigateToGrade(BuildContext context, NotificationModel notification) {
-    // Close notification page
-    Navigator.pop(context);
-
-    // Show grade dialog
-    Future.delayed(const Duration(milliseconds: 100), () {
-      _showGradeDialog(context, notification);
-    });
   }
 
   void _showGradeDialog(BuildContext context, NotificationModel notification) {
@@ -346,11 +247,13 @@ class _NotificationPageState extends State<NotificationPage> {
                 children: [
                   const Icon(Icons.check_circle, color: Colors.green),
                   const SizedBox(width: 8),
-                  Text(
-                    'Check your grades in the Progress tab',
-                    style: TextStyle(
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.w500,
+                  Flexible(
+                    child: Text(
+                      'Check your grades in the Progress tab',
+                      style: TextStyle(
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -378,28 +281,29 @@ class _NotificationPageState extends State<NotificationPage> {
     );
   }
 
-  Future<void> _deleteNotification(String id) async {
-    await _notificationService.deleteNotification(id);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Notification deleted'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+  Future<bool> _deleteNotification(String id) async {
+    try {
+      await _notificationService.deleteNotification(id);
+      return true;
+    } catch (_) {
+      if (mounted)
+        _showErrorSnackbar('Could not delete this notification. Please retry.');
+      return false;
     }
   }
 
   Future<void> _markAllAsRead() async {
-    await _notificationService.markAllAsRead();
-    if (mounted) {
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('All notifications marked as read'),
-          duration: Duration(seconds: 2),
-        ),
-      );
+    try {
+      await _notificationService.markAllAsRead();
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('All notifications marked as read')),
+        );
+    } catch (_) {
+      if (mounted)
+        _showErrorSnackbar(
+          'Could not mark notifications as read. Please retry.',
+        );
     }
   }
 }
@@ -408,7 +312,7 @@ class _NotificationPageState extends State<NotificationPage> {
 class _NotificationCard extends StatelessWidget {
   final NotificationModel notification;
   final VoidCallback onTap;
-  final VoidCallback onDismiss;
+  final Future<bool> Function() onDismiss;
 
   const _NotificationCard({
     required this.notification,
@@ -423,7 +327,7 @@ class _NotificationCard extends StatelessWidget {
 
     return Dismissible(
       key: Key(notification.id),
-      onDismissed: (_) => onDismiss(),
+      confirmDismiss: (_) => onDismiss(),
       background: Container(
         decoration: BoxDecoration(
           color: Colors.red.shade100,

@@ -35,6 +35,7 @@ class StaffMobileNav extends StatelessWidget {
             (Icons.menu_book_outlined, 'Modules'),
           ];
     final primary = trainer ? [0, 6, 5] : [0, 1, 7];
+    final moreOrder = trainer ? [1, 2, 3, 4] : [2, 3, 5, 6, 4];
     final selected = primary.indexOf(currentIndex);
     return NavigationBar(
       selectedIndex: selected < 0 ? 3 : selected,
@@ -51,17 +52,16 @@ class StaffMobileNav extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (var i = 0; i < items.length; i++)
-                  if (!primary.contains(i))
-                    ListTile(
-                      leading: Icon(items[i].$1),
-                      title: Text(items[i].$2),
-                      selected: currentIndex == i,
-                      trailing: currentIndex == i
-                          ? const Icon(Icons.check)
-                          : null,
-                      onTap: () => Navigator.pop(context, i),
-                    ),
+                for (final i in moreOrder)
+                  ListTile(
+                    leading: Icon(items[i].$1),
+                    title: Text(items[i].$2),
+                    selected: currentIndex == i,
+                    trailing: currentIndex == i
+                        ? const Icon(Icons.check)
+                        : null,
+                    onTap: () => Navigator.pop(context, i),
+                  ),
                 const SizedBox(height: 16),
               ],
             ),

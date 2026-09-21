@@ -398,7 +398,7 @@ class _AdminLoginPageState extends State<AdminLoginPage>
                 Row(
                   children: [
                     Expanded(child: Divider(color: Colors.blueGrey.shade100)),
-                    Flexible(
+                    Expanded(
                       flex: 6,
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 12),

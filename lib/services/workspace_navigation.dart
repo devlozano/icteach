@@ -1,3 +1,4 @@
+import 'workspace_data.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'workspace_preferences.dart';
@@ -34,6 +35,7 @@ class WorkspaceNavigation extends NavigatorObserver {
   bool _ready = false;
 
   Future<void> startFreshSession(String uid) async {
+    WorkspaceData.clear();
     // Stop the old observer from saving its route stack during login routing.
     _ready = false;
     _role = null;

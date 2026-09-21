@@ -1,3 +1,4 @@
+import '../services/workspace_data.dart';
 import 'package:flutter/material.dart';
 import '../services/workspace_navigation.dart';
 
@@ -7,6 +8,7 @@ class PersistentWorkspace extends StatelessWidget {
   const PersistentWorkspace({super.key, required this.child});
   static final revision = ValueNotifier<int>(0);
   static void clear() {
+    WorkspaceData.clear();
     navigation = null;
     homeRoute = null;
     revision.value++;
@@ -27,25 +29,29 @@ class PersistentWorkspace extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => ValueListenableBuilder<int>(
-    valueListenable: revision,
-    builder: (context, _, _) => ValueListenableBuilder<Route<dynamic>?>(
-      valueListenable: WorkspaceNavigation.instance.topPage,
-      builder: (context, topPage, _) {
-        if (topPage == null ||
-            topPage == homeRoute ||
-            homeRoute?.isActive != true ||
-            navigation == null ||
-            MediaQuery.sizeOf(context).width < 1000) {
-          return child;
-        }
-        return Row(
-          children: [
-            navigation!,
-            Expanded(child: child),
-          ],
-        );
-      },
+  Widget build(BuildContext context) => Overlay.wrap(
+    // The persistent sidebar sits beside the Navigator, outside its Overlay.
+    // Give its tooltips an overlay while keeping the Navigator mounted.
+    child: ValueListenableBuilder<int>(
+      valueListenable: revision,
+      builder: (context, _, _) => ValueListenableBuilder<Route<dynamic>?>(
+        valueListenable: WorkspaceNavigation.instance.topPage,
+        builder: (context, topPage, _) {
+          if (topPage == null ||
+              topPage == homeRoute ||
+              homeRoute?.isActive != true ||
+              navigation == null ||
+              MediaQuery.sizeOf(context).width < 1000) {
+            return child;
+          }
+          return Row(
+            children: [
+              navigation!,
+              Expanded(child: child),
+            ],
+          );
+        },
+      ),
     ),
   );
 }

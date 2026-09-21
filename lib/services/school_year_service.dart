@@ -11,10 +11,21 @@ class SchoolYearService {
         .collection('classes')
         .get();
     final active = <QueryDocumentSnapshot<Map<String, dynamic>>>[];
-    for (final membership in memberships.docs) {
-      final classroom = await db.collection('classes').doc(membership.id).get();
-      if (classroom.exists && classroom.data()?['status'] != 'archived')
-        active.add(membership);
+    for (var offset = 0; offset < memberships.docs.length; offset += 10) {
+      final batch = memberships.docs.skip(offset).take(10).toList();
+      final classrooms = await Future.wait(
+        batch.map(
+          (membership) => db
+              .collection('classes')
+              .doc(membership.data()['classId']?.toString() ?? membership.id)
+              .get(),
+        ),
+      );
+      for (var i = 0; i < batch.length; i++) {
+        if (classrooms[i].exists &&
+            classrooms[i].data()?['status'] != 'archived')
+          active.add(batch[i]);
+      }
     }
     active.sort(
       (a, b) =>

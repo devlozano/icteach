@@ -180,9 +180,9 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           .collection('students')
           .get();
 
-      final Map<String, Map<String, dynamic>> subDataMap = {};
+      final subDataMap = <String, Map<String, dynamic>>{};
       for (final doc in studentsSubSnapshot.docs) {
-        final subData = doc.data() as Map<String, dynamic>? ?? {};
+        final subData = doc.data();
         final uid = subData['uid']?.toString() ?? doc.id;
         subDataMap[uid] = subData;
       }

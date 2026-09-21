@@ -1,3 +1,4 @@
+import '../services/workspace_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../screens/teacher/manage_modules_page.dart';
@@ -11,7 +12,10 @@ class ContentOverviewPage extends StatelessWidget {
   Widget build(
     BuildContext context,
   ) => StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: FirebaseFirestore.instance.collection('classes').snapshots(),
+    stream: WorkspaceData.watch(
+      'adminClasses',
+      () => FirebaseFirestore.instance.collection('classes').snapshots(),
+    ),
     builder: (context, snapshot) {
       if (snapshot.hasError) {
         return const Center(
@@ -46,7 +50,10 @@ class ContentOverviewPage extends StatelessWidget {
                 children: [
                   for (final kind in ['modules', 'quizzes', 'assignments'])
                     StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream: classroom.reference.collection(kind).snapshots(),
+                      stream: WorkspaceData.watch(
+                        'classContent/' + classroom.id + '/' + kind,
+                        () => classroom.reference.collection(kind).snapshots(),
+                      ),
                       builder: (context, content) => ListTile(
                         title: Text(kind[0].toUpperCase() + kind.substring(1)),
                         subtitle: Text(

@@ -1,53 +1,73 @@
+import 'dart:async';
 // services/notification_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/notification_model.dart';
 
 class NotificationService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  NotificationService({
+    FirebaseFirestore? firestore,
+    Stream<String?>? userIds,
+    String? Function()? currentUserId,
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _userIds = userIds,
+       _currentUserId =
+           currentUserId ?? (() => FirebaseAuth.instance.currentUser?.uid);
+  final FirebaseFirestore _firestore;
+  final Stream<String?>? _userIds;
+  final String? Function() _currentUserId;
 
-  // Get notifications for current user
-  Stream<List<NotificationModel>> getNotifications() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print('❌ getNotifications: No user logged in');
-      return Stream.value([]);
-    }
+  // Follow auth restoration and account switches instead of caching an empty
+  // result when Firebase has not restored the web session yet.
+  Stream<List<NotificationModel>> getNotifications() => Stream.multi((output) {
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? records;
+    int generation = 0;
+    bool cancelled = false;
+    final accounts =
+        (_userIds ??
+                FirebaseAuth.instance.authStateChanges().map(
+                  (user) => user?.uid,
+                ))
+            .distinct()
+            .listen((uid) async {
+              final current = ++generation;
+              await records?.cancel();
+              if (cancelled || current != generation) return;
+              output.add([]); // Never replay another account's notifications.
+              if (uid == null) return;
+              records = _firestore
+                  .collection('notifications')
+                  .where('userId', isEqualTo: uid)
+                  .snapshots()
+                  .listen(
+                    (snapshot) {
+                      if (cancelled || current != generation) return;
+                      final notifications =
+                          snapshot.docs
+                              .map(NotificationModel.fromFirestore)
+                              .toList()
+                            ..sort(
+                              (a, b) => b.createdAt.compareTo(a.createdAt),
+                            );
+                      output.add(notifications);
+                    },
+                    onError: (Object error, StackTrace trace) {
+                      if (!cancelled && current == generation)
+                        output.addError(error, trace);
+                    },
+                  );
+            }, onError: output.addError);
+    output.onCancel = () async {
+      cancelled = true;
+      generation++;
+      await accounts.cancel();
+      await records?.cancel();
+    };
+  });
 
-    print('✅ getNotifications: Fetching for user ${user.uid}');
-    return _firestore
-        .collection('notifications')
-        .where('userId', isEqualTo: user.uid)
-        .snapshots()
-        .map((snapshot) {
-      print('📬 getNotifications: Found ${snapshot.docs.length} notifications');
-      final notifications = snapshot.docs
-          .map((doc) => NotificationModel.fromFirestore(doc))
-          .toList();
-
-      notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      return notifications;
-    });
-  }
-
-  // Get unread count
-  Stream<int> getUnreadCount() {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      print('❌ getUnreadCount: No user logged in');
-      return Stream.value(0);
-    }
-
-    return _firestore
-        .collection('notifications')
-        .where('userId', isEqualTo: user.uid)
-        .where('isRead', isEqualTo: false)
-        .snapshots()
-        .map((snapshot) {
-      print('🔔 getUnreadCount: ${snapshot.docs.length} unread');
-      return snapshot.docs.length;
-    });
-  }
+  Stream<int> getUnreadCount() => getNotifications().map(
+    (items) => items.where((item) => !item.isRead).length,
+  );
 
   // Mark notification as read
   Future<void> markAsRead(String notificationId) async {
@@ -59,34 +79,30 @@ class NotificationService {
       print('✅ markAsRead: $notificationId');
     } catch (e) {
       print('❌ markAsRead error: $e');
+      rethrow;
     }
   }
 
   // Mark all notifications as read
   Future<void> markAllAsRead() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    try {
-      final snapshot = await _firestore
-          .collection('notifications')
-          .where('userId', isEqualTo: user.uid)
-          .where('isRead', isEqualTo: false)
-          .get();
-
-      if (snapshot.docs.isEmpty) return;
-
+    final uid = _currentUserId();
+    if (uid == null) return;
+    final snapshot = await _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: uid)
+        .get();
+    final unread = snapshot.docs
+        .where((doc) => doc.data()['isRead'] != true)
+        .toList();
+    for (var i = 0; i < unread.length; i += 450) {
       final batch = _firestore.batch();
-      for (final doc in snapshot.docs) {
+      for (final doc in unread.skip(i).take(450)) {
         batch.update(doc.reference, {
           'isRead': true,
           'readAt': FieldValue.serverTimestamp(),
         });
       }
       await batch.commit();
-      print('✅ markAllAsRead: ${snapshot.docs.length} notifications');
-    } catch (e) {
-      print('❌ markAllAsRead error: $e');
     }
   }
 
@@ -114,365 +130,109 @@ class NotificationService {
 
   // ✅ FIXED: Get ALL users in class (students, trainers, and teacher)
   Future<List<String>> _getAllUsersInClass(String classId) async {
-    final List<String> allUserIds = [];
-    final Set<String> uniqueIds = {};
+    final classRef = _firestore.collection('classes').doc(classId);
+    final classroom = await classRef.get();
+    if (!classroom.exists) return [];
+    final data = classroom.data()!;
+    final members = await Future.wait([
+      classRef.collection('students').get(),
+      classRef.collection('trainers').get(),
+      _firestore.collection('users').where('role', isEqualTo: 'admin').get(),
+    ]);
+    final ids = <String>{
+      if (data['teacherId'] is String) data['teacherId'] as String,
+      ...List<String>.from(data['enrolledStudentIds'] ?? []),
+      ...List<String>.from(data['trainerIds'] ?? []),
+      for (final group in members)
+        for (final doc in group.docs) doc.data()['uid']?.toString() ?? doc.id,
+    }..remove('');
+    return ids.toList();
+  }
 
-    try {
-      print('🔍 Getting all users for class: $classId');
-
-      // Get the class document
-      final classDoc =
-          await _firestore.collection('classes').doc(classId).get();
-      if (!classDoc.exists) {
-        print('❌ Class not found');
-        return allUserIds;
+  Future<void> _notifyClass(
+    String classId,
+    String title,
+    String message,
+    String type, {
+    String? excludeUserId,
+  }) async {
+    final ids = await _getAllUsersInClass(classId);
+    final recipients = ids
+        .where((id) => id != (excludeUserId ?? _currentUserId()))
+        .toList();
+    // Firestore limits a batch to 500 writes.
+    for (var offset = 0; offset < recipients.length; offset += 450) {
+      final batch = _firestore.batch();
+      for (final uid in recipients.skip(offset).take(450)) {
+        batch.set(_firestore.collection('notifications').doc(), {
+          'userId': uid,
+          'title': title,
+          'message': message,
+          'type': type,
+          'referenceId': classId,
+          'isRead': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
       }
-
-      final classData = classDoc.data() ?? {};
-
-      // 1. Add teacher
-      final teacherId = classData['teacherId']?.toString() ?? '';
-      if (teacherId.isNotEmpty && !uniqueIds.contains(teacherId)) {
-        uniqueIds.add(teacherId);
-        allUserIds.add(teacherId);
-        print('📢 Added teacher: $teacherId');
-      }
-
-      // 2. Add all enrolled students from the array
-      final enrolledIds =
-          List<String>.from(classData['enrolledStudentIds'] ?? []);
-      print('📊 enrolledStudentIds array: ${enrolledIds.length} users');
-      for (final userId in enrolledIds) {
-        if (!uniqueIds.contains(userId)) {
-          uniqueIds.add(userId);
-          allUserIds.add(userId);
-          print('   Added from enrolledStudentIds: $userId');
-        }
-      }
-
-      // 3. Also check students subcollection for any additional users
-      final studentsSnapshot = await _firestore
-          .collection('classes')
-          .doc(classId)
-          .collection('students')
-          .get();
-
-      print('📊 students subcollection: ${studentsSnapshot.docs.length} users');
-      for (final doc in studentsSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>? ?? {};
-        final uid = data['uid']?.toString() ?? doc.id;
-        if (!uniqueIds.contains(uid)) {
-          uniqueIds.add(uid);
-          allUserIds.add(uid);
-          print(
-              '   Added from students subcollection: $uid (Name: ${data['name']})');
-        }
-      }
-
-      // 4. Check if there's a separate trainers collection
-      final trainersSnapshot = await _firestore
-          .collection('classes')
-          .doc(classId)
-          .collection('trainers')
-          .get();
-
-      for (final doc in trainersSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>? ?? {};
-        final uid = data['uid']?.toString() ?? doc.id;
-        if (!uniqueIds.contains(uid)) {
-          uniqueIds.add(uid);
-          allUserIds.add(uid);
-          print('   Added from trainers subcollection: $uid');
-        }
-      }
-
-      // 5. Verify all users exist in users collection and get their roles
-      final List<String> validUserIds = [];
-      for (final userId in allUserIds) {
-        try {
-          final userDoc =
-              await _firestore.collection('users').doc(userId).get();
-          if (userDoc.exists) {
-            validUserIds.add(userId);
-            final userData = userDoc.data() ?? {};
-            final role = userData['role']?.toString() ?? 'student';
-            final name = userData['displayName'] ?? userData['name'] ?? userId;
-            print('   ✅ Valid user: $name (Role: $role, ID: $userId)');
-          } else {
-            print('   ⚠️ User document not found for: $userId');
-            // Still add the user to ensure notifications are sent
-            validUserIds.add(userId);
-          }
-        } catch (e) {
-          print('   ⚠️ Error checking user $userId: $e');
-          // Add the user anyway to not miss notifications
-          validUserIds.add(userId);
-        }
-      }
-
-      print('📊 Total valid users in class: ${validUserIds.length}');
-      print('📊 Final user list: $validUserIds');
-
-      return validUserIds;
-    } catch (e) {
-      print('❌ Error getting users: $e');
-      return allUserIds;
+      await batch.commit();
     }
   }
 
-  // ✅ Get only STUDENT users in class (excludes teacher and trainer roles)
-  Future<List<String>> _getStudentUsersInClass(String classId) async {
-    final allUserIds = await _getAllUsersInClass(classId);
-    final List<String> studentIds = [];
-
-    for (final userId in allUserIds) {
-      try {
-        final userDoc =
-            await _firestore.collection('users').doc(userId).get();
-        final userData = userDoc.data() ?? {};
-        final role = userData['role']?.toString().toLowerCase() ?? '';
-
-        if (role == 'teacher' || role == 'trainer') {
-          print('   ⏭️ Skipping $role: $userId');
-          continue;
-        }
-        studentIds.add(userId);
-      } catch (e) {
-        print('   ⚠️ Could not fetch role for $userId, skipping: $e');
-      }
-    }
-
-    print('📊 Student-only list: ${studentIds.length} students');
-    return studentIds;
-  }
-
-
-  // ✅ Send forum post notification to ALL users
   Future<void> notifyNewForumPost(
     String classId,
     String postTitle,
     String authorName,
     String excludeUserId,
-  ) async {
-    try {
-      print('📢 notifyNewForumPost: Starting for class $classId');
-      print('📢 Author: $authorName, Excluding: $excludeUserId');
+  ) => _notifyClass(
+    classId,
+    'New Forum Post: ' + postTitle,
+    authorName + ' posted a new discussion.',
+    'forum',
+    excludeUserId: excludeUserId,
+  );
 
-      final allUserIds = await _getAllUsersInClass(classId);
-
-      if (allUserIds.isEmpty) {
-        print('⚠️ No users found in class');
-        return;
-      }
-
-      final batch = _firestore.batch();
-      final notificationsRef = _firestore.collection('notifications');
-      int count = 0;
-
-      for (final userId in allUserIds) {
-        if (userId == excludeUserId) {
-          print('   ⏭️ Skipping poster: $userId');
-          continue;
-        }
-
-        final docRef = notificationsRef.doc();
-        batch.set(docRef, {
-          'userId': userId,
-          'title': '💬 New Forum Post: $postTitle',
-          'message': '$authorName posted a new discussion in the forum.',
-          'type': 'forum',
-          'referenceId': classId,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        count++;
-        print('   ✅ Added notification for user: $userId');
-      }
-
-      await batch.commit();
-      print('✅ notifyNewForumPost: Created $count notifications');
-    } catch (e) {
-      print('❌ notifyNewForumPost error: $e');
-    }
-  }
-
-  // ✅ Send forum reply notification to ALL users
   Future<void> notifyNewForumReply(
     String classId,
     String postTitle,
     String replyAuthor,
     String postAuthorId,
     String excludeUserId,
-  ) async {
-    try {
-      print('📢 notifyNewForumReply: Starting for class $classId');
-      print(
-          '📢 Reply author: $replyAuthor, Post author: $postAuthorId, Excluding: $excludeUserId');
+  ) => _notifyClass(
+    classId,
+    'New Reply: ' + postTitle,
+    replyAuthor + ' replied to a discussion.',
+    'forum',
+    excludeUserId: excludeUserId,
+  );
 
-      final allUserIds = await _getAllUsersInClass(classId);
+  Future<void> notifyNewAssignment(String classId, String title) =>
+      _notifyClass(
+        classId,
+        'New Assignment: ' + title,
+        'A new assignment has been published.',
+        'assignment',
+      );
 
-      if (allUserIds.isEmpty) {
-        print('⚠️ No users found in class');
-        return;
-      }
+  Future<void> notifyNewQuiz(String classId, String title) => _notifyClass(
+    classId,
+    'New Quiz: ' + title,
+    'A new quiz has been published.',
+    'quiz',
+  );
 
-      final batch = _firestore.batch();
-      final notificationsRef = _firestore.collection('notifications');
-      int count = 0;
-
-      for (final userId in allUserIds) {
-        if (userId == excludeUserId) {
-          print('   ⏭️ Skipping replier: $userId');
-          continue;
-        }
-
-        String message;
-        if (userId == postAuthorId) {
-          message = '$replyAuthor replied to your post: "$postTitle"';
-        } else {
-          message = '$replyAuthor replied to a discussion: "$postTitle"';
-        }
-
-        final docRef = notificationsRef.doc();
-        batch.set(docRef, {
-          'userId': userId,
-          'title': '💬 New Reply in Forum',
-          'message': message,
-          'type': 'forum',
-          'referenceId': classId,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        count++;
-        print('   ✅ Added reply notification for user: $userId');
-      }
-
-      await batch.commit();
-      print('✅ notifyNewForumReply: Created $count notifications');
-    } catch (e) {
-      print('❌ notifyNewForumReply error: $e');
-    }
-  }
-
-  // ✅ Send assignment notification to students only (skip teacher and trainers)
-  Future<void> notifyNewAssignment(
-      String classId, String assignmentTitle) async {
-    try {
-      print('📢 notifyNewAssignment: Starting for class $classId');
-
-      final studentIds = await _getStudentUsersInClass(classId);
-
-      if (studentIds.isEmpty) {
-        print('⚠️ No students found in class');
-        return;
-      }
-
-      final batch = _firestore.batch();
-      final notificationsRef = _firestore.collection('notifications');
-      int count = 0;
-
-      for (final userId in studentIds) {
-        final docRef = notificationsRef.doc();
-        batch.set(docRef, {
-          'userId': userId,
-          'title': '📝 New Assignment: $assignmentTitle',
-          'message': 'A new assignment has been posted. Check it out!',
-          'type': 'assignment',
-          'referenceId': classId,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        count++;
-        print('   ✅ Added assignment notification for student: $userId');
-      }
-
-      await batch.commit();
-      print('✅ notifyNewAssignment: Created $count notifications (students only)');
-    } catch (e) {
-      print('❌ notifyNewAssignment error: $e');
-    }
-  }
-
-  // ✅ Send quiz notification to students only (skip teacher and trainers)
-  Future<void> notifyNewQuiz(String classId, String quizTitle) async {
-    try {
-      print('📢 notifyNewQuiz: Starting for class $classId');
-
-      final studentIds = await _getStudentUsersInClass(classId);
-
-      if (studentIds.isEmpty) {
-        print('⚠️ No students found in class');
-        return;
-      }
-
-      final batch = _firestore.batch();
-      final notificationsRef = _firestore.collection('notifications');
-      int count = 0;
-
-      for (final userId in studentIds) {
-        final docRef = notificationsRef.doc();
-        batch.set(docRef, {
-          'userId': userId,
-          'title': '📝 New Quiz: $quizTitle',
-          'message': 'A new quiz is available. Take it now!',
-          'type': 'quiz',
-          'referenceId': classId,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        count++;
-        print('   ✅ Added quiz notification for student: $userId');
-      }
-
-      await batch.commit();
-      print('✅ notifyNewQuiz: Created $count notifications (students only)');
-    } catch (e) {
-      print('❌ notifyNewQuiz error: $e');
-    }
-  }
-
-  // ✅ Send module notification to students only (skip teacher and trainers)
-  Future<void> notifyNewModule(String classId, String moduleTitle) async {
-    try {
-      print('📢 notifyNewModule: Starting for class $classId');
-
-      final studentIds = await _getStudentUsersInClass(classId);
-
-      if (studentIds.isEmpty) {
-        print('⚠️ No students found in class');
-        return;
-      }
-
-      final batch = _firestore.batch();
-      final notificationsRef = _firestore.collection('notifications');
-      int count = 0;
-
-      for (final userId in studentIds) {
-        final docRef = notificationsRef.doc();
-        batch.set(docRef, {
-          'userId': userId,
-          'title': '📚 New Module: $moduleTitle',
-          'message':
-              'A new learning module has been added. Start learning now!',
-          'type': 'module',
-          'referenceId': classId,
-          'isRead': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-        count++;
-        print('   ✅ Added module notification for student: $userId');
-      }
-
-      await batch.commit();
-      print('✅ notifyNewModule: Created $count notifications (students only)');
-    } catch (e) {
-      print('❌ notifyNewModule error: $e');
-    }
-  }
+  Future<void> notifyNewModule(String classId, String title) => _notifyClass(
+    classId,
+    'New Module: ' + title,
+    'A new learning module has been published.',
+    'module',
+  );
 
   // Send grade notification
   Future<void> notifyGrade(
-      String studentId, String assignmentTitle, int score) async {
+    String studentId,
+    String assignmentTitle,
+    int score,
+  ) async {
     try {
       await createNotification(
         NotificationModel(
@@ -498,6 +258,7 @@ class NotificationService {
       print('✅ deleteNotification: $notificationId');
     } catch (e) {
       print('❌ deleteNotification error: $e');
+      rethrow;
     }
   }
 
@@ -511,7 +272,8 @@ class NotificationService {
       }
 
       print(
-          '🗑️ deleteAllNotifications: Deleting all notifications for ${user.uid}');
+        '🗑️ deleteAllNotifications: Deleting all notifications for ${user.uid}',
+      );
 
       final snapshot = await _firestore
           .collection('notifications')
@@ -524,7 +286,8 @@ class NotificationService {
       }
 
       print(
-          '📊 deleteAllNotifications: Found ${snapshot.docs.length} notifications to delete');
+        '📊 deleteAllNotifications: Found ${snapshot.docs.length} notifications to delete',
+      );
 
       final batch = _firestore.batch();
       for (final doc in snapshot.docs) {
@@ -533,7 +296,8 @@ class NotificationService {
       await batch.commit();
 
       print(
-          '✅ deleteAllNotifications: Successfully deleted ${snapshot.docs.length} notifications');
+        '✅ deleteAllNotifications: Successfully deleted ${snapshot.docs.length} notifications',
+      );
     } catch (e) {
       print('❌ deleteAllNotifications error: $e');
       rethrow;
@@ -583,8 +347,10 @@ class NotificationService {
       print('🔍 ===== DEBUG: Checking all users in class $classId =====');
 
       // Get class document
-      final classDoc =
-          await _firestore.collection('classes').doc(classId).get();
+      final classDoc = await _firestore
+          .collection('classes')
+          .doc(classId)
+          .get();
       if (classDoc.exists) {
         final data = classDoc.data() ?? {};
         print('📚 Class: ${data['name']}');
@@ -597,7 +363,8 @@ class NotificationService {
           if (userDoc.exists) {
             final userData = userDoc.data() ?? {};
             print(
-                '   ✅ Student: ${userData['displayName'] ?? userData['name'] ?? id}');
+              '   ✅ Student: ${userData['displayName'] ?? userData['name'] ?? id}',
+            );
           } else {
             print('   ❌ User not found: $id');
           }

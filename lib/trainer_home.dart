@@ -1,10 +1,10 @@
+import 'widgets/lazy_indexed_stack.dart';
+import 'services/workspace_data.dart';
 import 'widgets/admin_workspace_layout.dart';
 import 'widgets/admin_workspace_sidebar.dart';
 import 'widgets/staff_workspace_header.dart';
 import 'widgets/workspace_stat.dart';
 import 'widgets/workspace_dashboard.dart';
-import 'services/trainer_account_deletion.dart';
-import 'widgets/delete_trainer_account_dialog.dart';
 import 'utils/trainer_destinations.dart';
 import 'widgets/staff_mobile_nav.dart';
 import 'screens/staff_management_page.dart';
@@ -79,24 +79,6 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     );
   }
 
-  Future<void> _deleteAccount() async {
-    final deleted = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) =>
-          DeleteTrainerAccountDialog(onDelete: TrainerAccountDeletion.delete),
-    );
-    if (deleted != true) return;
-    PersistentWorkspace.clear();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => kIsWeb ? const AdminLoginPage() : const LoginPage(),
-      ),
-      (route) => false,
-    );
-  }
-
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -156,42 +138,6 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   }
 
   // ✅ Helper method to calculate total students from all classes
-  Future<int> _getTotalStudents() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return 0;
-
-    try {
-      final classesSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('classes')
-          .get();
-
-      int totalStudents = 0;
-      for (final doc in classesSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>? ?? {};
-        final classId = data['classId']?.toString() ?? '';
-        if (classId.isNotEmpty) {
-          final classDoc = await FirebaseFirestore.instance
-              .collection('classes')
-              .doc(classId)
-              .get();
-          if (classDoc.exists) {
-            final classData = classDoc.data() ?? {};
-            final enrolledIds = List<String>.from(
-              classData['enrolledStudentIds'] ?? [],
-            );
-            totalStudents += enrolledIds.length;
-          }
-        }
-      }
-      return totalStudents;
-    } catch (e) {
-      print('Error calculating total students: $e');
-      return 0;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     const primaryColor = Color(0xFF0891B2);
@@ -204,10 +150,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     }
 
     return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .snapshots(),
+      stream: WorkspaceData.profile(user.uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -390,29 +333,29 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                         ),
                       ),
                     Expanded(
-                      child: IndexedStack(
+                      child: LazyIndexedStack(
                         index: _selectedIndex,
                         children: [
-                          _buildHomeContent(
+                          () => _buildHomeContent(
                             primaryColor,
                             trainerName,
                             user.uid,
                           ),
-                          _buildDiscussionForums(primaryColor),
-                          _buildProfileContent(profile, user),
-                          SingleChildScrollView(
+                          () => _buildDiscussionForums(primaryColor),
+                          () => _buildProfileContent(profile, user),
+                          () => SingleChildScrollView(
                             padding: const EdgeInsets.all(24),
                             child: const StaffOutcomes(trainer: true),
                           ),
-                          SingleChildScrollView(
+                          () => SingleChildScrollView(
                             padding: const EdgeInsets.all(24),
                             child: const StaffOutcomes(
                               trainer: true,
                               feedback: true,
                             ),
                           ),
-                          const StaffManagementPage(trainer: true),
-                          const StaffManagementPage(
+                          () => const StaffManagementPage(trainer: true),
+                          () => const StaffManagementPage(
                             modules: true,
                             trainer: true,
                           ),
@@ -614,61 +557,50 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
   // ✅ FIXED: Dynamic stats row with actual student count
   Widget _buildStatsRow(Color primaryColor) {
-    return FutureBuilder<QuerySnapshot>(
-      future: FirebaseAuth.instance.currentUser != null
-          ? FirebaseFirestore.instance
-                .collection('users')
-                .doc(FirebaseAuth.instance.currentUser!.uid)
-                .collection('classes')
-                .get()
-          : null,
-      builder: (context, classSnapshot) {
-        final classCount = classSnapshot.data?.docs.length ?? 0;
-
-        return FutureBuilder<int>(
-          future: _getTotalStudents(),
-          builder: (context, studentSnapshot) {
-            final totalStudents = studentSnapshot.data ?? 0;
-
-            if (kIsWeb)
-              return WorkspaceStats(
-                cards: [
-                  WorkspaceStatData(
-                    title: 'Classes',
-                    value: '$classCount',
-                    subtitle: 'Your assigned classes',
-                    icon: Icons.class_rounded,
-                    color: const Color(0xFF0891B2),
-                  ),
-                  WorkspaceStatData(
-                    title: 'Students',
-                    value: '$totalStudents',
-                    subtitle: 'Currently enrolled',
-                    icon: Icons.people_alt_rounded,
-                    color: const Color(0xFF28C76F),
-                  ),
-                ],
-              );
-            return Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    'My Classes',
-                    '$classCount',
-                    primaryColor,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildStatCard(
-                    'Students',
-                    '$totalStudents',
-                    primaryColor,
-                  ),
-                ),
-              ],
-            );
-          },
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+      stream: WorkspaceData.assignedClasses(
+        FirebaseAuth.instance.currentUser!.uid,
+      ),
+      builder: (context, snapshot) {
+        if (snapshot.hasError)
+          return const Text('Could not load class totals.');
+        if (!snapshot.hasData) return const LinearProgressIndicator();
+        final classes = snapshot.data!;
+        final classCount = classes.length;
+        final totalStudents = classes.fold<int>(
+          0,
+          (total, doc) =>
+              total + (doc.data()['enrolledStudentIds'] as List? ?? []).length,
+        );
+        if (kIsWeb)
+          return WorkspaceStats(
+            cards: [
+              WorkspaceStatData(
+                title: 'Classes',
+                value: '$classCount',
+                subtitle: 'Your assigned classes',
+                icon: Icons.class_rounded,
+                color: const Color(0xFF0891B2),
+              ),
+              WorkspaceStatData(
+                title: 'Students',
+                value: '$totalStudents',
+                subtitle: 'Currently enrolled',
+                icon: Icons.people_alt_rounded,
+                color: const Color(0xFF28C76F),
+              ),
+            ],
+          );
+        return Row(
+          children: [
+            Expanded(
+              child: _buildStatCard('My Classes', '$classCount', primaryColor),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard('Students', '$totalStudents', primaryColor),
+            ),
+          ],
         );
       },
     );
@@ -881,6 +813,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
   // Show Class Selector for Trainers
   void _showClassSelector(BuildContext context, String actionType) {
+    final navigator = Navigator.of(context);
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
@@ -896,11 +829,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         maxChildSize: 0.9,
         expand: false,
         builder: (context, scrollController) => StreamBuilder<QuerySnapshot>(
-          stream: FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('classes')
-              .snapshots(),
+          stream: WorkspaceData.memberships(user.uid),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
@@ -951,9 +880,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
+                        navigator.pop();
+                        navigator.push(
                           MaterialPageRoute(
                             builder: (_) => const JoinClassPage(),
                           ),
@@ -1087,9 +1015,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                             size: 16,
                           ),
                           onTap: () {
-                            Navigator.pop(context);
+                            navigator.pop();
                             _navigateToAction(
-                              context,
+                              navigator,
                               actionType,
                               classId,
                               className,
@@ -1109,13 +1037,12 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   }
 
   void _navigateToAction(
-    BuildContext context,
+    NavigatorState navigator,
     String actionType,
     String classId,
     String className,
   ) {
-    Navigator.push(
-      context,
+    navigator.push(
       MaterialPageRoute(
         builder: (_) => trainerDestination(actionType, classId, className),
       ),
@@ -1194,17 +1121,6 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             ),
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _deleteAccount,
-              icon: const Icon(Icons.delete_forever_outlined),
-              label: const Text('Delete Account'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.red.shade700,
-              ),
-            ),
-          ),
           if (!(kIsWeb && MediaQuery.sizeOf(context).width >= 1000))
             SizedBox(
               width: double.infinity,

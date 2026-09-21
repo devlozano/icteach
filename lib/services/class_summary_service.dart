@@ -28,36 +28,43 @@ class ClassSummaryService {
             .map((d) => d.data())
             .where((d) => ids.contains(d['studentId']))
             .toList();
-    final quizzes = await query('quiz_results');
-    final assessments = await query('pre_assessments');
-    final validations = await query('competency_validations');
-    final feedback = await query('questionnaire_responses');
-    final activities = await query('activity_feedback');
-    final modules =
-        (await db
-                .collection('classes')
-                .doc(classId)
-                .collection('modules')
-                .get())
-            .docs;
-    final access =
-        (await db
-                .collection('classes')
-                .doc(classId)
-                .collection('module_access')
-                .get())
-            .docs
-            .map((d) => d.data())
-            .toList();
+    final sections = await Future.wait([
+      query('quiz_results'),
+      query('pre_assessments'),
+      query('competency_validations'),
+      query('questionnaire_responses'),
+      query('activity_feedback'),
+    ]);
+    final quizzes = sections[0],
+        assessments = sections[1],
+        validations = sections[2],
+        feedback = sections[3],
+        activities = sections[4];
+    final content = await Future.wait([
+      db.collection('classes').doc(classId).collection('modules').get(),
+      db.collection('classes').doc(classId).collection('module_access').get(),
+    ]);
+    final modules = content[0].docs;
+    final access = content[1].docs.map((d) => d.data()).toList();
     final simulations = <Map<String, dynamic>>[];
-    for (final id in ids) {
-      final docs = await db
-          .collection('users')
-          .doc(id)
-          .collection('simulation_progress')
-          .where('classId', isEqualTo: classId)
-          .get();
-      simulations.addAll(docs.docs.map((d) => {...d.data(), 'studentId': id}));
+    final studentIds = ids.toList();
+    for (var offset = 0; offset < studentIds.length; offset += 10) {
+      final batch = studentIds.skip(offset).take(10).toList();
+      final progress = await Future.wait(
+        batch.map(
+          (id) => db
+              .collection('users')
+              .doc(id)
+              .collection('simulation_progress')
+              .where('classId', isEqualTo: classId)
+              .get(),
+        ),
+      );
+      for (var i = 0; i < batch.length; i++) {
+        simulations.addAll(
+          progress[i].docs.map((d) => {...d.data(), 'studentId': batch[i]}),
+        );
+      }
     }
     return [
       SummarySection(

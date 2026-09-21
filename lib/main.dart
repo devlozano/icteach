@@ -64,7 +64,7 @@ class MyApp extends StatelessWidget {
       navigatorKey: NavigationService.navigatorKey,
       navigatorObservers: [WorkspaceNavigation.instance],
       builder: (context, child) =>
-          OfflineIndicator(child: PersistentWorkspace(child: child!)),
+          PersistentWorkspace(child: OfflineIndicator(child: child!)),
       theme: AppTheme.light,
       home: const _AppEntry(),
       routes: {
@@ -90,6 +90,7 @@ class _AppEntryState extends State<_AppEntry> {
   Widget build(BuildContext context) {
     if (!_finished)
       return SplashPage(
+        duration: const Duration(milliseconds: 900),
         onFinished: () {
           if (mounted) setState(() => _finished = true);
         },
