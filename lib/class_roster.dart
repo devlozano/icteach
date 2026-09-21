@@ -536,7 +536,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF428DEB),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade200),
               ),
@@ -622,14 +622,14 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                   const Icon(
                     Icons.person_outline,
                     size: 12,
-                    color: Colors.white70,
+                    color: const Color(0xFF64748B),
                   ),
                   const SizedBox(width: 4),
                   Text(
                     _teacherName,
                     style: const TextStyle(
                       fontSize: 11,
-                      color: Colors.white70,
+                      color: const Color(0xFF64748B),
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -637,8 +637,8 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
               ),
           ],
         ),
-        backgroundColor: const Color(0xFF428DEB),
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
         elevation: 0,
         actions: [
           SummaryPrintButton(
@@ -655,14 +655,17 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           ),
           if (_classCode.isNotEmpty) ...[
             IconButton(
-              icon: const Icon(Icons.qr_code_2, color: Colors.white),
+              icon: const Icon(Icons.qr_code_2, color: const Color(0xFF428DEB)),
               onPressed: () => _showQRCodeDialog(context),
               tooltip: 'Show QR Code',
             ),
             Container(
               margin: const EdgeInsets.only(right: 8),
               child: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, color: Colors.white),
+                icon: const Icon(
+                  Icons.more_vert,
+                  color: const Color(0xFF428DEB),
+                ),
                 onSelected: (value) {
                   if (value == 'qr') {
                     _showQRCodeDialog(context);
@@ -701,7 +704,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             width: double.infinity,
-            color: Colors.white,
+            color: const Color(0xFF0F172A),
             child: Row(
               children: [
                 Expanded(
@@ -713,7 +716,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                         'Class Code',
                         style: TextStyle(
                           fontSize: 11,
-                          color: Colors.grey,
+                          color: Colors.white70,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -725,7 +728,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                              color: Colors.white,
                               letterSpacing: 1.5,
                             ),
                           ),
@@ -760,7 +763,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                 if (_classCode.isNotEmpty) ...[
                   IconButton(
                     onPressed: () => _showQRCodeDialog(context),
-                    icon: const Icon(Icons.qr_code, color: Color(0xFF428DEB)),
+                    icon: const Icon(Icons.qr_code, color: Colors.white),
                     tooltip: 'QR Code',
                   ),
                   const SizedBox(width: 4),
@@ -769,7 +772,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                     icon: const Icon(Icons.copy, size: 16),
                     label: const Text('Copy'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF428DEB),
+                      backgroundColor: const Color(0xFF0891B2),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

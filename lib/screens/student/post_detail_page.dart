@@ -145,8 +145,8 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
         title: const Text('Forum Post'),
-        backgroundColor: const Color(0xFF0B2B4A),
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF0F172A),
         elevation: 0,
       ),
       body: _isPostLoaded
