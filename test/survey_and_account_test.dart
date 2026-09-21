@@ -80,7 +80,7 @@ void main() {
     expect(find.text('5/5'), findsNothing);
   });
   for (final size in [const Size(360, 640), const Size(740, 360)]) {
-    testWidgets('Survey fits ' + size.toString(), (tester) async {
+    testWidgets('Survey fits $size', (tester) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -91,7 +91,7 @@ void main() {
             body: SystemSurveyFlow(
               initialRatings: const {},
               initialComment: '',
-              onSave: (_, __) async {},
+              onSave: (_, _) async {},
             ),
           ),
         ),

@@ -36,7 +36,7 @@ class WorkspaceDashboard extends StatelessWidget {
       final quickActions = _WorkspaceQuickActions(
         actions: [
           for (final action in actions)
-            _ActionItem(label: action.$2, icon: action.$1, onTap: action.$3),
+            _ActionItem(label: action.$2, icon: action.$1, color: const Color(0xFF168D92), onTap: action.$3),
         ],
       );
       return Column(
@@ -170,7 +170,7 @@ class _ActionItem {
   const _ActionItem({
     required this.label,
     required this.icon,
-    this.color = const Color(0xFF168D92),
+    required this.color,
     this.onTap,
   });
 }
