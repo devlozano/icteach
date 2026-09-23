@@ -51,9 +51,9 @@ class _ForumsPageState extends State<ForumsPage> {
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
-        title: Text('Forums - ${widget.className}'),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF0F172A),
+        title: const Text('Forum'),
+        backgroundColor: const Color(0xFF428DEB),
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           IconButton(

@@ -130,7 +130,12 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
     builder: (context, access) {
       if (access.data == true || _continue) return widget.builder(context);
       return Scaffold(
-        appBar: AppBar(title: Text('Pre-assessment - ${widget.className}')),
+        appBar: AppBar(
+          title: const Text('Pre-assessment'),
+          backgroundColor: const Color(0xFF428DEB),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
         body: access.connectionState != ConnectionState.done
             ? const Center(child: CircularProgressIndicator())
             : access.hasError
@@ -166,7 +171,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                       const SizedBox(height: 20),
                       if (_result != null) ...[
                         SummaryPrintButton(
-                          title: 'Pre-assessment - ' + widget.className,
+                          title: 'Pre-assessment',
                           load: () async => [
                             SummarySection(
                               'Submitted answers',

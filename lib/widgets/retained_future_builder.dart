@@ -45,7 +45,12 @@ class _RetainedFutureBuilderState<T> extends State<RetainedFutureBuilder<T>> {
     }
     if (_covered) {
       _covered = false;
-      if (widget.active && mounted) setState(() => _future = widget.load());
+      if (widget.active && mounted) {
+        final nextFuture = widget.load();
+        setState(() {
+          _future = nextFuture;
+        });
+      }
     }
   }
 

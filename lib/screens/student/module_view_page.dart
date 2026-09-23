@@ -218,31 +218,10 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: _selectedModuleIndex == null
           ? AppBar(
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Learning Modules',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  Text(
-                    widget.className,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade600,
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: Colors.transparent,
-              foregroundColor: const Color(0xFF0F172A),
+              title: const Text('Modules'),
+              backgroundColor: const Color(0xFF428DEB),
+              foregroundColor: Colors.white,
               elevation: 0,
-              toolbarHeight: 52,
             )
           : null,
       body: StreamBuilder<List<ModuleModel>>(
