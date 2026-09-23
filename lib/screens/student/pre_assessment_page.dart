@@ -1,4 +1,3 @@
-import '../../widgets/summary_print_button.dart';
 import '../../services/assessment_order.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -131,7 +130,11 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
       if (access.data == true || _continue) return widget.builder(context);
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Pre-assessment'),
+          title: Text(
+            access.connectionState == ConnectionState.waiting
+                ? 'Modules'
+                : 'Pre-assessment',
+          ),
           backgroundColor: const Color(0xFF428DEB),
           foregroundColor: Colors.white,
           elevation: 0,
@@ -170,22 +173,6 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                       ),
                       const SizedBox(height: 20),
                       if (_result != null) ...[
-                        SummaryPrintButton(
-                          title: 'Pre-assessment',
-                          load: () async => [
-                            SummarySection(
-                              'Submitted answers',
-                              ['Question', 'Your answer'],
-                              [
-                                for (final i in _order.questions)
-                                  [
-                                    PreAssessmentData.questions[i].prompt,
-                                    _submittedAnswerText(i),
-                                  ],
-                              ],
-                            ),
-                          ],
-                        ),
                         Text(
                           'Saved: ${_result!['score']} / ${_result!['totalQuestions']} correct',
                           style: const TextStyle(fontSize: 22),

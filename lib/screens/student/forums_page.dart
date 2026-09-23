@@ -57,11 +57,6 @@ class _ForumsPageState extends State<ForumsPage> {
         elevation: 0,
         actions: [
           IconButton(
-            onPressed: () => setState(() {}),
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-          ),
-          IconButton(
             onPressed: () {
               Navigator.push(
                 context,

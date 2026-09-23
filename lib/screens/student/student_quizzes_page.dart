@@ -25,17 +25,17 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
   @override
   void initState() {
     super.initState();
-    _refreshQuizzes();
+    _watchQuizzes();
   }
 
-  void _refreshQuizzes() {
+  void _watchQuizzes() {
     _quizzes = _quizService.getPublishedQuizzesForClass(widget.classId);
   }
 
   @override
   void didUpdateWidget(covariant StudentQuizzesPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.classId != widget.classId) _refreshQuizzes();
+    if (oldWidget.classId != widget.classId) _watchQuizzes();
   }
 
   Future<void> _takeQuiz(QuizModel quiz) async {
@@ -126,7 +126,7 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
       return Scaffold(
         backgroundColor: const Color(0xffF8FAFC),
         appBar: AppBar(
-          title: Text('Quizzes - ${widget.className}'),
+          title: const Text('Quizzes'),
           backgroundColor: const Color(0xFF428DEB),
           foregroundColor: Colors.white,
           elevation: 0,
@@ -150,18 +150,10 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
-        title: Text('Quizzes - ${widget.className}'),
+        title: const Text('Quizzes'),
         backgroundColor: const Color(0xFF428DEB),
         foregroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          // ✅ NEW: Refresh button
-          IconButton(
-            onPressed: () => setState(_refreshQuizzes),
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-          ),
-        ],
       ),
       body: StreamBuilder<List<QuizModel>>(
         stream: _quizzes,
@@ -180,10 +172,6 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
                   const SizedBox(height: 16),
                   Text('Error: ${snapshot.error}'),
                   const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => setState(_refreshQuizzes),
-                    child: const Text('Retry'),
-                  ),
                 ],
               ),
             );

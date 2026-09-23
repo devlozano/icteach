@@ -4,8 +4,6 @@ import 'services/workspace_data.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'screens/student/student_questionnaires_page.dart';
 import 'services/feedback_eligibility.dart';
-import 'widgets/summary_print_button.dart';
-import 'services/personal_summary_service.dart';
 import 'widgets/persistent_workspace.dart';
 import 'screens/student/helpfulness_survey.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -777,10 +775,6 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SummaryPrintButton(
-            title: 'My learning summary',
-            load: () => PersonalSummaryService.load(userId, classId: _classId),
-          ),
           const Text(
             'My Progress',
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
