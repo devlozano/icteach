@@ -135,7 +135,7 @@ class _HomePageState extends State<HomePage> {
                         child: LazyIndexedStack(
                           index: _currentTabIndex,
                           children: [
-                            () => _buildHomeContent(course),
+                            () => _buildHomeContent(course, profile),
                             () => _buildModulesContent(),
                             () => _buildForumContent(),
                             () => _buildProgressContent(user.uid),
@@ -308,7 +308,22 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildHomeContent(String course) {
+  String _welcomeTitle(Map<String, dynamic>? profile) {
+    final createdAt = profile?['createdAt'];
+    final created = createdAt is Timestamp ? createdAt.toDate() : null;
+    final isNew =
+        created != null && DateTime.now().difference(created).inHours < 24;
+    if (isNew) {
+      final name = (profile?['firstName'] ?? profile?['displayName'])
+          ?.toString()
+          .trim();
+      if (name != null && name.isNotEmpty) return 'Welcome, $name!';
+      return 'Welcome!';
+    }
+    return 'Welcome Back';
+  }
+
+  Widget _buildHomeContent(String course, Map<String, dynamic>? profile) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
@@ -324,8 +339,8 @@ class _HomePageState extends State<HomePage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      const Text(
-                        'Welcome Back',
+                      Text(
+                        _welcomeTitle(profile),
                         style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.w900,
