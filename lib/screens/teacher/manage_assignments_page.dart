@@ -28,7 +28,7 @@ class _ManageAssignmentsPageState extends State<ManageAssignmentsPage> {
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
-        title: Text('Assignments - ${widget.className}'),
+        title: const Text('Assignments'),
         backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -85,8 +85,11 @@ class _ManageAssignmentsPageState extends State<ManageAssignmentsPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.assignment_outlined,
-                      size: 64, color: Colors.grey.shade300),
+                  Icon(
+                    Icons.assignment_outlined,
+                    size: 64,
+                    color: Colors.grey.shade300,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'No assignments yet',
@@ -210,7 +213,9 @@ class _ManageAssignmentsPageState extends State<ManageAssignmentsPage> {
     if (confirm == true) {
       try {
         await _assignmentService.deleteAssignment(
-            widget.classId, assignment.id);
+          widget.classId,
+          assignment.id,
+        );
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -268,10 +273,7 @@ class _ManageAssignmentsPageState extends State<ManageAssignmentsPage> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('❌ Error: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
         );
       }
     }
@@ -364,7 +366,9 @@ class _AssignmentCard extends StatelessWidget {
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 2),
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: assignment.isPublished
                                 ? Colors.green.shade100
@@ -396,15 +400,18 @@ class _AssignmentCard extends StatelessWidget {
                           'Due: ${assignment.dueDate.day}/${assignment.dueDate.month}/${assignment.dueDate.year}',
                           style: TextStyle(
                             fontSize: 12,
-                            color:
-                                isOverdue ? Colors.red : Colors.grey.shade600,
+                            color: isOverdue
+                                ? Colors.red
+                                : Colors.grey.shade600,
                           ),
                         ),
                         if (!isOverdue) ...[
                           const SizedBox(width: 6),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: isDueSoon
                                   ? Colors.orange.shade100
@@ -426,7 +433,9 @@ class _AssignmentCard extends StatelessWidget {
                         if (isOverdue)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.red.shade100,
                               borderRadius: BorderRadius.circular(10),
@@ -450,10 +459,7 @@ class _AssignmentCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             assignment.description,
-            style: TextStyle(
-              fontSize: 13,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -477,8 +483,10 @@ class _AssignmentCard extends StatelessWidget {
                     icon: const Icon(Icons.assessment, size: 18),
                     tooltip: 'View Submissions',
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
                   IconButton(
@@ -488,13 +496,16 @@ class _AssignmentCard extends StatelessWidget {
                           ? Icons.visibility
                           : Icons.visibility_off,
                       size: 18,
-                      color:
-                          assignment.isPublished ? Colors.green : Colors.grey,
+                      color: assignment.isPublished
+                          ? Colors.green
+                          : Colors.grey,
                     ),
                     tooltip: assignment.isPublished ? 'Unpublish' : 'Publish',
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
                   IconButton(
@@ -502,8 +513,10 @@ class _AssignmentCard extends StatelessWidget {
                     icon: const Icon(Icons.edit_outlined, size: 18),
                     tooltip: 'Edit',
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
                   IconButton(
@@ -512,8 +525,10 @@ class _AssignmentCard extends StatelessWidget {
                     tooltip: 'Delete',
                     color: Colors.red,
                     padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 28, minHeight: 28),
+                    constraints: const BoxConstraints(
+                      minWidth: 28,
+                      minHeight: 28,
+                    ),
                     visualDensity: VisualDensity.compact,
                   ),
                 ],

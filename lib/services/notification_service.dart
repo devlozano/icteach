@@ -106,6 +106,22 @@ class NotificationService {
     }
   }
 
+  Future<void> deleteForReference({
+    required String referenceId,
+    String? type,
+  }) async {
+    final query = await _firestore
+        .collection('notifications')
+        .where('referenceId', isEqualTo: referenceId)
+        .get();
+    final batch = _firestore.batch();
+    for (final doc in query.docs) {
+      if (type == null || doc.data()['type'] == type)
+        batch.delete(doc.reference);
+    }
+    await batch.commit();
+  }
+
   // Create a notification
   Future<void> createNotification(NotificationModel notification) async {
     try {
@@ -155,6 +171,7 @@ class NotificationService {
     String message,
     String type, {
     String? excludeUserId,
+    String? referenceId,
   }) async {
     final ids = await _getAllUsersInClass(classId);
     final recipients = ids
@@ -169,7 +186,7 @@ class NotificationService {
           'title': title,
           'message': message,
           'type': type,
-          'referenceId': classId,
+          'referenceId': referenceId ?? classId,
           'isRead': false,
           'createdAt': FieldValue.serverTimestamp(),
         });
@@ -182,13 +199,15 @@ class NotificationService {
     String classId,
     String postTitle,
     String authorName,
-    String excludeUserId,
-  ) => _notifyClass(
+    String excludeUserId, {
+    String? postId,
+  }) => _notifyClass(
     classId,
     'New Forum Post: ' + postTitle,
     authorName + ' posted a new discussion.',
     'forum',
     excludeUserId: excludeUserId,
+    referenceId: postId,
   );
 
   Future<void> notifyNewForumReply(
@@ -196,13 +215,15 @@ class NotificationService {
     String postTitle,
     String replyAuthor,
     String postAuthorId,
-    String excludeUserId,
-  ) => _notifyClass(
+    String excludeUserId, {
+    String? postId,
+  }) => _notifyClass(
     classId,
     'New Reply: ' + postTitle,
     replyAuthor + ' replied to a discussion.',
     'forum',
     excludeUserId: excludeUserId,
+    referenceId: postId,
   );
 
   Future<void> notifyNewAssignment(String classId, String title) =>

@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../widgets/forum_viewers_dialog.dart';
 import '../../widgets/fullscreen_image_viewer.dart';
 // screens/student/forum_detail_page.dart
@@ -27,17 +28,25 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
   bool _isLoading = false;
   ForumPost? _post;
   bool _isPostLoaded = false;
+  String? _postError;
+  StreamSubscription<ForumPost?>? _postSubscription;
+  late final Stream<List<ForumReply>> _repliesStream;
+  String? _authorId;
+  Map<String, dynamic>? _authorProfile;
+  bool _viewRecorded = false;
   String? _currentUserId;
 
   @override
   void initState() {
     super.initState();
     _getCurrentUser();
-    _loadPost();
+    _repliesStream = _forumService.getReplies(widget.classId, widget.postId);
+    _watchPost();
   }
 
   @override
   void dispose() {
+    _postSubscription?.cancel();
     _replyController.dispose();
     super.dispose();
   }
@@ -49,84 +58,63 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
     }
   }
 
-  Future<void> _loadPost() async {
+  void _watchPost() {
+    _postSubscription?.cancel();
+    setState(() {
+      _postError = null;
+      _isPostLoaded = false;
+    });
+    _postSubscription = _forumService
+        .watchForumPost(widget.classId, widget.postId)
+        .listen(
+          (post) {
+            if (!mounted) return;
+            setState(() {
+              _post = post;
+              _isPostLoaded = true;
+              _postError = null;
+            });
+            if (post == null) return;
+            if (!_viewRecorded) {
+              _viewRecorded = true;
+              unawaited(_recordView());
+            }
+            if (_authorId != post.authorId) {
+              _authorId = post.authorId;
+              _authorProfile = null;
+              if (post.authorRole.isEmpty || post.authorRole == 'student') {
+                unawaited(_loadAuthor(post.authorId));
+              }
+            }
+          },
+          onError: (Object error) {
+            if (!mounted) return;
+            setState(() {
+              _postError = 'Could not load this post. Please try again.';
+              _isPostLoaded = true;
+            });
+          },
+        );
+  }
+
+  Future<void> _recordView() async {
     try {
-      final post = await _forumService.getForumPost(
-        widget.classId,
-        widget.postId,
-      );
-
-      // Ensure the author role is correctly set
-      if (post.authorRole.isEmpty || post.authorRole == 'student') {
-        final userDoc = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(post.authorId)
-            .get();
-        if (userDoc.exists) {
-          final userData = userDoc.data();
-          final actualRole = userData?['role']?.toString() ?? 'student';
-          final displayName =
-              userData?['displayName']?.toString() ??
-              userData?['name']?.toString() ??
-              post.authorName;
-          setState(() {
-            _post = post.copyWith(
-              authorRole: actualRole,
-              authorName: displayName,
-            );
-            _isPostLoaded = true;
-          });
-        } else {
-          setState(() {
-            _post = post;
-            _isPostLoaded = true;
-          });
-        }
-      } else {
-        setState(() {
-          _post = post;
-          _isPostLoaded = true;
-        });
-      }
-
-      // ✅ Increment view count (only once per session)
       await _forumService.incrementViewCount(widget.classId, widget.postId);
-
-      // ✅ Reload post after view count update
-      final updatedPost = await _forumService.getForumPost(
-        widget.classId,
-        widget.postId,
-      );
-      setState(() {
-        _post = updatedPost.copyWith(
-          authorRole: _post?.authorRole ?? updatedPost.authorRole,
-          authorName: _post?.authorName ?? updatedPost.authorName,
-        );
-      });
-    } catch (e) {
-      print('Error loading post: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading post: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    } catch (error) {
+      debugPrint('Could not record forum view: $error');
     }
   }
 
-  Future<void> _refreshPost() async {
+  Future<void> _loadAuthor(String authorId) async {
     try {
-      final post = await _forumService.getForumPost(
-        widget.classId,
-        widget.postId,
-      );
-      setState(() {
-        _post = post;
-      });
-    } catch (e) {
-      print('Error refreshing post: $e');
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(authorId)
+          .get();
+      if (!mounted || _authorId != authorId) return;
+      setState(() => _authorProfile = doc.data());
+    } catch (error) {
+      debugPrint('Could not load forum author: $error');
     }
   }
 
@@ -138,10 +126,8 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
 
     try {
       await _forumService.addReply(widget.classId, widget.postId, content);
+      if (!mounted) return;
       _replyController.clear();
-
-      // ✅ Refresh the post to update reply count
-      await _refreshPost();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -151,6 +137,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
       );
@@ -163,16 +150,10 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
     if (_post == null) return;
 
     await _forumService.toggleLikePost(widget.classId, widget.postId);
-
-    // ✅ Refresh the post to update like count and likedBy list
-    await _refreshPost();
   }
 
   Future<void> _toggleLikeReply(String replyId) async {
     await _forumService.toggleLikeReply(widget.classId, widget.postId, replyId);
-
-    // ✅ Force a rebuild to update the reply like count
-    setState(() {});
   }
 
   Widget _buildRoleTag(String role) {
@@ -210,14 +191,41 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isPostLoaded || _post == null) {
+    if (!_isPostLoaded) {
       return const Scaffold(
         backgroundColor: Color(0xffF8FAFC),
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final post = _post!;
+    if (_postError != null || _post == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Forum Post')),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(_postError ?? 'This post is no longer available.'),
+              if (_postError != null)
+                TextButton(
+                  onPressed: _watchPost,
+                  child: const Text('Try again'),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
+    final post = _authorProfile == null
+        ? _post!
+        : _post!.copyWith(
+            authorRole:
+                _authorProfile!['role']?.toString() ?? _post!.authorRole,
+            authorName:
+                _authorProfile!['displayName']?.toString() ??
+                _authorProfile!['name']?.toString() ??
+                _post!.authorName,
+          );
 
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
@@ -226,13 +234,6 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
         backgroundColor: Colors.white,
         foregroundColor: const Color(0xFF0F172A),
         elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _refreshPost,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Refresh',
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -457,10 +458,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
 
                   // Replies List
                   StreamBuilder<List<ForumReply>>(
-                    stream: _forumService.getReplies(
-                      widget.classId,
-                      widget.postId,
-                    ),
+                    stream: _repliesStream,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(

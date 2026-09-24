@@ -685,6 +685,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           const SizedBox(height: 10),
           _TeacherToolGrid(
             classCount: classCount,
+            onManageModules: () => _selectTab(7),
             onManageClasses: () {
               _selectTab(1);
             },
@@ -939,11 +940,13 @@ class _TeacherToolGrid extends StatelessWidget {
   const _TeacherToolGrid({
     required this.classCount,
     required this.onManageClasses,
+    required this.onManageModules,
     required this.onSwitchTab,
   });
 
   final int classCount;
   final VoidCallback onManageClasses;
+  final VoidCallback onManageModules;
   final VoidCallback onSwitchTab;
 
   @override
@@ -982,14 +985,7 @@ class _TeacherToolGrid extends StatelessWidget {
               title: 'Modules',
               subtitle: 'Create & manage',
               color: Colors.purple,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => _ModuleClassSelector(moduleType: 'modules'),
-                  ),
-                );
-              },
+              onTap: onManageModules,
             ),
             _ToolCard(
               icon: Icons.quiz_rounded,
@@ -1219,7 +1215,10 @@ class _ModuleClassSelectorState extends State<_ModuleClassSelector> {
       backgroundColor: const Color(0xFFF4F7FA),
       appBar: AppBar(
         title: Text('Manage $title'),
-        backgroundColor: const Color(0xFF2F80ED),
+        backgroundColor:
+            widget.moduleType == 'quizzes' || widget.moduleType == 'forums'
+            ? const Color(0xFF0B2B4A)
+            : const Color(0xFF2F80ED),
         foregroundColor: Colors.white,
         elevation: 0,
       ),

@@ -28,7 +28,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
-        title: Text('Assignments - ${widget.className}'),
+        title: const Text('Assignments'),
         backgroundColor: const Color(0xFF428DEB),
         foregroundColor: Colors.white,
         elevation: 0,

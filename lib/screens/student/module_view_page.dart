@@ -399,7 +399,7 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
                               _selectedFilter = filter;
                             });
                           },
-                          backgroundColor: Colors.white,
+                          backgroundColor: const Color(0xFF428DEB),
                           selectedColor: const Color(0xFF4F46E5),
                           elevation: isSelected ? 4 : 0,
                           pressElevation: 0,

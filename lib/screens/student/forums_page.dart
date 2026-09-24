@@ -52,26 +52,9 @@ class _ForumsPageState extends State<ForumsPage> {
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
         title: const Text('Forum'),
-        backgroundColor: const Color(0xFF428DEB),
+        backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
         elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CreateForumPostPage(
-                    classId: widget.classId,
-                    className: widget.className,
-                  ),
-                ),
-              ).then((_) => setState(() {}));
-            },
-            icon: const Icon(Icons.add),
-            tooltip: 'Create Post',
-          ),
-        ],
       ),
       body: StreamBuilder<List<ForumPost>>(
         stream: _forumService.getForumPosts(widget.classId),

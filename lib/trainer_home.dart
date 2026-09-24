@@ -140,7 +140,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
   // ✅ Helper method to calculate total students from all classes
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF0891B2);
+    const primaryColor = Color(0xFF2F80ED);
     final user = FirebaseAuth.instance.currentUser;
 
     if (user == null) {
@@ -256,7 +256,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             appBar: kIsWeb && MediaQuery.sizeOf(context).width >= 1000
                 ? null
                 : AppBar(
-                    backgroundColor: primaryColor,
+                    backgroundColor: const Color(0xFF0B2B4A),
+                    foregroundColor: Colors.white,
                     elevation: 0,
                     automaticallyImplyLeading: false,
                     leading: !kIsWeb && _selectedIndex == 2
@@ -424,7 +425,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 gradient: const LinearGradient(
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
-                  colors: [Color(0xFF0F172A), Color(0xFF164E63)],
+                  colors: [Color(0xFF123B5D), Color(0xFF087F8C)],
                 ),
                 borderRadius: desktop
                     ? BorderRadius.circular(20)
@@ -435,7 +436,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 boxShadow: desktop
                     ? [
                         BoxShadow(
-                          color: const Color(0xFF164E63).withValues(alpha: 0.2),
+                          color: const Color(0xFF087F8C).withValues(alpha: 0.2),
                           blurRadius: 24,
                           offset: const Offset(0, 10),
                         ),
@@ -557,10 +558,10 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
   // ✅ FIXED: Dynamic stats row with actual student count
   Widget _buildStatsRow(Color primaryColor) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return const SizedBox.shrink();
     return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-      stream: WorkspaceData.assignedClasses(
-        FirebaseAuth.instance.currentUser!.uid,
-      ),
+      stream: WorkspaceData.assignedClasses(uid),
       builder: (context, snapshot) {
         if (snapshot.hasError)
           return const Text('Could not load class totals.');
@@ -612,7 +613,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFECE7F1)),
+        border: Border.all(color: const Color(0xFFE8EDF4)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -652,8 +653,8 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         title: 'Training Modules',
         subtitle: 'Create & manage modules',
         icon: Icons.menu_book_rounded,
-        color: Colors.deepPurple,
-        bgColor: Colors.deepPurple.shade50,
+        color: Colors.purple,
+        bgColor: Colors.purple.withValues(alpha: 0.1),
         onTap: () => _showClassSelector(context, 'modules'),
       ),
       _TrainerToolItem(
@@ -661,39 +662,39 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         subtitle: 'Add videos to lessons',
         icon: Icons.video_library_rounded,
         color: Colors.purple,
-        bgColor: Colors.purple.shade50,
+        bgColor: Colors.purple.withValues(alpha: 0.1),
         onTap: () => _showClassSelector(context, 'videos'),
       ),
       _TrainerToolItem(
         title: 'Quizzes & Assessments',
         subtitle: 'Create knowledge tests',
         icon: Icons.quiz_rounded,
-        color: Colors.blue.shade800,
-        bgColor: Colors.blue.shade50,
+        color: Colors.orange,
+        bgColor: Colors.orange.withValues(alpha: 0.1),
         onTap: () => _showClassSelector(context, 'quizzes'),
       ),
       _TrainerToolItem(
         title: 'Performance Activities',
         subtitle: 'Create & manage assignments',
         icon: Icons.assignment_rounded,
-        color: Colors.indigo,
-        bgColor: Colors.indigo.shade50,
+        color: Colors.red.shade400,
+        bgColor: Colors.red.shade400.withValues(alpha: 0.1),
         onTap: () => _showClassSelector(context, 'assignments'),
       ),
       _TrainerToolItem(
         title: 'Progress Tracker',
         subtitle: 'Monitor student progress',
         icon: Icons.analytics_rounded,
-        color: Colors.teal.shade700,
-        bgColor: Colors.teal.shade50,
+        color: Colors.teal,
+        bgColor: Colors.teal.withValues(alpha: 0.1),
         onTap: () => _showClassSelector(context, 'progress'),
       ),
       _TrainerToolItem(
         title: 'Competency Validation',
         subtitle: 'Evaluate trainee readiness',
         icon: Icons.verified_user_rounded,
-        color: Colors.green.shade700,
-        bgColor: Colors.green.shade50,
+        color: Colors.green,
+        bgColor: Colors.green.withValues(alpha: 0.1),
         onTap: () => _showClassSelector(context, 'competency'),
       ),
     ];
@@ -890,7 +891,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                       icon: const Icon(Icons.add_circle_outline),
                       label: const Text('Join a Class'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.purple.shade700,
+                        backgroundColor: const Color(0xFF2F80ED),
                         foregroundColor: Colors.white,
                       ),
                     ),
@@ -917,7 +918,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.purple.shade50,
+                    color: const Color(0xFF0B2B4A),
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(20),
                     ),
@@ -934,7 +935,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                             : actionType == 'progress'
                             ? Icons.analytics_rounded
                             : Icons.video_library_rounded,
-                        color: Colors.purple,
+                        color: Colors.white,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -946,13 +947,14 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                               style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
                             Text(
                               'Select a class to manage',
                               style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.grey.shade600,
+                                color: Colors.white70,
                               ),
                             ),
                           ],
@@ -960,7 +962,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close),
+                        icon: const Icon(Icons.close, color: Colors.white),
                       ),
                     ],
                   ),
@@ -990,7 +992,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                         ),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Colors.purple.shade100,
+                            backgroundColor: const Color(
+                              0xFF2F80ED,
+                            ).withValues(alpha: 0.1),
                             child: Icon(
                               actionType == 'modules'
                                   ? Icons.menu_book_rounded
@@ -1001,7 +1005,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                                   : actionType == 'progress'
                                   ? Icons.analytics_rounded
                                   : Icons.video_library_rounded,
-                              color: Colors.purple,
+                              color: Color(0xFF2F80ED),
                               size: 20,
                             ),
                           ),
@@ -1059,7 +1063,11 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white,
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF2F80ED), Color(0xFF1A5FA8)],
+              ),
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
@@ -1073,7 +1081,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               children: [
                 CircleAvatar(
                   radius: 50,
-                  backgroundColor: Colors.purple.shade100,
+                  backgroundColor: Colors.white,
                   backgroundImage: user.photoURL != null
                       ? NetworkImage(user.photoURL!)
                       : null,
@@ -1081,7 +1089,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                       ? const Icon(
                           Icons.person_rounded,
                           size: 50,
-                          color: Colors.purple,
+                          color: Color(0xFF2F80ED),
                         )
                       : null,
                 ),
@@ -1091,12 +1099,13 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   user.email ?? 'No email',
-                  style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  style: const TextStyle(fontSize: 14, color: Colors.white70),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -1105,13 +1114,13 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.purple.shade100,
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
                     'TESDA Trainer',
                     style: TextStyle(
-                      color: Colors.purple,
+                      color: Colors.white,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),
@@ -1128,7 +1137,10 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 onPressed: _logout,
                 icon: const Icon(Icons.logout_rounded),
                 label: const Text('Logout'),
-                style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red.shade600,
+                  side: BorderSide(color: Colors.red.shade300),
+                ),
               ),
             ),
         ],
@@ -1163,7 +1175,7 @@ class _TrainerToolItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFECE7F1)),
+          border: Border.all(color: const Color(0xFFE8EDF4)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),

@@ -48,7 +48,7 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
-        title: Text('Modules - ${widget.className}'),
+        title: const Text('Modules'),
         backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
         elevation: 0,

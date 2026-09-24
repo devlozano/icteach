@@ -6,8 +6,13 @@ import '../models/forum_model.dart';
 import 'notification_service.dart';
 
 class ForumService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final NotificationService _notificationService = NotificationService();
+  ForumService({FirebaseFirestore? firestore})
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  final FirebaseFirestore _firestore;
+  late final NotificationService _notificationService = NotificationService(
+    firestore: _firestore,
+  );
 
   // Get forum posts for a class
   Stream<List<ForumPost>> getForumPosts(String classId) {
@@ -25,6 +30,16 @@ class ForumService {
                 .toList();
           }),
     );
+  }
+
+  Stream<ForumPost?> watchForumPost(String classId, String postId) {
+    return _firestore
+        .collection('classes')
+        .doc(classId)
+        .collection('forum_posts')
+        .doc(postId)
+        .snapshots()
+        .map((doc) => doc.exists ? ForumPost.fromFirestore(doc) : null);
   }
 
   // Get a single post with replies
@@ -87,6 +102,7 @@ class ForumService {
       post.title,
       authorName,
       user.uid,
+      postId: post.id,
     );
 
     // Debug: Check if notifications were created
@@ -250,6 +266,7 @@ class ForumService {
       authorName,
       post.authorId,
       user.uid,
+      postId: post.id,
     );
 
     print('✅ Reply notification sent for post: ${post.title}');
@@ -332,5 +349,9 @@ class ForumService {
     batch.delete(postRef);
 
     await batch.commit();
+    await _notificationService.deleteForReference(
+      referenceId: postId,
+      type: 'forum',
+    );
   }
 }
