@@ -1,3 +1,4 @@
+import 'widgets/roster_directory.dart';
 import 'widgets/summary_print_button.dart';
 import 'services/content_access_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -614,6 +615,8 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           children: [
             Text(
               widget.className,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             if (_teacherName.isNotEmpty)
@@ -625,12 +628,16 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                     color: const Color(0xFF64748B),
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    _teacherName,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: const Color(0xFF64748B),
-                      fontWeight: FontWeight.w400,
+                  Flexible(
+                    child: Text(
+                      _teacherName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: const Color(0xFF64748B),
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
                   ),
                 ],
@@ -653,109 +660,35 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
               ),
             ],
           ),
-          if (_classCode.isNotEmpty) ...[
-            IconButton(
-              icon: const Icon(Icons.qr_code_2, color: const Color(0xFF428DEB)),
-              onPressed: () => _showQRCodeDialog(context),
-              tooltip: 'Show QR Code',
-            ),
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              child: PopupMenuButton<String>(
-                icon: const Icon(
-                  Icons.more_vert,
-                  color: const Color(0xFF428DEB),
-                ),
-                onSelected: (value) {
-                  if (value == 'qr') {
-                    _showQRCodeDialog(context);
-                  } else if (value == 'copy') {
-                    _copyClassCode(context);
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'qr',
-                    child: Row(
-                      children: [
-                        Icon(Icons.qr_code, size: 18, color: Color(0xFF428DEB)),
-                        SizedBox(width: 8),
-                        Text('Show QR Code'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'copy',
-                    child: Row(
-                      children: [
-                        Icon(Icons.copy, size: 18, color: Color(0xFF428DEB)),
-                        SizedBox(width: 8),
-                        Text('Copy Class Code'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
+          preferredSize: const Size.fromHeight(64),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            width: double.infinity,
-            color: const Color(0xFF0F172A),
+            color: const Color(0xFF0B2B4A),
             child: Row(
               children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text(
-                        'Class Code',
+                        'CLASS CODE',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
+                          letterSpacing: 1.4,
                           color: Colors.white70,
-                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Text(
-                            _classCode.isNotEmpty ? _classCode : 'Loading...',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (_classCode.isNotEmpty)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.shade100,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.amber.shade300,
-                                ),
-                              ),
-                              child: Text(
-                                'Share with students',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.amber.shade900,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                        ],
+                      Text(
+                        _classCode.isEmpty ? 'Unavailable' : _classCode,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
                     ],
                   ),
@@ -763,29 +696,13 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                 if (_classCode.isNotEmpty) ...[
                   IconButton(
                     onPressed: () => _showQRCodeDialog(context),
-                    icon: const Icon(Icons.qr_code, color: Colors.white),
-                    tooltip: 'QR Code',
+                    icon: const Icon(Icons.qr_code_2, color: Colors.white),
+                    tooltip: 'Show QR code',
                   ),
-                  const SizedBox(width: 4),
-                  ElevatedButton.icon(
+                  IconButton(
                     onPressed: () => _copyClassCode(context),
-                    icon: const Icon(Icons.copy, size: 16),
-                    label: const Text('Copy'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0891B2),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    icon: const Icon(Icons.copy_outlined, color: Colors.white),
+                    tooltip: 'Copy class code',
                   ),
                 ],
               ],
@@ -795,114 +712,11 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : (_students.isEmpty && _trainers.isEmpty)
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.people_outline,
-                    size: 64,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    "No users joined yet",
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    "Share the class code to invite students and trainers",
-                    style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
-                  ),
-                ],
-              ),
-            )
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (_trainers.isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Trainers (${_trainers.length})',
-                            style: TextStyle(
-                              color: Colors.purple.shade800,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '👑 Class Trainers',
-                          style: TextStyle(
-                            color: Colors.purple.shade600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ..._trainers.map(
-                    (trainer) =>
-                        _buildUserCard(context, trainer, isTrainer: true),
-                  ),
-                  const SizedBox(height: 16),
-                  const Divider(),
-                  const SizedBox(height: 8),
-                ],
-                if (_students.isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            'Students (${_students.length})',
-                            style: TextStyle(
-                              color: Colors.blue.shade800,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '🎓 Enrolled Students',
-                          style: TextStyle(
-                            color: Colors.blue.shade600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ..._students.map(
-                    (student) =>
-                        _buildUserCard(context, student, isTrainer: false),
-                  ),
-                ],
-              ],
+          : RosterDirectory(
+              students: _students,
+              trainers: _trainers,
+              itemBuilder: (user, trainer) =>
+                  _buildUserCard(context, user, isTrainer: trainer),
             ),
     );
   }
@@ -918,9 +732,18 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
     final data = user['data'] ?? {};
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      color: Colors.white,
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
         leading: CircleAvatar(
           backgroundColor: isTrainer
               ? Colors.purple.shade100
@@ -964,6 +787,8 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         ),
         subtitle: Text(
           email.isNotEmpty ? email : 'No email',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
         ),
         trailing: PopupMenuButton(

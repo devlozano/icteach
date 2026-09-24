@@ -1,3 +1,4 @@
+import 'module_access_overview.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../services/module_access_service.dart';
@@ -7,10 +8,12 @@ class ModuleAccessPanel extends StatelessWidget {
   final String classId, moduleId, title;
   const ModuleAccessPanel({
     super.key,
+    this.initiallyExpanded = false,
     required this.classId,
     required this.moduleId,
     required this.title,
   });
+  final bool initiallyExpanded;
   @override
   Widget build(
     BuildContext context,
@@ -73,48 +76,47 @@ class ModuleAccessPanel extends StatelessWidget {
                         : 'Not downloaded',
                   ],
               ];
-              return ExpansionTile(
-                title: Text(
-                  '${summary.accessed}/${students.length} students accessed · ${summary.downloaded} downloaded',
-                ),
-                subtitle: Text(
-                  '${summary.requested} download requests. Tap for student status.',
-                ),
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(12),
-                    child: Text(
-                      'Downloaded means the device confirmed saving the file. Browser requests are shown separately. Tracking begins with this update.',
-                    ),
-                  ),
-                  SummaryPrintButton(
-                    title: 'Module access - $title',
-                    load: () async => [
-                      SummarySection(
-                        'Module totals',
-                        ['Students', 'Accessed', 'Downloaded', 'Requests'],
-                        [
-                          [
-                            students.length,
-                            summary.accessed,
-                            summary.downloaded,
-                            summary.requested,
-                          ],
-                        ],
-                      ),
-                      SummarySection('Student access and downloads', [
-                        'Student',
-                        'Lesson access',
-                        'Download status',
-                      ], rows),
-                    ],
-                  ),
-                  for (final row in rows)
-                    ListTile(
-                      title: Text(row[0].toString()),
-                      subtitle: Text('${row[1]} · ${row[2]}'),
+              return ModuleAccessOverview(
+                initiallyExpanded: initiallyExpanded,
+                accessed: summary.accessed,
+                downloaded: summary.downloaded,
+                requested: summary.requested,
+                students: [
+                  for (final student in students)
+                    ModuleStudentActivity(
+                      id: student.id,
+                      name:
+                          (student.data()?['name'] ??
+                                  student.data()?['email'] ??
+                                  student.id)
+                              .toString(),
+                      accessed: byId[student.id]?['accessed'] == true,
+                      downloaded: byId[student.id]?['downloaded'] == true,
+                      requested: byId[student.id]?['downloadRequested'] == true,
                     ),
                 ],
+                printAction: SummaryPrintButton(
+                  title: 'Module access - $title',
+                  load: () async => [
+                    SummarySection(
+                      'Module totals',
+                      ['Students', 'Accessed', 'Downloaded', 'Requests'],
+                      [
+                        [
+                          students.length,
+                          summary.accessed,
+                          summary.downloaded,
+                          summary.requested,
+                        ],
+                      ],
+                    ),
+                    SummarySection('Student access and downloads', [
+                      'Student',
+                      'Lesson access',
+                      'Download status',
+                    ], rows),
+                  ],
+                ),
               );
             },
           );
