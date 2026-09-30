@@ -18,11 +18,23 @@ class LrnImportFailure implements Exception {
 class LrnCsvImportService {
   static const chunkSize = 100;
   final Future<int> Function(List<LrnCsvRecord>) _createMissing;
-  LrnCsvImportService({Future<int> Function(List<LrnCsvRecord>)? createMissing})
-    : _createMissing = createMissing ?? _writeChunk;
+  LrnCsvImportService({
+    Future<int> Function(List<LrnCsvRecord>)? createMissing,
+    String folderId = '',
+    FirebaseFirestore? firestore,
+  }) : _createMissing =
+           createMissing ??
+           ((rows) => _writeChunk(
+             rows,
+             folderId,
+             firestore ?? FirebaseFirestore.instance,
+           ));
 
-  static Future<int> _writeChunk(List<LrnCsvRecord> rows) async {
-    final db = FirebaseFirestore.instance;
+  static Future<int> _writeChunk(
+    List<LrnCsvRecord> rows,
+    String folderId,
+    FirebaseFirestore db,
+  ) async {
     return db.runTransaction<int>((transaction) async {
       final refs = rows
           .map((r) => db.collection('lrn_master_list').doc(r.lrn))
@@ -36,6 +48,7 @@ class LrnCsvImportService {
           ...rows[i].names,
           'isRegistered': false,
           'uploadedAt': FieldValue.serverTimestamp(),
+          'folderId': folderId,
         });
         added++;
       }

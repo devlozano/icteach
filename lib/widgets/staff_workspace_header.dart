@@ -102,11 +102,13 @@ class StaffTopBar extends StatelessWidget {
     required this.showMenuButton,
     this.role = 'Administration',
     this.showIdentity = true,
+    this.showNotifications = true,
   });
   final String name;
   final String role;
   final bool showMenuButton;
   final bool showIdentity;
+  final bool showNotifications;
 
   @override
   Widget build(BuildContext context) {
@@ -143,25 +145,25 @@ class StaffTopBar extends StatelessWidget {
             )
           else
             const Spacer(),
-          // Notification bell
-          NotificationBadge(
-            child: IconButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const NotificationPage(),
-                  ),
-                );
-              },
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: Color(0xFF666666),
-                size: 26,
+          if (showNotifications)
+            NotificationBadge(
+              child: IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationPage(),
+                    ),
+                  );
+                },
+                icon: const Icon(
+                  Icons.notifications_none_rounded,
+                  color: Color(0xFF666666),
+                  size: 26,
+                ),
+                tooltip: 'Notifications',
               ),
-              tooltip: 'Notifications',
             ),
-          ),
           if (showIdentity) ...[
             const SizedBox(width: 8),
             Container(

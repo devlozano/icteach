@@ -156,8 +156,14 @@ void main() {
     await tester.tap(find.text('Run LAN test'));
     await tester.pump(const Duration(seconds: 4));
     await tester.pumpAndSettle();
-    expect(find.text('FAIL • Re-terminate the cable'), findsOneWidget);
-    expect(find.textContaining('1→2  2→1'), findsOneWidget);
+    expect(find.text('LAN TEST FAILED'), findsOneWidget);
+    expect(
+      find.text('6 of 8 pins match. Re-terminate the incorrect end.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('lan-test-result')), findsOneWidget);
+    expect(find.byKey(const ValueKey('lan-pin-1')), findsOneWidget);
+    expect(find.text('Expected 1'), findsOneWidget);
     await screenshot('rj45-tester-result');
     expect(submissions, 0);
     expect(tester.takeException(), isNull);

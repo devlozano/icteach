@@ -1,5 +1,5 @@
 // lib/screens/admin/manage_lrn_page.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../widgets/lrn_folder_browser.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/lrn_csv_parser.dart';
@@ -16,6 +16,8 @@ class ManageLRNPage extends StatefulWidget {
 
 class _ManageLRNPageState extends State<ManageLRNPage> {
   bool _isUploading = false;
+  String _folderId = '';
+  String _folderName = 'Unfiled';
   final TextEditingController _lrnController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
@@ -40,19 +42,21 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
       );
       if (result == null || !mounted) return;
       final file = result.files.single;
-      if (file.size > LrnCsvParser.maxBytes)
+      if (file.size > LrnCsvParser.maxBytes) {
         throw const FormatException('CSV files must be 5 MB or smaller.');
+      }
       final bytes = file.bytes;
-      if (bytes == null)
+      if (bytes == null) {
         throw const FormatException(
           'Unable to read the selected file. Download it to your device and select it again.',
         );
+      }
       final records = LrnCsvParser.parseBytes(bytes);
       if (!mounted) return;
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Import LRN records?'),
+          title: Text('Import into $_folderName?'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -87,12 +91,13 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
       );
       if (confirmed != true || !mounted) return;
       setState(() => _total = records.length);
-      final summary = await LrnCsvImportService().importRecords(
-        records,
-        onProgress: (processed, total) {
-          if (mounted) setState(() => _processed = processed);
-        },
-      );
+      final summary = await LrnCsvImportService(folderId: _folderId)
+          .importRecords(
+            records,
+            onProgress: (processed, total) {
+              if (mounted) setState(() => _processed = processed);
+            },
+          );
       if (!mounted) return;
       final message =
           'Import complete: ${summary.added} added, ${summary.skipped} existing records skipped.';
@@ -131,122 +136,32 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
 
   @override
   Widget build(BuildContext context) {
-    final listSection = StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('lrn_master_list')
-          .orderBy('uploadedAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(
-            height: 220,
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        final docs = snapshot.data?.docs ?? [];
-        if (snapshot.hasError)
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Unable to load LRN records. Check your connection and permissions.',
-            ),
-          );
-        if (docs.isEmpty) {
-          return const SizedBox(
-            height: 240,
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.numbers, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text(
-                    'No LRN records found',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'Upload CSV or add manually',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return SizedBox(
-          height: 440,
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: docs.length,
-            itemBuilder: (context, index) {
-              final data = docs[index].data() as Map<String, dynamic>;
-              final lrn = docs[index].id;
-              final isRegistered = data['isRegistered'] ?? false;
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: isRegistered
-                        ? Colors.green.shade100
-                        : Colors.amber.shade100,
-                    child: Icon(
-                      isRegistered ? Icons.check : Icons.pending,
-                      color: isRegistered ? Colors.green : Colors.amber,
-                      size: 18,
-                    ),
-                  ),
-                  title: Text(
-                    lrn,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                  subtitle: Text(
-                    '${data['firstName']} ${data['lastName']}${data['middleName'] != null ? ' ${data['middleName']}' : ''}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  trailing: isRegistered
-                      ? Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isRegistered
-                                ? Colors.green.shade100
-                                : Colors.amber.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            isRegistered ? 'Registered' : 'Pending',
-                            style: TextStyle(
-                              color: isRegistered
-                                  ? Colors.green.shade800
-                                  : Colors.amber.shade800,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              );
-            },
-          ),
-        );
-      },
+    final listSection = LrnFolderBrowser(
+      enabled: !_isUploading,
+      onFolderChanged: (id, name) => setState(() {
+        _folderId = id;
+        _folderName = name;
+      }),
     );
 
     final pageContent = Column(
       children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('Destination folder: $_folderName'),
+              OutlinedButton.icon(
+                onPressed: _isUploading ? null : _showAddLRNDialog,
+                icon: const Icon(Icons.add),
+                label: const Text('Add LRN'),
+              ),
+            ],
+          ),
+        ),
         Card(
           margin: const EdgeInsets.all(16),
           child: Padding(
@@ -344,7 +259,7 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Add LRN'),
+        title: Text('Add LRN to $_folderName'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -399,9 +314,9 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
               }
 
               try {
-                final result = await LrnCsvImportService().importRecords([
-                  LrnCsvRecord(lrn, firstName, lastName, ''),
-                ]);
+                final result = await LrnCsvImportService(
+                  folderId: _folderId,
+                ).importRecords([LrnCsvRecord(lrn, firstName, lastName, '')]);
                 if (!mounted || !context.mounted) return;
                 if (result.skipped > 0) {
                   _showSnackBar(

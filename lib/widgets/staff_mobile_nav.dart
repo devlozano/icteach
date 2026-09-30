@@ -33,9 +33,10 @@ class StaffMobileNav extends StatelessWidget {
             (Icons.rate_review_outlined, 'Feedback'),
             (Icons.groups_outlined, 'Students'),
             (Icons.menu_book_outlined, 'Modules'),
+            (Icons.fact_check_outlined, 'Quiz & Assessment'),
           ];
     final primary = trainer ? [0, 6, 5] : [0, 1, 7];
-    final moreOrder = trainer ? [1, 2, 3, 4] : [2, 3, 5, 6, 4];
+    final moreOrder = trainer ? [1, 2, 3, 4] : [2, 3, 5, 6, 8, 4];
     final selected = primary.indexOf(currentIndex);
     return NavigationBar(
       selectedIndex: selected < 0 ? 3 : selected,

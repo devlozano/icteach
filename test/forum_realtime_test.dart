@@ -40,4 +40,36 @@ void main() {
       expect(events.current!.title, 'Restored');
     },
   );
+
+  test('viewer stream excludes the forum author account', () async {
+    final db = FakeFirebaseFirestore();
+    final viewers = db
+        .collection('classes')
+        .doc('class1')
+        .collection('forum_posts')
+        .doc('post1')
+        .collection('viewers');
+    await viewers.doc('author').set({
+      'userId': 'author',
+      'name': 'Post Author',
+      'viewedAt': DateTime(2026),
+    });
+    await viewers.doc('legacy-author-view').set({
+      'userId': 'author',
+      'name': 'Post Author Duplicate',
+      'viewedAt': DateTime(2026, 1, 2),
+    });
+    await viewers.doc('reader').set({
+      'userId': 'reader',
+      'name': 'Other Viewer',
+      'viewedAt': DateTime(2026, 1, 3),
+    });
+
+    final result = await ForumService(
+      firestore: db,
+    ).getPostViewers('class1', 'post1', 'author').first;
+
+    expect(result, hasLength(1));
+    expect(result.single['userId'], 'reader');
+  });
 }

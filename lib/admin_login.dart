@@ -1,3 +1,4 @@
+import 'widgets/password_reset_dialog.dart';
 import 'services/workspace_navigation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -322,6 +323,18 @@ class _AdminLoginPageState extends State<AdminLoginPage>
                   ),
                 ),
                 const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _isLoading
+                        ? null
+                        : () => showPasswordResetDialog(
+                            context,
+                            email: _emailController.text.trim(),
+                          ),
+                    child: const Text('Forgot Password?'),
+                  ),
+                ),
                 CheckboxListTile(
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,

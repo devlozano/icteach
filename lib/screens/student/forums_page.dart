@@ -182,18 +182,24 @@ class _ForumsPageState extends State<ForumsPage> {
           children: [
             const Icon(Icons.visibility_outlined),
             const SizedBox(width: 8),
-            Text('Viewed by (' + post.viewCount.toString() + ')'),
+            const Text('Viewed by'),
           ],
         ),
         content: SizedBox(
           width: 360,
           child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: _forumService.getPostViewers(widget.classId, post.id),
+            stream: _forumService.getPostViewers(
+              widget.classId,
+              post.id,
+              post.authorId,
+            ),
             builder: (context, snapshot) {
-              if (snapshot.hasError)
+              if (snapshot.hasError) {
                 return const Text('Could not load viewers.');
-              if (!snapshot.hasData)
+              }
+              if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
+              }
               final viewers = snapshot.data!;
               if (viewers.isEmpty) return const Text('No views yet.');
               return ConstrainedBox(

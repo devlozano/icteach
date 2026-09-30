@@ -140,7 +140,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     Expanded(
                       child: Column(
                         children: [
-                          StaffTopBar(name: name, showMenuButton: !isWide),
+                          StaffTopBar(
+                            name: name,
+                            showMenuButton: !isWide,
+                            showNotifications: false,
+                          ),
                           Expanded(
                             child: SingleChildScrollView(
                               padding: EdgeInsets.fromLTRB(

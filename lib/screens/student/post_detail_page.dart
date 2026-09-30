@@ -262,7 +262,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                                       _forumService,
                                       widget.classId,
                                       widget.postId,
-                                      _post.viewCount,
+                                      _post.authorId,
                                     ),
                                     child: Row(
                                       children: [

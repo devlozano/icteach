@@ -1,3 +1,4 @@
+import 'widgets/account_settings_section.dart';
 import 'widgets/lazy_indexed_stack.dart';
 import 'services/workspace_data.dart';
 import 'widgets/admin_workspace_layout.dart';
@@ -36,7 +37,7 @@ class TeacherHomePage extends StatefulWidget {
 }
 
 class _TeacherHomePageState extends State<TeacherHomePage> {
-  int _currentTabIndex = WorkspacePreferences.tab('teacher', 8);
+  int _currentTabIndex = WorkspacePreferences.tab('teacher', 9);
   void _selectTab(int index) {
     setState(() => _currentTabIndex = index);
     WorkspacePreferences.saveTab('teacher', index);
@@ -51,9 +52,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     (Icons.rate_review_outlined, 'Feedback'),
     (Icons.groups_outlined, 'Student Management'),
     (Icons.menu_book_outlined, 'Module Management'),
+    (Icons.fact_check_outlined, 'Quiz & Assessment'),
   ];
   // Keep Feedback directly above Profile in the website sidebar.
-  static const _webOrder = [0, 1, 2, 3, 6, 7, 5, 4];
+  static const _webOrder = [0, 1, 2, 3, 6, 7, 8, 5, 4];
   Widget _webSidebar(String name, ValueChanged<int> select) =>
       AdminWorkspaceSidebar(
         role: 'Teacher',
@@ -79,7 +81,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       title: _webItems[_currentTabIndex].$2,
       subtitle: _currentTabIndex == 0
           ? 'Welcome back to ICTeach Teacher'
-          : 'Manage your ' + _webItems[_currentTabIndex].$2.toLowerCase(),
+          : 'Manage your ${_webItems[_currentTabIndex].$2.toLowerCase()}',
       icon: _webItems[_currentTabIndex].$1,
       child: content,
     );
@@ -308,25 +310,21 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // App account action; desktop has sign-out in its sidebar.
-          if (!(kIsWeb && MediaQuery.sizeOf(context).width >= 1000))
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Logout'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade600,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  side: BorderSide(color: Colors.red.shade300),
-                ),
-              ),
-            ),
+          AccountSettingsSection(
+            email: user.email ?? '',
+            role: 'teacher',
+            accountDetails: {
+              'Name': _teacherName(profile, user),
+              'Email': user.email ?? 'No email',
+              'Role': 'Teacher',
+              'Employee ID':
+                  profile?['employeeId']?.toString() ??
+                  profile?['teacherId']?.toString() ??
+                  '',
+            },
+            onLogout: _logout,
+            showLogout: !(kIsWeb && MediaQuery.sizeOf(context).width >= 1000),
+          ),
         ],
       ),
     );
@@ -473,7 +471,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 4 => _buildTeacherProfile(user, profile),
                 5 => const StaffOutcomes(feedback: true),
                 6 => const StaffManagementPage(embedded: true),
-                _ => const StaffManagementPage(embedded: true, modules: true),
+                7 => const StaffManagementPage(embedded: true, modules: true),
+                _ => const TeacherQuizAssessmentHub(),
               });
             }
 
@@ -504,6 +503,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                             'Feedback',
                             'Students',
                             'Modules',
+                            'Quiz & Assessment',
                           ][_currentTabIndex],
                         ),
                         actions: [
@@ -549,6 +549,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                                           'Feedback',
                                           'Student Management',
                                           'Module Management',
+                                          'Quiz & Assessment',
                                         ][_currentTabIndex],
                                         style: const TextStyle(
                                           color: Color(0xFF102A43),
@@ -587,6 +588,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                                   modules: true,
                                   trainer: false,
                                 ),
+                                () => const TeacherQuizAssessmentHub(),
                               ],
                             ),
                           ),
@@ -1127,9 +1129,112 @@ class _TeacherDesktopNav extends StatelessWidget {
       (Icons.rate_review_outlined, 'Feedback'),
       (Icons.groups_outlined, 'Student Management'),
       (Icons.menu_book_outlined, 'Module Management'),
+      (Icons.fact_check_outlined, 'Quiz & Assessment'),
     ],
     onSelected: onChanged,
     onLogout: onLogout,
+  );
+}
+
+class TeacherQuizAssessmentHub extends StatelessWidget {
+  const TeacherQuizAssessmentHub({super.key});
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    padding: const EdgeInsets.all(20),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Manage quizzes and assessments',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        const Text(
+          'Choose a class, then create, publish, review, or grade its activities.',
+        ),
+        const SizedBox(height: 20),
+        Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _AssessmentDestinationCard(
+              icon: Icons.quiz_outlined,
+              title: 'Manage Quizzes',
+              description: 'Create quizzes, publish them, and review results.',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const _ModuleClassSelector(moduleType: 'quizzes'),
+                ),
+              ),
+            ),
+            _AssessmentDestinationCard(
+              icon: Icons.assignment_outlined,
+              title: 'Manage Assessments',
+              description: 'Create assignments and review student submissions.',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      const _ModuleClassSelector(moduleType: 'assignments'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _AssessmentDestinationCard extends StatelessWidget {
+  const _AssessmentDestinationCard({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String title;
+  final String description;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 330,
+    child: Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              CircleAvatar(child: Icon(icon)),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(description),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
 

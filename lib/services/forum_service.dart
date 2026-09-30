@@ -151,6 +151,8 @@ class ForumService {
         .doc(postId);
     final viewerRef = postRef.collection('viewers').doc(user.uid);
     await _firestore.runTransaction((transaction) async {
+      final post = await transaction.get(postRef);
+      if (!post.exists || post.data()?['authorId'] == user.uid) return;
       final viewer = await transaction.get(viewerRef);
       if (viewer.exists) return;
       final profileRef = _firestore.collection('users').doc(user.uid);
@@ -174,6 +176,7 @@ class ForumService {
   Stream<List<Map<String, dynamic>>> getPostViewers(
     String classId,
     String postId,
+    String authorId,
   ) {
     return _firestore
         .collection('classes')
@@ -185,6 +188,11 @@ class ForumService {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
+              .where(
+                (doc) =>
+                    doc.id != authorId &&
+                    doc.data()['userId']?.toString() != authorId,
+              )
               .map((doc) => {'id': doc.id, ...doc.data()})
               .toList(),
         );

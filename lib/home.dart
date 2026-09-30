@@ -1,3 +1,4 @@
+import 'widgets/account_settings_section.dart';
 import 'widgets/retained_future_builder.dart';
 import 'widgets/lazy_indexed_stack.dart';
 import 'services/workspace_data.dart';
@@ -1422,6 +1423,19 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(height: 16),
+          AccountSettingsSection(
+            email: user.email ?? '',
+            role: 'student',
+            accountDetails: {
+              'Name': _getFullName(profile),
+              'Email': user.email ?? 'No email',
+              'Role': 'Student',
+              'LRN': profile?['lrn']?.toString() ?? '',
+              'Class': _className ?? '',
+            },
+            onLogout: _logout,
+          ),
+          const SizedBox(height: 8),
 
           if (FeedbackEligibility.isQualified(profile))
             Card(
@@ -1476,15 +1490,6 @@ class _HomePageState extends State<HomePage> {
                 const ListTile(
                   leading: UserRolesButton(),
                   title: Text('About ICTeach roles'),
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
-                  title: const Text(
-                    'Logout',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  onTap: _logout,
                 ),
               ],
             ),

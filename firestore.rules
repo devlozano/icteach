@@ -2,18 +2,80 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Registration must verify one exact, still-available LRN before sign-in.
-    // Collection listing remains unavailable to unauthenticated users.
+    // LRN folders: name (1-80 characters), kind (batch/class), createdAt.
+    // Master records retain their document ID and immutable registration link.
+    // folderId is optional for legacy records; '' means Unfiled.
+    // archived=true hides a registered LRN without releasing its identity.
+    function isAdmin() {
+      return request.auth != null && request.auth.token.get('admin', false) == true;
+    }
+    function validFolder(data) {
+      return data.keys().hasOnly(['name', 'kind', 'createdAt'])
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 80
+        && data.kind is string && data.kind in ['batch', 'class']
+        && data.createdAt is timestamp;
+    }
+    function validFolderId(data) {
+      return data.get('folderId', '') is string
+        && data.get('folderId', '').size() <= 128
+        && (data.get('folderId', '') == ''
+          || exists(/databases/$(database)/documents/lrn_folders/$(data.folderId)));
+    }
+    function validMaster(data, lrn) {
+      return lrn.matches('^[0-9]{12}$')
+        && data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 150
+        && data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 150
+        && data.get('middleName', '') is string && data.get('middleName', '').size() <= 150
+        && data.isRegistered is bool
+        && data.get('archived', false) is bool
+        && validFolderId(data);
+    }
+    function claimsLrn(lrn) {
+      let after = request.resource.data;
+      let user = getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let student = getAfter(/databases/$(database)/documents/students/$(request.auth.uid)).data;
+      return resource.data.isRegistered == false
+        && resource.data.get('archived', false) == false
+        && after.diff(resource.data).affectedKeys().hasOnly(['isRegistered', 'registeredAt', 'registeredUid'])
+        && after.isRegistered == true && after.registeredUid == request.auth.uid
+        && after.registeredAt == request.time
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && !exists(/databases/$(database)/documents/students/$(request.auth.uid))
+        && user.uid == request.auth.uid && user.role == 'student' && user.lrn == lrn
+        && user.firstName == resource.data.firstName && user.lastName == resource.data.lastName
+        && user.get('middleName', '') == resource.data.get('middleName', '')
+        && student == user;
+    }
+    match /lrn_folders/{folder} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() && validFolder(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update: if isAdmin() && validFolder(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isAdmin();
+    }
     match /lrn_master_list/{lrn} {
-      allow get: if resource.data.isRegistered == false;
-      allow list: if request.auth != null;
-      allow create, update, delete: if request.auth != null;
+      // Preserve the existing exact-LRN eligibility check before account creation.
+      allow get: if request.auth != null
+        || (resource.data.isRegistered == false && resource.data.get('archived', false) == false);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && validMaster(request.resource.data, lrn)
+        && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'middleName', 'isRegistered', 'uploadedAt', 'folderId'])
+        && request.resource.data.isRegistered == false
+        && request.resource.data.uploadedAt == request.time;
+      allow update: if request.auth != null && validMaster(request.resource.data, lrn)
+        && ((isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['folderId', 'archived'])
+          && (request.resource.data.get('archived', false) == false || resource.data.isRegistered == true))
+          || claimsLrn(lrn));
+      allow delete: if isAdmin() && resource.data.isRegistered == false;
     }
 
-    // Preserve the existing authenticated application access while the
-    // collection-specific policies are migrated.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    // Existing policies for unrelated collections remain unchanged. Exclude the
+    // LRN namespace here so a broad match cannot bypass its admin restrictions.
+    match /{collection}/{document=**} {
+      allow read, write: if request.auth != null
+        && !(collection in ['lrn_master_list', 'lrn_folders']);
     }
   }
 }

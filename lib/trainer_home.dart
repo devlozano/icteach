@@ -1,3 +1,4 @@
+import 'widgets/account_settings_section.dart';
 import 'widgets/lazy_indexed_stack.dart';
 import 'services/workspace_data.dart';
 import 'widgets/admin_workspace_layout.dart';
@@ -1130,19 +1131,18 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             ),
           ),
           const SizedBox(height: 16),
-          if (!(kIsWeb && MediaQuery.sizeOf(context).width >= 1000))
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Logout'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red.shade600,
-                  side: BorderSide(color: Colors.red.shade300),
-                ),
-              ),
-            ),
+          AccountSettingsSection(
+            email: user.email ?? '',
+            role: 'trainer',
+            accountDetails: {
+              'Name': _trainerName(profile, user),
+              'Email': user.email ?? 'No email',
+              'Role': 'Trainer',
+              'Qualification': profile?['qualification']?.toString() ?? '',
+            },
+            onLogout: _logout,
+            showLogout: !(kIsWeb && MediaQuery.sizeOf(context).width >= 1000),
+          ),
         ],
       ),
     );

@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/rj45_session.dart';
+import 'rj45_test_result.dart';
 
 class Rj45Workbench extends StatefulWidget {
   final void Function(int, int, bool) onComplete;
@@ -590,7 +591,20 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                   : 'Run LAN test',
             ),
           ),
-          if (tested) ...[
+          if (tested)
+            Rj45TestResult(
+              session: s,
+              onRetry: (end) => change(() {
+                s.reterminate(end);
+                active = end;
+                tested = false;
+                lit = -1;
+              }),
+              onSubmit: () => widget.onComplete(s.passed ? 8 : 0, 8, s.passed),
+            ),
+          // Kept unreachable only to preserve compatibility with older snapshots.
+          // ignore: dead_code
+          if (false) ...[
             Text(
               s.passed
                   ? 'PASS • Cable matches the selected standard'
