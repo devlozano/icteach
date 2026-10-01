@@ -66,10 +66,11 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
         ),
       );
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Activity not opened: $e')));
+      }
     } finally {
       _starting = false;
     }
@@ -128,12 +129,15 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
     var theoryDone = widget.type != 'simulation';
     if (widget.type == 'simulation' && path['quizId'] != null) {
       final doc = await root.collection('quizzes').doc(path['quizId']).get();
-      if (doc.exists && doc.data()?['isPublished'] == true)
+      if (doc.exists && doc.data()?['isPublished'] == true) {
         quiz = QuizModel.fromFirestore(doc);
-      final result =
-          (await user.collection('quiz_results').doc(path['quizId']).get())
-              .data();
-      theoryDone = result != null && result['classId'] == widget.classId;
+      }
+      theoryDone = await LearningPathService.hasCompletedQuiz(
+        widget.classId,
+        path['quizId'],
+        firestore: db,
+        studentId: uid,
+      );
     }
     return {
       'configured':
@@ -149,10 +153,11 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
 
   Future<void> _open(Widget page) async {
     await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-    if (mounted)
+    if (mounted) {
       setState(() {
         _state = _refresh();
       });
+    }
   }
 
   @override
@@ -161,7 +166,7 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
     body: FutureBuilder<Map<String, dynamic>>(
       future: _state,
       builder: (context, snapshot) {
-        if (snapshot.hasError)
+        if (snapshot.hasError) {
           return Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -182,10 +187,12 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
               ],
             ),
           );
-        if (!snapshot.hasData)
+        }
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
         final state = snapshot.data!;
-        if (state['configured'] != true)
+        if (state['configured'] != true) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
@@ -194,6 +201,7 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
               ),
             ),
           );
+        }
         if (widget.type == 'quiz') {
           return ListView(
             padding: const EdgeInsets.all(24),

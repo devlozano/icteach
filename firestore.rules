@@ -14,6 +14,9 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true;
     }
+    function canAdmin() {
+      return isAdmin() || isAdminProfile();
+    }
     function validFolder(data) {
       return data.keys().hasOnly(['name', 'kind', 'createdAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 80
@@ -83,28 +86,28 @@ service cloud.firestore {
         && student == user;
     }
     match /lrn_folders/{folder} {
-      allow read: if isAdmin();
-      allow create: if isAdmin() && validFolder(request.resource.data)
+      allow read: if canAdmin();
+      allow create: if canAdmin() && validFolder(request.resource.data)
         && request.resource.data.createdAt == request.time;
-      allow update: if isAdmin() && validFolder(request.resource.data)
+      allow update: if canAdmin() && validFolder(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt;
-      allow delete: if isAdmin();
+      allow delete: if canAdmin();
     }
     match /lrn_master_list/{lrn} {
       // Preserve the existing exact-LRN eligibility check before account creation.
       allow get: if request.auth != null
         || (resource.data.isRegistered == false && resource.data.get('archived', false) == false);
-      allow list: if isAdmin();
-      allow create: if isAdmin() && validMaster(request.resource.data, lrn)
+      allow list: if canAdmin();
+      allow create: if canAdmin() && validMaster(request.resource.data, lrn)
         && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'middleName', 'extension', 'isRegistered', 'uploadedAt', 'folderId'])
         && request.resource.data.isRegistered == false
         && request.resource.data.uploadedAt == request.time;
       allow update: if request.auth != null && validMaster(request.resource.data, lrn)
-        && ((isAdmin()
+        && ((canAdmin()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['folderId', 'archived'])
           && (request.resource.data.get('archived', false) == false || resource.data.isRegistered == true))
           || claimsLrn(lrn));
-      allow delete: if isAdmin() && resource.data.isRegistered == false;
+      allow delete: if canAdmin() && resource.data.isRegistered == false;
     }
 
     // Narrow the previous signed-in catch-all: registered student names cannot
@@ -113,13 +116,13 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if profileCreate(request.resource.data, uid);
       allow update: if profileUpdate(uid);
-      allow delete: if isAdmin() || isAdminProfile();
+      allow delete: if canAdmin();
     }
     match /students/{uid} {
       allow read: if request.auth != null;
       allow create: if profileCreate(request.resource.data, uid);
       allow update: if profileUpdate(uid);
-      allow delete: if isAdmin() || isAdminProfile();
+      allow delete: if canAdmin();
     }
     match /users/{uid}/{subcollection}/{document=**} {
       allow read, write: if request.auth != null;

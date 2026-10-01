@@ -73,8 +73,10 @@ class _JoinClassPageState extends State<JoinClassPage> {
           child: Column(
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
                     const Expanded(
@@ -187,7 +189,8 @@ class _JoinClassPageState extends State<JoinClassPage> {
       if (userDoc.exists) {
         userData = userDoc.data() ?? {};
         userRole = userData['role']?.toString() ?? 'student';
-        userName = userData['name']?.toString() ??
+        userName =
+            userData['name']?.toString() ??
             userData['displayName']?.toString() ??
             user.displayName ??
             'User';
@@ -202,7 +205,8 @@ class _JoinClassPageState extends State<JoinClassPage> {
         if (studentDoc.exists) {
           final studentData = studentDoc.data() ?? {};
           userRole = studentData['role']?.toString() ?? 'student';
-          userName = studentData['name']?.toString() ??
+          userName =
+              studentData['name']?.toString() ??
               studentData['displayName']?.toString() ??
               user.displayName ??
               'User';
@@ -213,18 +217,18 @@ class _JoinClassPageState extends State<JoinClassPage> {
               .collection('users')
               .doc(user.uid)
               .set({
-            'uid': user.uid,
-            'name': userName,
-            'displayName': userName,
-            'email': userEmail,
-            'role': userRole,
-            'firstName': studentData['firstName'] ?? '',
-            'middleName': studentData['middleName'] ?? '',
-            'lastName': studentData['lastName'] ?? '',
-            'extension': studentData['extension'] ?? '',
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+                'uid': user.uid,
+                'name': userName,
+                'displayName': userName,
+                'email': userEmail,
+                'role': userRole,
+                'firstName': studentData['firstName'] ?? '',
+                'middleName': studentData['middleName'] ?? '',
+                'lastName': studentData['lastName'] ?? '',
+                'extension': studentData['extension'] ?? '',
+                'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
           debugPrint('✅ Created user document from students collection');
         } else {
           // ✅ Create minimal user document
@@ -232,14 +236,14 @@ class _JoinClassPageState extends State<JoinClassPage> {
               .collection('users')
               .doc(user.uid)
               .set({
-            'uid': user.uid,
-            'name': user.displayName ?? 'Student',
-            'displayName': user.displayName ?? 'Student',
-            'email': user.email ?? '',
-            'role': 'student',
-            'createdAt': FieldValue.serverTimestamp(),
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
+                'uid': user.uid,
+                'name': user.displayName ?? 'Student',
+                'displayName': user.displayName ?? 'Student',
+                'email': user.email ?? '',
+                'role': 'student',
+                'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
           debugPrint('✅ Created minimal user document');
         }
       }
@@ -254,8 +258,12 @@ class _JoinClassPageState extends State<JoinClassPage> {
 
         var hasActiveClass = false;
         for (final membership in existingClasses.docs) {
-          final previous = await FirebaseFirestore.instance.collection('classes').doc(membership.id).get();
-          if (previous.exists && previous.data()?['status'] != 'archived') hasActiveClass = true;
+          final previous = await FirebaseFirestore.instance
+              .collection('classes')
+              .doc(membership.id)
+              .get();
+          if (previous.exists && previous.data()?['status'] != 'archived')
+            hasActiveClass = true;
         }
         if (hasActiveClass) {
           _showMessage(
@@ -267,7 +275,9 @@ class _JoinClassPageState extends State<JoinClassPage> {
 
       // ✅ Get teacher name from class data
       if (classData['status'] == 'archived') {
-        _showMessage('This class is archived. Ask for your current school-year class code.');
+        _showMessage(
+          'This class is archived. Ask for your current school-year class code.',
+        );
         return;
       }
       final teacherName =
@@ -291,13 +301,13 @@ class _JoinClassPageState extends State<JoinClassPage> {
           .collection('students')
           .doc(user.uid)
           .set({
-        'uid': user.uid,
-        'name': userName,
-        'email': userEmail,
-        'role': userRole,
-        'joinedAt': FieldValue.serverTimestamp(),
-        'status': 'active',
-      });
+            'uid': user.uid,
+            'name': userName,
+            'email': userEmail,
+            'role': userRole,
+            'joinedAt': FieldValue.serverTimestamp(),
+            'status': 'active',
+          });
 
       debugPrint('✅ Added user to class subcollection with role: $userRole');
 
@@ -316,18 +326,18 @@ class _JoinClassPageState extends State<JoinClassPage> {
           .collection('classes')
           .doc(classId)
           .set({
-        'classId': classId,
-        'className': className,
-        'description': description,
-        'sectionCode': sectionCode,
-        'classCode': classCodeValue,
-        'teacherId': teacherId,
-        'teacherName': teacherName,
-        'teacherEmail': teacherEmail,
-        'schoolYear': schoolYear,
-        'joinedAt': FieldValue.serverTimestamp(),
-        'status': 'active',
-      });
+            'classId': classId,
+            'className': className,
+            'description': description,
+            'sectionCode': sectionCode,
+            'classCode': classCodeValue,
+            'teacherId': teacherId,
+            'teacherName': teacherName,
+            'teacherEmail': teacherEmail,
+            'schoolYear': schoolYear,
+            'joinedAt': FieldValue.serverTimestamp(),
+            'status': 'active',
+          });
 
       debugPrint('✅ Added class to user\'s subcollection');
 
@@ -336,11 +346,11 @@ class _JoinClassPageState extends State<JoinClassPage> {
           .collection('users')
           .doc(user.uid)
           .update({
-        'currentClassId': classId,
-        'currentClassName': className,
-        'currentTeacherName': teacherName,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+            'currentClassId': classId,
+            'currentClassName': className,
+            'currentTeacherName': teacherName,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
       debugPrint('✅ Updated user main document');
 
       // ✅ STEP 5: Also update students collection if it exists
@@ -354,11 +364,11 @@ class _JoinClassPageState extends State<JoinClassPage> {
             .collection('students')
             .doc(user.uid)
             .update({
-          'currentClassId': classId,
-          'currentClassName': className,
-          'currentTeacherName': teacherName,
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+              'currentClassId': classId,
+              'currentClassName': className,
+              'currentTeacherName': teacherName,
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
         debugPrint('✅ Updated students collection');
       }
 
@@ -539,7 +549,7 @@ class _JoinClassPageState extends State<JoinClassPage> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: const Color(0xFFEAF2FE),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.grey.shade200),
                         ),

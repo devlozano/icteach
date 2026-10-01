@@ -1141,21 +1141,50 @@ class TeacherQuizAssessmentHub extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-    padding: const EdgeInsets.all(20),
+    padding: const EdgeInsets.all(24),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Manage quizzes and assessments',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(26),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF0B2B4A), Color(0xFF176B87)],
+            ),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                Icons.fact_check_rounded,
+                color: Color(0xFF67E8F9),
+                size: 34,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Quiz & Assessment',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                'Create learning checks, publish activities, and review student evidence from one place.',
+                style: TextStyle(color: Color(0xFFD7EAF1), fontSize: 15),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 22),
         const Text(
-          'Choose a class, then create, publish, review, or grade its activities.',
+          'Choose an activity type',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 12),
         Wrap(
           spacing: 16,
           runSpacing: 16,
@@ -1163,7 +1192,8 @@ class TeacherQuizAssessmentHub extends StatelessWidget {
             _AssessmentDestinationCard(
               icon: Icons.quiz_outlined,
               title: 'Manage Quizzes',
-              description: 'Create quizzes, publish them, and review results.',
+              description:
+                  'Build theory checks, publish quizzes, and inspect scores.',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1175,7 +1205,8 @@ class TeacherQuizAssessmentHub extends StatelessWidget {
             _AssessmentDestinationCard(
               icon: Icons.assignment_outlined,
               title: 'Manage Assessments',
-              description: 'Create assignments and review student submissions.',
+              description:
+                  'Create graded tasks, review submissions, and give feedback.',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -1205,31 +1236,65 @@ class _AssessmentDestinationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 330,
+    width: 360,
     child: Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Color(0xFFDCE5ED)),
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Row(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(child: Icon(icon)),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(description),
-                  ],
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: const Color(0xFFE0F2FE),
+                    child: Icon(icon, color: const Color(0xFF0369A1)),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.arrow_forward_rounded),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 18,
                 ),
               ),
-              const Icon(Icons.chevron_right),
+              const SizedBox(height: 6),
+              Text(
+                description,
+                style: const TextStyle(color: Color(0xFF64748B), height: 1.4),
+              ),
+              const SizedBox(height: 16),
+              const Row(
+                children: [
+                  Icon(
+                    Icons.touch_app_outlined,
+                    size: 17,
+                    color: Color(0xFF0369A1),
+                  ),
+                  SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'Select a class to continue',
+                      style: TextStyle(
+                        color: Color(0xFF0369A1),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
         ),

@@ -78,30 +78,82 @@ class _ContentLockManagerState extends State<ContentLockManager> {
     final categoryLocked =
         id != '*' &&
         ContentAccessService.isLocked(records.map((d) => d.data()), type, '*');
-    return SwitchListTile(
-      title: Text(title),
-      subtitle: Text(
-        categoryLocked
-            ? 'Category is locked; unlock the category first'
-            : locked
-            ? 'Locked for students'
-            : 'Available to students',
+    final saving = _saving.contains(
+      ContentAccessService.lockId(widget.classId, type, id),
+    );
+    final unavailable = locked || categoryLocked;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      decoration: BoxDecoration(
+        color: categoryLocked ? const Color(0xFFF8FAFC) : Colors.white,
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(14),
       ),
-      secondary: Icon(locked || categoryLocked ? Icons.lock : Icons.lock_open),
-      value: !locked,
-      onChanged:
-          categoryLocked ||
-              _saving.contains(
-                ContentAccessService.lockId(widget.classId, type, id),
-              )
-          ? null
-          : (value) => _toggle(type, id, !value, records),
+      child: SwitchListTile.adaptive(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 5),
+          child: Row(
+            children: [
+              if (saving)
+                const Padding(
+                  padding: EdgeInsets.only(right: 7),
+                  child: SizedBox.square(
+                    dimension: 13,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              Flexible(
+                child: Text(
+                  saving
+                      ? 'Saving access…'
+                      : categoryLocked
+                      ? 'Unlock this category to change the item'
+                      : unavailable
+                      ? 'Locked for students'
+                      : 'Available to students',
+                  style: TextStyle(
+                    color: unavailable
+                        ? const Color(0xFFB45309)
+                        : const Color(0xFF15803D),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        secondary: Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: unavailable
+                ? const Color(0xFFFFF7ED)
+                : const Color(0xFFF0FDF4),
+            borderRadius: BorderRadius.circular(11),
+          ),
+          child: Icon(
+            unavailable ? Icons.lock_outline : Icons.lock_open_outlined,
+            color: unavailable
+                ? const Color(0xFFEA580C)
+                : const Color(0xFF16A34A),
+          ),
+        ),
+        value: !locked,
+        onChanged: categoryLocked || saving
+            ? null
+            : (value) => _toggle(type, id, !value, records),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Manage content access')),
+    backgroundColor: const Color(0xFFF4F7FB),
+    appBar: AppBar(
+      backgroundColor: const Color(0xFF172554),
+      foregroundColor: Colors.white,
+      title: const Text('Manage content access'),
+    ),
     body: FutureBuilder<bool>(
       future: _staff,
       builder: (context, staff) {
@@ -139,12 +191,15 @@ class _ContentLockManagerState extends State<ContentLockManager> {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const Text(
-                  'Turn an activity off to lock it. Students already viewing it will also see the lock. Simulation prerequisites still apply after unlocking.',
-                ),
+                const _AccessHero(),
+                const SizedBox(height: 18),
                 for (final type in ['module', 'quiz', 'simulation']) ...[
-                  const Divider(),
-                  _tile(type, '*', 'All ${type}s', records),
+                  _AccessHeader(type: type),
+                  _tile(type, '*', switch (type) {
+                    'module' => 'All lessons & modules',
+                    'quiz' => 'All quizzes & assessments',
+                    _ => 'All practical simulations',
+                  }, records),
                   if (type == 'simulation')
                     for (final sim in SimulationData.getAllSimulations())
                       _tile(
@@ -162,12 +217,19 @@ class _ContentLockManagerState extends State<ContentLockManager> {
                           .snapshots(),
                       builder: (context, content) {
                         if (content.hasError) {
-                          return const ListTile(
-                            title: Text('Content could not be loaded.'),
+                          return const _AccessNotice(
+                            icon: Icons.cloud_off_outlined,
+                            text: 'Content could not be loaded.',
                           );
                         }
                         if (!content.hasData) {
                           return const LinearProgressIndicator();
+                        }
+                        if (content.data!.docs.isEmpty) {
+                          return const _AccessNotice(
+                            icon: Icons.inbox_outlined,
+                            text: 'No content has been added yet.',
+                          );
                         }
                         return Column(
                           children: content.data!.docs
@@ -183,12 +245,188 @@ class _ContentLockManagerState extends State<ContentLockManager> {
                         );
                       },
                     ),
+                  const SizedBox(height: 8),
                 ],
               ],
             );
           },
         );
       },
+    ),
+  );
+}
+
+class _AccessHero extends StatelessWidget {
+  const _AccessHero();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      gradient: const LinearGradient(
+        colors: [Color(0xFF0F766E), Color(0xFF0369A1)],
+      ),
+      borderRadius: BorderRadius.circular(22),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x241D4ED8),
+          blurRadius: 20,
+          offset: Offset(0, 8),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(
+          Icons.admin_panel_settings_outlined,
+          color: Colors.white,
+          size: 30,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Choose what students can access',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 7),
+        const Text(
+          'Switch a category or individual item on to make it available. Changes apply to enrolled students immediately.',
+          style: TextStyle(color: Color(0xFFD6F4F1), height: 1.4),
+        ),
+        const SizedBox(height: 15),
+        const Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _AccessLegend(color: Color(0xFF86EFAC), label: 'On · Available'),
+            _AccessLegend(color: Color(0xFFFDBA74), label: 'Off · Locked'),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _AccessLegend extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _AccessLegend({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+    decoration: BoxDecoration(
+      color: Colors.white.withValues(alpha: .14),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 7),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _AccessHeader extends StatelessWidget {
+  final String type;
+  const _AccessHeader({required this.type});
+
+  @override
+  Widget build(BuildContext context) {
+    final (title, description, icon) = switch (type) {
+      'module' => (
+        'Lessons & modules',
+        'Control which learning materials students can open.',
+        Icons.menu_book_outlined,
+      ),
+      'quiz' => (
+        'Quizzes & assessments',
+        'Open or close quizzes without removing their content.',
+        Icons.quiz_outlined,
+      ),
+      _ => (
+        'Practical simulations',
+        'Learning prerequisites still apply after access is enabled.',
+        Icons.precision_manufacturing_outlined,
+      ),
+    };
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 4, 2, 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFEFF),
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, color: const Color(0xFF0F766E)),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF172554),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AccessNotice extends StatelessWidget {
+  final String text;
+  final IconData icon;
+  const _AccessNotice({required this.text, required this.icon});
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(18, 8, 18, 18),
+    child: Row(
+      children: [
+        Icon(icon, color: const Color(0xFF64748B)),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(text, style: const TextStyle(color: Color(0xFF64748B))),
+        ),
+      ],
     ),
   );
 }

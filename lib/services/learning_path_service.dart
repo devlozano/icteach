@@ -4,6 +4,45 @@ import 'package:firebase_auth/firebase_auth.dart';
 /// Practice records deliberately never enter quiz_results or simulation_progress.
 class LearningPathService {
   static String key(String type, String id) => '${type}_$id';
+
+  /// Returns true when this student already has a saved scored attempt.
+  ///
+  /// Older per-student quiz results did not always include [classId]. Their
+  /// document ID is still the quiz ID, so they remain valid completion records.
+  static Future<bool> hasCompletedQuiz(
+    String classId,
+    String quizId, {
+    FirebaseFirestore? firestore,
+    String? studentId,
+  }) async {
+    final db = firestore ?? FirebaseFirestore.instance;
+    final uid = studentId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return false;
+
+    bool belongsToClass(Map<String, dynamic>? data) {
+      if (data == null) return false;
+      final savedClassId = data['classId']?.toString();
+      return savedClassId == null ||
+          savedClassId.isEmpty ||
+          savedClassId == classId;
+    }
+
+    final personal = await db
+        .collection('users')
+        .doc(uid)
+        .collection('quiz_results')
+        .doc(quizId)
+        .get();
+    if (personal.exists && belongsToClass(personal.data())) return true;
+
+    // Compatibility fallback for results written to the shared collection.
+    final shared = await db
+        .collection('quiz_results')
+        .doc('${quizId}_$uid')
+        .get();
+    return shared.exists && belongsToClass(shared.data());
+  }
+
   static Future<void> requirePrepared(
     String classId,
     String type,
@@ -24,8 +63,9 @@ class LearningPathService {
     final path =
         (await root.collection('learning_paths').doc(key(type, id)).get())
             .data();
-    if (path?['moduleId'] == null)
+    if (path?['moduleId'] == null) {
       throw StateError('A linked lesson is required.');
+    }
     final module =
         (await root.collection('modules').doc(path!['moduleId']).get()).data();
     final progress =
@@ -34,8 +74,9 @@ class LearningPathService {
                 .doc('${classId}_${path['moduleId']}')
                 .get())
             .data();
-    if (module?['isPublished'] != true || progress?['completed'] != true)
+    if (module?['isPublished'] != true || progress?['completed'] != true) {
       throw StateError('Complete the published lesson first.');
+    }
     final locks = await db
         .collection('content_locks')
         .where('classId', isEqualTo: classId)
@@ -61,18 +102,24 @@ class LearningPathService {
                 .doc('${classId}_${key(type, id)}')
                 .get())
             .data();
-    if (rehearsal?['completed'] != true)
+    if (rehearsal?['completed'] != true) {
       throw StateError('Complete ungraded practice first.');
+    }
     if (type == 'simulation') {
-      if (path['quizId'] == null)
+      if (path['quizId'] == null) {
         throw StateError('A linked theory quiz is required.');
+      }
       final quiz = (await root.collection('quizzes').doc(path['quizId']).get())
           .data();
-      final theory =
-          (await user.collection('quiz_results').doc(path['quizId']).get())
-              .data();
-      if (quiz?['isPublished'] != true || theory?['classId'] != classId)
+      final theoryDone = await hasCompletedQuiz(
+        classId,
+        path['quizId'],
+        firestore: db,
+        studentId: FirebaseAuth.instance.currentUser!.uid,
+      );
+      if (quiz?['isPublished'] != true || !theoryDone) {
         throw StateError('Complete the published theory quiz first.');
+      }
     }
   }
 
@@ -136,8 +183,9 @@ class LearningPathService {
         !(data['enrolledStudentIds'] as List? ?? []).contains(uid)) {
       final role = (await db.collection('users').doc(uid).get())
           .data()?['role'];
-      if (role != 'admin')
+      if (role != 'admin') {
         throw StateError('Join this class before accessing its activities.');
+      }
     }
   }
 

@@ -293,9 +293,76 @@ class _SurveySummary extends StatelessWidget {
           .where((d) => studentIds.contains(d.id))
           .map((d) => d.data())
           .toList();
+      final ratings = responses
+          .expand(
+            (response) => ((response['ratings'] as Map?)?.values ?? const []),
+          )
+          .whereType<num>()
+          .map((value) => value.toDouble())
+          .toList();
+      final average = ratings.isEmpty
+          ? 0.0
+          : ratings.reduce((a, b) => a + b) / ratings.length;
+      final responseRate = studentIds.isEmpty
+          ? 0
+          : (responses.length / studentIds.length * 100).round();
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0B2B4A), Color(0xFF176B87)],
+              ),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.forum_rounded, color: Color(0xFF67E8F9), size: 34),
+                SizedBox(height: 14),
+                Text(
+                  'Student feedback',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(height: 7),
+                Text(
+                  'See participation, rating patterns, and student comments in one view.',
+                  style: TextStyle(color: Color(0xFFD7EAF1)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _FeedbackMetric(
+                label: 'Responses',
+                value: '${responses.length}/${studentIds.length}',
+                icon: Icons.how_to_vote_rounded,
+              ),
+              _FeedbackMetric(
+                label: 'Participation',
+                value: '$responseRate%',
+                icon: Icons.donut_large_rounded,
+              ),
+              _FeedbackMetric(
+                label: 'Average rating',
+                value: ratings.isEmpty
+                    ? '—'
+                    : '${average.toStringAsFixed(1)}/5',
+                icon: Icons.star_rounded,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           SummaryPrintButton(
             title: 'Student helpfulness survey',
             load: () async => [
@@ -331,11 +398,6 @@ class _SurveySummary extends StatelessWidget {
               ),
             ],
           ),
-          Text(
-            '${responses.length} of ${studentIds.length} students responded',
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 8),
           const Text(
             'Does ICTeach help students? Each student contributes one current response. 1 = Strongly disagree; 5 = Strongly agree.',
           ),
@@ -377,4 +439,52 @@ class _SurveySummary extends StatelessWidget {
       },
     );
   }
+}
+
+class _FeedbackMetric extends StatelessWidget {
+  const _FeedbackMetric({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+  final String label;
+  final String value;
+  final IconData icon;
+  @override
+  Widget build(BuildContext context) => Container(
+    width: 210,
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFDCE5ED)),
+    ),
+    child: Row(
+      children: [
+        CircleAvatar(
+          backgroundColor: const Color(0xFFE0F2FE),
+          child: Icon(icon, color: const Color(0xFF0369A1)),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }

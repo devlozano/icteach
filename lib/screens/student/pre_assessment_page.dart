@@ -109,6 +109,35 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
     }
   }
 
+  Future<void> _requestSubmit() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(
+          Icons.fact_check_outlined,
+          color: Color(0xFF2457C5),
+          size: 36,
+        ),
+        title: const Text('Submit your pre-assessment?'),
+        content: const Text(
+          'Your answers will be saved as your diagnostic result. Review them now because this assessment can only be submitted once.',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Review answers'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Submit assessment'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) await _submit();
+  }
+
   String _answerText(int index) {
     final answers = _result?['answers'];
     final options = PreAssessmentData.questions[index].options;
@@ -126,6 +155,11 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
     return answers is List && index < answers.length && answers[index] is int
         ? answers[index] as int
         : null;
+  }
+
+  String _correctAnswerText(int index) {
+    final question = PreAssessmentData.questions[index];
+    return question.options[question.answer];
   }
 
   @override
@@ -238,13 +272,17 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
         ),
       ),
       const SizedBox(height: 18),
-      const Wrap(
+      Wrap(
         spacing: 10,
         runSpacing: 10,
         children: [
-          _Stat(Icons.quiz_outlined, '12', 'questions'),
-          _Stat(Icons.timer_outlined, '5–10', 'minutes'),
-          _Stat(Icons.lock_open_outlined, 'Any score', 'unlocks modules'),
+          _Stat(
+            Icons.quiz_outlined,
+            PreAssessmentData.questions.length.toString(),
+            'questions',
+          ),
+          const _Stat(Icons.timer_outlined, '5–10', 'minutes'),
+          const _Stat(Icons.lock_open_outlined, 'Any score', 'unlocks modules'),
         ],
       ),
       const SizedBox(height: 18),
@@ -459,7 +497,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                 FilledButton.icon(
                   onPressed: _saving || answered != _answers.length
                       ? null
-                      : _submit,
+                      : _requestSubmit,
                   icon: _saving
                       ? const SizedBox(
                           width: 17,
@@ -482,6 +520,12 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
   Widget _results() {
     final score = (_result!['score'] as num?)?.toInt() ?? 0;
     final total = (_result!['totalQuestions'] as num?)?.toInt() ?? 12;
+    final percentage = total == 0 ? 0 : (score / total * 100).round();
+    final performance = percentage >= 85
+        ? 'Strong foundation'
+        : percentage >= 60
+        ? 'Developing foundation'
+        : 'Ready to build your foundation';
     final groups =
         _result!['competencyScores'] as Map<String, dynamic>? ?? const {};
     return ListView(
@@ -521,12 +565,12 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                   ],
                 ),
               );
-              const copy = Column(
+              final copy = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Tag('ASSESSMENT SAVED'),
-                  SizedBox(height: 12),
-                  Text(
+                  const _Tag('ASSESSMENT SAVED'),
+                  const SizedBox(height: 12),
+                  const Text(
                     'Your learning path is ready',
                     style: TextStyle(
                       color: Colors.white,
@@ -534,10 +578,22 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  SizedBox(height: 9),
+                  const SizedBox(height: 9),
                   Text(
-                    'Review your answers, then continue to the learning modules.',
-                    style: TextStyle(color: Color(0xFFD8E6FF), height: 1.45),
+                    '$performance · $percentage%',
+                    style: const TextStyle(
+                      color: Color(0xFF8EF0B3),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Use the review below to see your strengths and the topics to focus on.',
+                    style: const TextStyle(
+                      color: Color(0xFFD8E6FF),
+                      height: 1.45,
+                    ),
                   ),
                 ],
               );
@@ -547,7 +603,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                       children: [
                         meter,
                         const SizedBox(width: 30),
-                        const Expanded(child: copy),
+                        Expanded(child: copy),
                       ],
                     );
             },
@@ -617,7 +673,26 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                   padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Your answer: ${_answerText(i)}'),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Your answer: ${_answerText(i)}',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        if (_answerIndex(i) !=
+                            PreAssessmentData.questions[i].answer) ...[
+                          const SizedBox(height: 7),
+                          Text(
+                            'Correct answer: ${_correctAnswerText(i)}',
+                            style: const TextStyle(
+                              color: Color(0xFF287A46),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ],

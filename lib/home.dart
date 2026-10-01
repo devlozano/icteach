@@ -31,6 +31,7 @@ import 'data/simulation_data.dart';
 import 'data/pre_assessment_data.dart';
 import 'widgets/user_roles_button.dart';
 import 'services/workspace_preferences.dart';
+import 'services/student_achievement_service.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -1168,32 +1169,35 @@ class _HomePageState extends State<HomePage> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _buildAchievementBadge(
-                      '🏆',
-                      'First Quiz',
-                      'Completed your first quiz',
-                    ),
-                    _buildAchievementBadge(
-                      '⭐',
-                      'Module Master',
-                      'Completed 3 modules',
-                    ),
-                    _buildAchievementBadge(
-                      '🎯',
-                      'Perfect Score',
-                      'Got 100% on a quiz',
-                    ),
-                    _buildAchievementBadge(
-                      '🔧',
-                      'Tech Explorer',
-                      'Completed 2 simulations',
-                    ),
-                  ],
-                ),
+                if (_classId == null)
+                  const Text(
+                    'Join or select a class to track achievements.',
+                    style: TextStyle(color: Colors.grey),
+                  )
+                else
+                  RetainedFutureBuilder<List<StudentAchievement>>(
+                    requestKey: 'achievements:$userId:$_classId',
+                    active: _currentTabIndex == 3,
+                    load: () =>
+                        StudentAchievementService().load(userId, _classId!),
+                    builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return const Text(
+                          'Achievements could not be loaded. Reopen this tab to retry.',
+                        );
+                      }
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      return Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: snapshot.data!
+                            .map(_buildAchievementBadge)
+                            .toList(),
+                      );
+                    },
+                  ),
               ],
             ),
           ),
@@ -1309,35 +1313,59 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildAchievementBadge(String emoji, String title, String subtitle) {
+  Widget _buildAchievementBadge(StudentAchievement achievement) {
+    final unlocked = achievement.unlocked;
     return Container(
+      width: 230,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: unlocked ? const Color(0xFFFFF8E1) : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: unlocked ? const Color(0xFFFFC44D) : Colors.grey.shade200,
+        ),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 24)),
+          Text(
+            unlocked ? achievement.icon : '🔒',
+            style: const TextStyle(fontSize: 24),
+          ),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 13,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  achievement.title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: unlocked ? const Color(0xFF6B4E00) : null,
+                  ),
                 ),
-              ),
-              Text(
-                subtitle,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
-              ),
-            ],
+                Text(
+                  unlocked
+                      ? 'Unlocked'
+                      : '${achievement.description} · ${achievement.current}/${achievement.target}',
+                  style: TextStyle(
+                    color: unlocked
+                        ? const Color(0xFF8A6500)
+                        : Colors.grey.shade600,
+                    fontSize: 11,
+                  ),
+                ),
+                if (!unlocked) ...[
+                  const SizedBox(height: 6),
+                  LinearProgressIndicator(
+                    value: achievement.progress,
+                    minHeight: 4,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),

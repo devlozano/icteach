@@ -537,7 +537,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF428DEB),
+                color: const Color(0xFFEAF2FE),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.grey.shade200),
               ),
@@ -546,6 +546,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                 version: QrVersions.auto,
                 size: 200,
                 gapless: false,
+                backgroundColor: Colors.white,
               ),
             ),
             const SizedBox(height: 16),
