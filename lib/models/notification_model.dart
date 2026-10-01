@@ -6,6 +6,7 @@ class NotificationModel {
   final String title;
   final String message;
   final String type;
+  final String? classId;
   final String? referenceId;
   final bool isRead;
   final DateTime createdAt;
@@ -17,6 +18,7 @@ class NotificationModel {
     required this.title,
     required this.message,
     required this.type,
+    this.classId,
     this.referenceId,
     this.isRead = false,
     required this.createdAt,
@@ -31,6 +33,7 @@ class NotificationModel {
       title: data['title']?.toString() ?? '',
       message: data['message']?.toString() ?? '',
       type: data['type']?.toString() ?? 'general',
+      classId: data['classId']?.toString(),
       referenceId: data['referenceId']?.toString(),
       isRead: data['isRead'] == true,
       createdAt: _date(data['createdAt']) ?? DateTime.now(),
@@ -51,6 +54,7 @@ class NotificationModel {
       'title': title,
       'message': message,
       'type': type,
+      'classId': classId,
       'referenceId': referenceId,
       'isRead': isRead,
       'createdAt': createdAt,

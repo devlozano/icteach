@@ -115,6 +115,7 @@ void main() {
         'student',
       });
       expect(docs.length, 4);
+      expect(docs.every((doc) => doc.data()['classId'] == 'class'), isTrue);
       await service.notifyNewForumPost('class', 'Post', 'Teacher', 'teacher');
       final forums =
           (await db
@@ -127,8 +128,61 @@ void main() {
         'trainer',
         'student',
       });
+      expect(forums.every((doc) => doc.data()['classId'] == 'class'), isTrue);
+      expect(
+        forums.every((doc) => doc.data()['referenceId'] == 'class'),
+        isTrue,
+      );
     },
   );
+  test(
+    'forum notifications keep class ID separate from post reference',
+    () async {
+      final db = FakeFirebaseFirestore();
+      await db.collection('classes').doc('networking').set({
+        'enrolledStudentIds': ['student'],
+      });
+      final service = NotificationService(
+        firestore: db,
+        currentUserId: () => 'teacher',
+      );
+
+      await service.notifyNewForumPost(
+        'networking',
+        'Cable standards',
+        'Teacher',
+        'teacher',
+        postId: 'post-1',
+      );
+
+      final doc = (await db.collection('notifications').get()).docs.single;
+      final notification = NotificationModel.fromFirestore(doc);
+      expect(notification.classId, 'networking');
+      expect(notification.referenceId, 'post-1');
+      expect(await service.resolveClassId(notification), 'networking');
+    },
+  );
+
+  test('legacy forum notification resolves class through its post', () async {
+    final db = FakeFirebaseFirestore();
+    await db
+        .collection('classes')
+        .doc('legacy-class')
+        .collection('forum_posts')
+        .doc('legacy-post')
+        .set({'title': 'Old post'});
+    await db.collection('notifications').doc('legacy-forum').set({
+      'userId': 'student',
+      'type': 'forum',
+      'referenceId': 'legacy-post',
+    });
+    final service = NotificationService(firestore: db);
+    final notification = NotificationModel.fromFirestore(
+      await db.collection('notifications').doc('legacy-forum').get(),
+    );
+
+    expect(await service.resolveClassId(notification), 'legacy-class');
+  });
   test('delivery splits large classes into batches', () async {
     final db = FakeFirebaseFirestore();
     await db.collection('classes').doc('large').set({

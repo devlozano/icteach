@@ -171,7 +171,7 @@ class _NotificationPageState extends State<NotificationPage> {
         _showGradeDialog(context, notification);
         return;
       }
-      final classId = notification.referenceId;
+      final classId = await _notificationService.resolveClassId(notification);
       if (classId == null || classId.isEmpty) {
         _showErrorSnackbar('Class information not available');
         return;

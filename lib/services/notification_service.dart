@@ -131,6 +131,7 @@ class NotificationService {
         'title': notification.title,
         'message': notification.message,
         'type': notification.type,
+        'classId': notification.classId,
         'referenceId': notification.referenceId ?? '',
         'isRead': false,
         'createdAt': FieldValue.serverTimestamp(),
@@ -186,6 +187,7 @@ class NotificationService {
           'title': title,
           'message': message,
           'type': type,
+          'classId': classId,
           'referenceId': referenceId ?? classId,
           'isRead': false,
           'createdAt': FieldValue.serverTimestamp(),
@@ -247,6 +249,23 @@ class NotificationService {
     'A new learning module has been published.',
     'module',
   );
+
+  Future<String?> resolveClassId(NotificationModel notification) async {
+    final storedClassId = notification.classId?.trim() ?? '';
+    if (storedClassId.isNotEmpty) return storedClassId;
+
+    final referenceId = notification.referenceId?.trim() ?? '';
+    if (referenceId.isEmpty) return null;
+    if (notification.type != 'forum') return referenceId;
+
+    final posts = await _firestore
+        .collectionGroup('forum_posts')
+        .where(FieldPath.documentId, isEqualTo: referenceId)
+        .limit(1)
+        .get();
+    if (posts.docs.isEmpty) return null;
+    return posts.docs.first.reference.parent.parent?.id;
+  }
 
   // Send grade notification
   Future<void> notifyGrade(

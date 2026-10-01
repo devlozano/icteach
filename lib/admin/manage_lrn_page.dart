@@ -174,20 +174,6 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
                   spacing: 12,
                   runSpacing: 10,
                   children: [
-                    const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.upload_file, color: Colors.blue),
-                        SizedBox(width: 8),
-                        Text(
-                          'Upload CSV File',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
                     _isUploading
                         ? const SizedBox(
                             height: 20,
