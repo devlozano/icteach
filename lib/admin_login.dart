@@ -89,7 +89,14 @@ class _AdminLoginPageState extends State<AdminLoginPage>
           .collection('users')
           .doc(user.uid)
           .get();
-      final role = doc.data()?['role']?.toString().toLowerCase() ?? '';
+      final data = doc.data();
+      if (data?['isActive'] == false) {
+        await FirebaseAuth.instance.signOut();
+        if (!mounted) return;
+        _showError('This account no longer has access to ICTeach.');
+        return;
+      }
+      final role = data?['role']?.toString().toLowerCase() ?? '';
       const webRoles = {'admin', 'teacher', 'trainer'};
       if (!webRoles.contains(role)) {
         await FirebaseAuth.instance.signOut();

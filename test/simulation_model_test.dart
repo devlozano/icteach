@@ -31,4 +31,19 @@ void main() {
       reason: 'Missing simulation assets:\n${missingAssets.join('\n')}',
     );
   });
+
+  test('PC disassembly is ordered, graded, and follows PC assembly', () {
+    final simulation = SimulationData.getPcDisassembly();
+    expect(simulation.id, 'sim_coc1_disassembly');
+    expect(simulation.type, 'disassembly');
+    expect(simulation.requiredSimulationId, 'sim_coc1_assembly');
+    expect(simulation.passingScore, 80);
+    expect(simulation.items.length, 9);
+    expect(
+      simulation.items.map((item) => item.step),
+      orderedEquals(List<int>.generate(9, (index) => index + 1)),
+    );
+    expect(simulation.items.first.id, 'disassembly_safety');
+    expect(simulation.items.last.id, 'disassembly_inventory');
+  });
 }

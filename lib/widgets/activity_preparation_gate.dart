@@ -157,18 +157,7 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(widget.title),
-      actions: [
-        IconButton(
-          tooltip: 'Refresh access',
-          icon: const Icon(Icons.refresh),
-          onPressed: () => setState(() {
-            _state = _refresh();
-          }),
-        ),
-      ],
-    ),
+    appBar: AppBar(title: Text(widget.title)),
     body: FutureBuilder<Map<String, dynamic>>(
       future: _state,
       builder: (context, snapshot) {
@@ -253,18 +242,18 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
               leading: Icon(
                 practiced ? Icons.check_circle : Icons.sports_esports,
               ),
-              title: const Text('2. Practice (ungraded)'),
+              title: const Text('2. Required practice mode'),
               subtitle: const Text(
-                'Repeat freely. Practice never changes grades or leaderboard scores.',
+                'Complete this preparation first. Your graded result is recorded in Part B.',
               ),
-              enabled: learned,
-              onTap: learned ? () => _start(true) : null,
             ),
             if (widget.type == 'simulation')
               ListTile(
                 leading: Icon(theoryDone ? Icons.check_circle : Icons.quiz),
-                title: const Text('3. Part 1: theory / terminology quiz'),
-                subtitle: Text((state['quiz'] as QuizModel).title),
+                title: const Text('3. Part A: terminology quiz'),
+                subtitle: Text(
+                  '${(state['quiz'] as QuizModel).title} • Check your understanding before the practical task.',
+                ),
                 enabled: learned && !theoryDone,
                 onTap: learned && !theoryDone
                     ? () => _open(
@@ -276,16 +265,43 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
                     : null,
               ),
             const SizedBox(height: 24),
-            FilledButton.icon(
-              icon: const Icon(Icons.assignment_turned_in),
-              onPressed: learned && practiced && theoryDone
-                  ? () => _start(false)
-                  : null,
-              label: Text(
-                widget.type == 'simulation'
-                    ? 'Part 2: interactive simulation assessment'
-                    : 'Start scored quiz (one attempt)',
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final practiceButton = OutlinedButton.icon(
+                  icon: const Icon(Icons.sports_esports_rounded),
+                  onPressed: learned ? () => _start(true) : null,
+                  label: Text(
+                    practiced ? 'Practice again' : 'Start practice mode',
+                  ),
+                );
+                final assessmentButton = FilledButton.icon(
+                  icon: const Icon(Icons.assignment_turned_in),
+                  onPressed: learned && practiced && theoryDone
+                      ? () => _start(false)
+                      : null,
+                  label: const Text(
+                    'Part B: start graded simulation assessment',
+                    textAlign: TextAlign.center,
+                  ),
+                );
+                if (constraints.maxWidth < 620) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      practiceButton,
+                      const SizedBox(height: 12),
+                      assessmentButton,
+                    ],
+                  );
+                }
+                return Row(
+                  children: [
+                    Expanded(child: practiceButton),
+                    const SizedBox(width: 12),
+                    Expanded(child: assessmentButton),
+                  ],
+                );
+              },
             ),
           ],
         );

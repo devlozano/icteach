@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 // lib/screens/admin/manage_lrn_page.dart
 import '../widgets/lrn_folder_browser.dart';
 import 'package:flutter/material.dart';
@@ -7,8 +8,13 @@ import '../services/lrn_csv_import_service.dart';
 
 class ManageLRNPage extends StatefulWidget {
   final bool useStandaloneScaffold;
+  final FirebaseFirestore? firestore;
 
-  const ManageLRNPage({super.key, this.useStandaloneScaffold = true});
+  const ManageLRNPage({
+    super.key,
+    this.useStandaloneScaffold = true,
+    this.firestore,
+  });
 
   @override
   State<ManageLRNPage> createState() => _ManageLRNPageState();
@@ -21,6 +27,9 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
   final TextEditingController _lrnController = TextEditingController();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
+
+  final _middleInitialController = TextEditingController();
+  final _suffixController = TextEditingController();
 
   int _processed = 0;
   int _total = 0;
@@ -70,9 +79,7 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
                 const SizedBox(height: 12),
                 ...records
                     .take(5)
-                    .map(
-                      (r) => Text('${r.lrn} — ${r.firstName} ${r.lastName}'),
-                    ),
+                    .map((r) => Text('${r.lrn} — ${r.displayName}')),
                 if (records.length > 5) const Text('…and more records'),
               ],
             ),
@@ -91,8 +98,11 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
       );
       if (confirmed != true || !mounted) return;
       setState(() => _total = records.length);
-      final summary = await LrnCsvImportService(folderId: _folderId)
-          .importRecords(
+      final summary =
+          await LrnCsvImportService(
+            folderId: _folderId,
+            firestore: widget.firestore,
+          ).importRecords(
             records,
             onProgress: (processed, total) {
               if (mounted) setState(() => _processed = processed);
@@ -131,12 +141,15 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
     _lrnController.dispose();
     _firstNameController.dispose();
     _lastNameController.dispose();
+    _middleInitialController.dispose();
+    _suffixController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final listSection = LrnFolderBrowser(
+      firestore: widget.firestore,
       enabled: !_isUploading,
       onFolderChanged: (id, name) => setState(() {
         _folderId = id;
@@ -193,7 +206,7 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'CSV UTF-8, maximum 5 MB / 10,000 rows. Columns: LRN, First Name, Last Name, Middle Name (optional). Headers are recommended. Set the LRN column format to General in Excel before saving. Verify that the CSV contains all 12 LRN digits, not scientific notation.',
+                  'CSV UTF-8, maximum 5 MB / 10,000 rows. Columns: LRN, First Name, Last Name; Middle Name or Middle Initial and Suffix are optional. Use headers when including a suffix. Set the LRN column format to General in Excel before saving. Verify that the CSV contains all 12 LRN digits, not scientific notation.',
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
@@ -246,35 +259,57 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text('Add LRN to $_folderName'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _lrnController,
-              decoration: const InputDecoration(
-                labelText: 'LRN',
-                hintText: '12-digit LRN',
-                border: OutlineInputBorder(),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _lrnController,
+                decoration: const InputDecoration(
+                  labelText: 'LRN',
+                  hintText: '12-digit LRN',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
               ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _firstNameController,
-              decoration: const InputDecoration(
-                labelText: 'First Name',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _firstNameController,
+                decoration: const InputDecoration(
+                  labelText: 'First Name',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _lastNameController,
-              decoration: const InputDecoration(
-                labelText: 'Last Name',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _middleInitialController,
+                textCapitalization: TextCapitalization.characters,
+                decoration: const InputDecoration(
+                  labelText: 'Middle Initial (Optional)',
+                  hintText: 'A. or A. B.',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              TextField(
+                controller: _lastNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Last Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _suffixController,
+                maxLength: 30,
+                decoration: const InputDecoration(
+                  labelText: 'Suffix (Optional)',
+                  hintText: 'Jr., Sr., III',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
@@ -300,9 +335,23 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
               }
 
               try {
-                final result = await LrnCsvImportService(
-                  folderId: _folderId,
-                ).importRecords([LrnCsvRecord(lrn, firstName, lastName, '')]);
+                final middleInitial = LrnCsvRecord.normalizeMiddleInitial(
+                  _middleInitialController.text,
+                );
+                final suffix = _suffixController.text.trim();
+                final result =
+                    await LrnCsvImportService(
+                      folderId: _folderId,
+                      firestore: widget.firestore,
+                    ).importRecords([
+                      LrnCsvRecord(
+                        lrn,
+                        firstName,
+                        lastName,
+                        middleInitial,
+                        extension: suffix,
+                      ),
+                    ]);
                 if (!mounted || !context.mounted) return;
                 if (result.skipped > 0) {
                   _showSnackBar(
@@ -317,6 +366,8 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
                 _lrnController.clear();
                 _firstNameController.clear();
                 _lastNameController.clear();
+                _middleInitialController.clear();
+                _suffixController.clear();
               } catch (e) {
                 if (mounted) _showSnackBar('Error: $e', Colors.red);
               }

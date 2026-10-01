@@ -151,7 +151,10 @@ void main() {
       await tester.tap(find.text('Delete folder and LRNs'));
       await tester.pumpAndSettle();
       expect((await db.collection('lrn_folders').doc('a').get()).exists, false);
-      expect(find.text('Unfiled / 1 LRN records'), findsOneWidget);
+      expect(find.text('Unfiled'), findsWidgets);
+      expect(find.text('1 LRN record'), findsOneWidget);
+      expect(find.text('0 registered'), findsOneWidget);
+      expect(find.text('1 pending'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );

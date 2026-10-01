@@ -16,6 +16,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     var submissions = 0;
+    var diagnosticFeedback = <String>[];
     const capture = bool.fromEnvironment('RJ45_CAPTURE');
     final boundary = GlobalKey();
     if (capture) {
@@ -77,6 +78,7 @@ void main() {
                 onComplete: (score, total, passed) {
                   submissions++;
                 },
+                onFeedback: (errors) => diagnosticFeedback = errors,
               ),
             ),
           ),
@@ -164,6 +166,16 @@ void main() {
     expect(find.byKey(const ValueKey('lan-test-result')), findsOneWidget);
     expect(find.byKey(const ValueKey('lan-pin-1')), findsOneWidget);
     expect(find.text('Expected 1'), findsOneWidget);
+    expect(
+      diagnosticFeedback.any((item) => item.startsWith('Miswire: MAIN pin 1')),
+      isTrue,
+    );
+    expect(
+      diagnosticFeedback.any(
+        (item) => item.startsWith('Pairing standard error:'),
+      ),
+      isTrue,
+    );
     await screenshot('rj45-tester-result');
     expect(submissions, 0);
     expect(tester.takeException(), isNull);

@@ -21,7 +21,7 @@ class AdminDeleteStaffButton extends StatelessWidget {
       builder: (_) => _DeleteStaffDialog(
         name: name,
         role: role,
-        onDelete: onDelete ?? () => AdminStaffDeletion.delete(uid, role),
+        onDelete: onDelete ?? () => AdminStaffDeletion.revokeAccess(uid, role),
       ),
     ),
   );
@@ -73,11 +73,11 @@ class _DeleteStaffDialogState extends State<_DeleteStaffDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Permanently delete ' +
+              'Delete ' +
                   widget.name +
                   ' (' +
                   widget.role +
-                  ')? Their sign-in and profile will be removed. Shared classes and academic records will remain.',
+                  ') from ICTeach? They will immediately lose access and disappear from Manage Users. Shared academic records will remain.',
             ),
             if (error != null)
               Padding(
@@ -94,7 +94,7 @@ class _DeleteStaffDialogState extends State<_DeleteStaffDialog> {
         ),
         FilledButton(
           onPressed: busy ? null : submit,
-          child: Text(busy ? 'Deleting...' : 'Delete permanently'),
+          child: Text(busy ? 'Deleting...' : 'Delete account'),
         ),
       ],
     ),

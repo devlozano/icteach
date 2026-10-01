@@ -29,7 +29,7 @@ class _HomeRouterState extends State<HomeRouter> {
       : FirebaseFirestore.instance
             .collection('users')
             .doc(FirebaseAuth.instance.currentUser!.uid)
-            .get();
+            .snapshots();
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -38,8 +38,8 @@ class _HomeRouterState extends State<HomeRouter> {
       return kIsWeb ? const AdminLoginPage() : const LoginPage();
     }
 
-    return FutureBuilder<DocumentSnapshot>(
-      future: _profile,
+    return StreamBuilder<DocumentSnapshot>(
+      stream: _profile,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
@@ -108,6 +108,9 @@ class _HomeRouterState extends State<HomeRouter> {
             ),
           );
         }
+        if (data['isActive'] == false) {
+          return const _RevokedAccess();
+        }
         final role = data['role']?.toString().toLowerCase() ?? 'student';
         if (kIsWeb && !const {'admin', 'teacher', 'trainer'}.contains(role)) {
           return const _WebAccessBlocked();
@@ -146,6 +149,41 @@ class _HomeRouterState extends State<HomeRouter> {
         return const HomePage();
     }
   }
+}
+
+class _RevokedAccess extends StatefulWidget {
+  const _RevokedAccess();
+  @override
+  State<_RevokedAccess> createState() => _RevokedAccessState();
+}
+
+class _RevokedAccessState extends State<_RevokedAccess> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _signOut());
+  }
+
+  Future<void> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    PersistentWorkspace.clear();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => kIsWeb ? const AdminLoginPage() : const LoginPage(),
+      ),
+      (_) => false,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('This account no longer has access to ICTeach.'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      const Scaffold(body: Center(child: CircularProgressIndicator()));
 }
 
 class _WebAccessBlocked extends StatefulWidget {

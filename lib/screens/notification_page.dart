@@ -9,14 +9,24 @@ import '../screens/student/student_quizzes_page.dart';
 import '../screens/student/student_assignments_page.dart';
 import '../screens/student/module_view_page.dart';
 import '../screens/student/forums_page.dart';
+import '../screens/student/forum_detail_page.dart';
 import '../screens/teacher/manage_quizzes_page.dart';
 import '../screens/teacher/manage_assignments_page.dart';
 import '../screens/teacher/manage_modules_page.dart';
 
 class NotificationPage extends StatefulWidget {
-  const NotificationPage({super.key, this.service, this.loadRole});
+  const NotificationPage({
+    super.key,
+    this.service,
+    this.loadRole,
+    this.loadClass,
+    this.openDestination,
+  });
   final NotificationService? service;
   final Future<String?> Function()? loadRole;
+  final Future<Map<String, dynamic>?> Function(String classId)? loadClass;
+  final void Function(BuildContext context, Widget destination)?
+  openDestination;
 
   @override
   State<NotificationPage> createState() => _NotificationPageState();
@@ -176,20 +186,20 @@ class _NotificationPageState extends State<NotificationPage> {
         _showErrorSnackbar('Class information not available');
         return;
       }
-      final classroom = await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(classId)
-          .get();
+      final classData = widget.loadClass != null
+          ? await widget.loadClass!(classId)
+          : (await FirebaseFirestore.instance
+                    .collection('classes')
+                    .doc(classId)
+                    .get())
+                .data();
       if (!mounted) return;
-      if (!classroom.exists) {
+      if (classData == null) {
         _showErrorSnackbar('This class is no longer available.');
         return;
       }
-      final className =
-          (classroom.data()?['name'] ??
-                  classroom.data()?['className'] ??
-                  'Class')
-              .toString();
+      final className = (classData['name'] ?? classData['className'] ?? 'Class')
+          .toString();
       final staff = ['admin', 'teacher', 'trainer'].contains(_userRole);
       final Widget? destination = switch (notification.type) {
         'quiz' =>
@@ -204,13 +214,24 @@ class _NotificationPageState extends State<NotificationPage> {
           staff
               ? ManageModulesPage(classId: classId, className: className)
               : ModuleViewPage(classId: classId, className: className),
-        'forum' => ForumsPage(classId: classId, className: className),
+        'forum' =>
+          notification.referenceId?.trim().isNotEmpty == true
+              ? ForumDetailPage(
+                  classId: classId,
+                  postId: notification.referenceId!.trim(),
+                )
+              : ForumsPage(classId: classId, className: className),
         _ => null,
       };
       if (destination != null) {
-        Navigator.of(
-          context,
-        ).pushReplacement(MaterialPageRoute<void>(builder: (_) => destination));
+        if (widget.openDestination != null) {
+          widget.openDestination!(context, destination);
+        } else {
+          Navigator.of(
+            context,
+            rootNavigator: true,
+          ).push(MaterialPageRoute<void>(builder: (_) => destination));
+        }
       } else {
         _showGradeDialog(context, notification);
       }

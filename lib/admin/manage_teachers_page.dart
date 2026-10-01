@@ -25,7 +25,10 @@ class ManageTeachersPage extends StatelessWidget {
             padding: EdgeInsets.all(24),
             child: Text('Could not load accounts. Check your connection.'),
           );
-        final docs = snapshot.data?.docs ?? [];
+        final docs = (snapshot.data?.docs ?? []).where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          return data['isActive'] != false;
+        }).toList();
         if (docs.isEmpty) {
           return const Center(child: Text('No teachers found.'));
         }

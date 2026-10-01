@@ -7,6 +7,7 @@ import '../../models/forum_model.dart';
 import '../../services/forum_service.dart';
 import 'create_forum_post_page.dart';
 import 'forum_detail_page.dart';
+import '../../widgets/forum_viewers_dialog.dart';
 
 class ForumsPage extends StatefulWidget {
   final String classId;
@@ -175,62 +176,12 @@ class _ForumsPageState extends State<ForumsPage> {
 
   // ✅ Helper method to ensure correct role
   Future<void> _showViewers(BuildContext context, ForumPost post) async {
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.visibility_outlined),
-            const SizedBox(width: 8),
-            const Text('Viewed by'),
-          ],
-        ),
-        content: SizedBox(
-          width: 360,
-          child: StreamBuilder<List<Map<String, dynamic>>>(
-            stream: _forumService.getPostViewers(
-              widget.classId,
-              post.id,
-              post.authorId,
-            ),
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return const Text('Could not load viewers.');
-              }
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final viewers = snapshot.data!;
-              if (viewers.isEmpty) return const Text('No views yet.');
-              return ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 360),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: viewers.length,
-                  itemBuilder: (_, index) {
-                    final viewer = viewers[index];
-                    final name = viewer['name']?.toString() ?? 'User';
-                    return ListTile(
-                      dense: true,
-                      leading: CircleAvatar(
-                        child: Text(name.substring(0, 1).toUpperCase()),
-                      ),
-                      title: Text(name),
-                      subtitle: Text(viewer['role']?.toString() ?? 'student'),
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+    await showForumViewersDialog(
+      context,
+      _forumService,
+      widget.classId,
+      post.id,
+      post.authorId,
     );
   }
 

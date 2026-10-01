@@ -11,10 +11,6 @@ import '../../widgets/content_access_gate.dart';
 import '../../widgets/activity_preparation_gate.dart';
 import '../../services/learning_path_service.dart';
 
-// Debug builds can open every simulation for local testing without recording
-// practice or assessment progress. Release builds retain every prerequisite.
-const bool _simulationTestingBypass = kDebugMode;
-
 class SimulationPage extends StatelessWidget {
   final String classId;
   final String simulationId;
@@ -32,34 +28,24 @@ class SimulationPage extends StatelessWidget {
     classId: classId,
     contentType: 'simulation',
     contentId: simulationId,
-    builder: (_) => _simulationTestingBypass
-        ? _SimulationSession(
-            practice: true,
-            testingBypass: true,
-            classId: classId,
-            simulationId: simulationId,
-            title: title,
-            className: className,
-          )
-        : ActivityPreparationGate(
-            classId: classId,
-            type: 'simulation',
-            contentId: simulationId,
-            title: title,
-            sessionBuilder: (practice) => _SimulationSession(
-              practice: practice,
-              classId: classId,
-              simulationId: simulationId,
-              title: title,
-              className: className,
-            ),
-          ),
+    builder: (_) => ActivityPreparationGate(
+      classId: classId,
+      type: 'simulation',
+      contentId: simulationId,
+      title: title,
+      sessionBuilder: (practice) => _SimulationSession(
+        practice: practice,
+        classId: classId,
+        simulationId: simulationId,
+        title: title,
+        className: className,
+      ),
+    ),
   );
 }
 
 class _SimulationSession extends StatefulWidget {
   final bool practice;
-  final bool testingBypass;
   final String classId;
   final String simulationId;
   final String title;
@@ -67,7 +53,6 @@ class _SimulationSession extends StatefulWidget {
 
   const _SimulationSession({
     required this.practice,
-    this.testingBypass = false,
     required this.classId,
     required this.simulationId,
     required this.title,
@@ -88,6 +73,9 @@ class _SimulationPageState extends State<_SimulationSession> {
   bool _feedbackSubmitted = false;
   bool _savingProgress = false;
   List<String> _attemptErrors = [];
+  int? _lastScore;
+  int? _lastTotal;
+  bool? _lastPassed;
 
   @override
   void initState() {
@@ -187,7 +175,7 @@ class _SimulationPageState extends State<_SimulationSession> {
       _simulation = simulation;
       _prerequisites = prerequisites;
       _isCompleted = widget.practice ? false : completed;
-      _prerequisiteCompleted = widget.testingBypass || prerequisiteCompleted;
+      _prerequisiteCompleted = prerequisiteCompleted;
       _isLoading = false;
     });
   }
@@ -392,8 +380,8 @@ class _SimulationPageState extends State<_SimulationSession> {
                     locked
                         ? 'Locked'
                         : widget.practice
-                        ? 'Start ungraded practice'
-                        : 'Start simulation assessment',
+                        ? 'Start required practice mode'
+                        : 'Start graded simulation assessment',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -425,17 +413,31 @@ class _SimulationPageState extends State<_SimulationSession> {
     backgroundColor: const Color(0xffF8FAFC),
     appBar: _appBar(_simulation!.title),
     body: Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle, size: 80, color: Colors.green),
+            Icon(
+              widget.practice
+                  ? Icons.sports_esports_rounded
+                  : _lastPassed == false
+                  ? Icons.troubleshoot_rounded
+                  : Icons.check_circle,
+              size: 80,
+              color: widget.practice
+                  ? Colors.blue
+                  : _lastPassed == false
+                  ? Colors.orange
+                  : Colors.green,
+            ),
             const SizedBox(height: 16),
             Text(
               widget.practice
-                  ? 'Practice completed (ungraded)'
-                  : 'Simulation assessment completed!',
+                  ? 'Required practice completed'
+                  : _lastPassed == false
+                  ? 'Part B assessment needs another attempt'
+                  : 'Part B assessment passed',
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
@@ -445,6 +447,14 @@ class _SimulationPageState extends State<_SimulationSession> {
               style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
               textAlign: TextAlign.center,
             ),
+            if (_lastScore != null && _lastTotal != null) ...[
+              const SizedBox(height: 16),
+              _buildResultSummary(),
+            ],
+            if (_attemptErrors.isNotEmpty || _lastPassed == false) ...[
+              const SizedBox(height: 16),
+              _buildAssessmentFeedback(),
+            ],
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -471,6 +481,10 @@ class _SimulationPageState extends State<_SimulationSession> {
                       setState(() {
                         _hasStarted = true;
                         _isCompleted = false;
+                        _attemptErrors = [];
+                        _lastScore = null;
+                        _lastTotal = null;
+                        _lastPassed = null;
                       });
                     },
                     icon: const Icon(Icons.refresh),
@@ -496,6 +510,99 @@ class _SimulationPageState extends State<_SimulationSession> {
       ),
     ),
   );
+
+  Widget _buildResultSummary() {
+    final score = _lastScore!;
+    final total = _lastTotal!;
+    final percentage = total == 0 ? 0 : (score / total * 100).round();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _resultMetric('Score', '$score / $total'),
+          _resultMetric('Percentage', '$percentage%'),
+          _resultMetric('Required', '${_simulation!.passingScore}%'),
+        ],
+      ),
+    );
+  }
+
+  Widget _resultMetric(String label, String value) => Column(
+    children: [
+      Text(
+        value,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 3),
+      Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 11)),
+    ],
+  );
+
+  Widget _buildAssessmentFeedback() {
+    final isRj45 = _simulation!.id == 'sim_coc2_crimping';
+    final feedback = <String>{
+      ..._attemptErrors.where((error) => error.trim().isNotEmpty),
+      if (isRj45 && _lastPassed == false)
+        'Open circuit: a conductor may be cut short or not fully seated under its contact.',
+      if (isRj45 && _lastPassed == false)
+        'Short circuit: conductors may touch inside the plug or the connector may be damaged.',
+      if (isRj45 && _lastPassed == false)
+        'Split pair: continuity may appear correct while the twisted-pair assignment is wrong, causing unreliable connectivity.',
+      if (isRj45 && _lastPassed == false)
+        'Link without network access: after fixing the cable, verify the IP address, subnet mask, gateway, switch port, and VLAN.',
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _lastPassed == false
+            ? Colors.orange.shade50
+            : Colors.green.shade50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: _lastPassed == false
+              ? Colors.orange.shade200
+              : Colors.green.shade200,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _lastPassed == false
+                ? 'Possible errors and corrective actions'
+                : 'Assessment feedback',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          for (final item in feedback)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 7),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    _lastPassed == false
+                        ? Icons.build_outlined
+                        : Icons.check_circle_outline,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(item)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _showEvaluationDialog() async {
     var difficulty = 3;
@@ -642,14 +749,18 @@ class _SimulationPageState extends State<_SimulationSession> {
       );
       return;
     }
-    if (passed) {
-      await _setGameplayOrientation(false);
-      if (mounted) setState(() => _isCompleted = true);
+    await _setGameplayOrientation(false);
+    if (mounted) {
+      setState(() {
+        _lastScore = score;
+        _lastTotal = total;
+        _lastPassed = passed;
+        _isCompleted = true;
+      });
     }
   }
 
   Future<bool> _saveProgress(int score, int total, bool passed) async {
-    if (widget.testingBypass) return true;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
     try {
@@ -751,6 +862,8 @@ class _SimulationPageState extends State<_SimulationSession> {
         'Arrange the shuffled technician actions in the correct standards-based workflow.',
       'assembly' =>
         'Install the shuffled components in a safe manufacturer-approved sequence.',
+      'disassembly' =>
+        'Remove and secure the components in a safe manufacturer-approved service sequence.',
       'cabling' =>
         'Inspect each shuffled connector, then match its keying and function to the correct port.',
       'identification' =>
@@ -775,6 +888,8 @@ class _SimulationPageState extends State<_SimulationSession> {
     switch (type) {
       case 'assembly':
         return Icons.computer;
+      case 'disassembly':
+        return Icons.build_circle_outlined;
       case 'identification':
         return Icons.visibility;
       case 'networking':

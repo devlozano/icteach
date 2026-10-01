@@ -349,6 +349,8 @@ class _SimulationCard extends StatelessWidget {
     switch (type) {
       case 'assembly':
         return Icons.computer;
+      case 'disassembly':
+        return Icons.build_circle_outlined;
       case 'identification':
         return Icons.visibility;
       case 'networking':
@@ -381,6 +383,8 @@ class _SimulationCard extends StatelessWidget {
     switch (simulationId) {
       case 'sim_coc1_assembly':
         return 'assets/simulations/icon-pc-assembly.png';
+      case 'sim_coc1_disassembly':
+        return 'assets/simulations/icon-pc-disassembly.png';
       case 'sim_coc1_cabling':
         return 'assets/simulations/icon-cable-management.png';
       case 'sim_coc1_identification':

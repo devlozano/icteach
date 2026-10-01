@@ -26,9 +26,13 @@ class LrnIdentity {
     return LrnIdentity(
       lrn: lrn,
       firstName: first,
-      middleName: field('middleName'),
+      middleName: data.containsKey('middleName')
+          ? field('middleName')
+          : field('middleInitial'),
       lastName: last,
-      extension: field('extension'),
+      extension: data.containsKey('extension')
+          ? field('extension')
+          : field('suffix'),
     );
   }
   String get displayName => [

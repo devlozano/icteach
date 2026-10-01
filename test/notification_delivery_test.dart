@@ -5,6 +5,8 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:icteach/services/notification_service.dart';
 import 'package:icteach/models/notification_model.dart';
 import 'package:icteach/screens/notification_page.dart';
+import 'package:icteach/screens/student/forum_detail_page.dart';
+import 'package:icteach/screens/student/module_view_page.dart';
 
 Future<void> flush() async {
   for (var i = 0; i < 10; i++) {
@@ -165,16 +167,20 @@ void main() {
 
   test('legacy forum notification resolves class through its post', () async {
     final db = FakeFirebaseFirestore();
+    await db.collection('classes').doc('legacy-class').set({
+      'name': 'Legacy Class',
+    });
     await db
         .collection('classes')
         .doc('legacy-class')
         .collection('forum_posts')
         .doc('legacy-post')
-        .set({'title': 'Old post'});
+        .set({'title': 'Old post', 'classId': 'legacy-class'});
     await db.collection('notifications').doc('legacy-forum').set({
       'userId': 'student',
       'type': 'forum',
-      'referenceId': 'legacy-post',
+      'title': 'New Forum Post: Old post',
+      'referenceId': '',
     });
     final service = NotificationService(firestore: db);
     final notification = NotificationModel.fromFirestore(
@@ -198,6 +204,92 @@ void main() {
     expect((await db.collection('notifications').get()).docs.length, 510);
   });
   for (final width in [390.0, 1440.0]) {
+    testWidgets(
+      'notification click opens its direct destination at width ' +
+          width.toString(),
+      (tester) async {
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final db = FakeFirebaseFirestore();
+        await db.collection('notifications').doc('forum').set({
+          'userId': 'student',
+          'title': 'New Forum Post: Cable test',
+          'type': 'forum',
+          'classId': 'class-1',
+          'referenceId': 'post-1',
+          'isRead': false,
+        });
+        final service = NotificationService(
+          firestore: db,
+          userIds: Stream.value('student'),
+          currentUserId: () => 'student',
+        );
+        Widget? opened;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: NotificationPage(
+              service: service,
+              loadRole: () async => 'student',
+              loadClass: (_) async => {'name': 'Networking'},
+              openDestination: (_, destination) => opened = destination,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('New Forum Post: Cable test'));
+        await tester.pumpAndSettle();
+
+        expect(opened, isA<ForumDetailPage>());
+        final page = opened! as ForumDetailPage;
+        expect(page.classId, 'class-1');
+        expect(page.postId, 'post-1');
+      },
+    );
+    testWidgets(
+      'module notification opens the student module page at width ' +
+          width.toString(),
+      (tester) async {
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final db = FakeFirebaseFirestore();
+        await db.collection('notifications').doc('module').set({
+          'userId': 'student',
+          'title': 'New Module: Networking',
+          'type': 'module',
+          'classId': 'class-1',
+          'referenceId': 'class-1',
+          'isRead': false,
+        });
+        final service = NotificationService(
+          firestore: db,
+          userIds: Stream.value('student'),
+          currentUserId: () => 'student',
+        );
+        Widget? opened;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: NotificationPage(
+              service: service,
+              loadRole: () async => 'student',
+              loadClass: (_) async => {'name': 'Networking'},
+              openDestination: (_, destination) => opened = destination,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('New Module: Networking'));
+        await tester.pumpAndSettle();
+
+        expect(opened, isA<ModuleViewPage>());
+        final page = opened! as ModuleViewPage;
+        expect(page.classId, 'class-1');
+        expect(page.className, 'Networking');
+      },
+    );
     testWidgets(
       'grade notification opens a mounted dialog at width ' + width.toString(),
       (tester) async {

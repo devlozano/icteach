@@ -79,6 +79,13 @@ class _LoginPageState extends State<LoginPage> {
       final data = doc.data();
       final role = (data?['role'] as String?)?.toLowerCase() ?? '';
 
+      if (data?['isActive'] == false) {
+        await FirebaseAuth.instance.signOut();
+        if (!mounted) return;
+        _showError('This account no longer has access to ICTeach.');
+        return;
+      }
+
       if (role == 'admin') {
         await FirebaseAuth.instance.signOut();
 

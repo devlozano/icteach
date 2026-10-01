@@ -5,6 +5,7 @@ class LRNModel {
   final String firstName;
   final String lastName;
   final String middleName;
+  final String extension;
   final String gradeLevel;
   final String section;
   final bool isRegistered;
@@ -15,6 +16,7 @@ class LRNModel {
     required this.firstName,
     required this.lastName,
     this.middleName = '',
+    this.extension = '',
     this.gradeLevel = '12',
     this.section = '',
     this.isRegistered = false,
@@ -27,7 +29,8 @@ class LRNModel {
       lrn: doc.id,
       firstName: data['firstName'] ?? '',
       lastName: data['lastName'] ?? '',
-      middleName: data['middleName'] ?? '',
+      middleName: data['middleName'] ?? data['middleInitial'] ?? '',
+      extension: data['extension'] ?? data['suffix'] ?? '',
       gradeLevel: data['gradeLevel'] ?? '12',
       section: data['section'] ?? '',
       isRegistered: data['isRegistered'] ?? false,
@@ -40,6 +43,7 @@ class LRNModel {
       'firstName': firstName,
       'lastName': lastName,
       'middleName': middleName,
+      'extension': extension,
       'gradeLevel': gradeLevel,
       'section': section,
       'isRegistered': isRegistered,

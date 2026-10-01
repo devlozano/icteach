@@ -120,6 +120,27 @@ void main() {
           expect(tester.takeException(), isNull);
           return;
         }
+        if (simulation.id == 'sim_coc1_disassembly') {
+          expect(find.byKey(const ValueKey('installed-gpu')), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('disassembly-action')),
+            findsOneWidget,
+          );
+          expect(find.byType(DropTargetWidget), findsNothing);
+          final bench = tester.getRect(find.byType(InteractiveViewer));
+          expect(bench.width, greaterThan(size.width * .48));
+          final tray = tester.getRect(
+            find.byKey(const ValueKey('esd-tray-target')),
+          );
+          final caseView = tester.getRect(
+            find.byKey(const ValueKey('disassembly-case-view')),
+          );
+          expect(tray.left, greaterThanOrEqualTo(bench.right));
+          expect(tray.height, greaterThanOrEqualTo(bench.height));
+          expect(caseView.height, greaterThan(size.height * .45));
+          expect(tester.takeException(), isNull);
+          return;
+        }
         expect(find.byType(DropTargetWidget).evaluate().length, greaterThan(1));
         expect(find.byType(SingleChildScrollView), findsNothing);
         final bench = tester.getRect(find.byType(InteractiveViewer));

@@ -102,7 +102,7 @@ class ForumService {
       post.title,
       authorName,
       user.uid,
-      postId: post.id,
+      postId: newPost.id,
     );
 
     // Debug: Check if notifications were created

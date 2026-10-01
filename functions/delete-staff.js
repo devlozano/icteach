@@ -17,13 +17,18 @@ function makeDeleteStaffHandler({auth, db, logger = console}) {
     try {
       const profile = db.collection('users').doc(uid);
       const doc = await profile.get();
-      if (!doc.exists || doc.data().role !== role) return res.status(409).json({error: 'target-role-changed'});
+      if (doc.exists && doc.data().role !== role) return res.status(409).json({error: 'target-role-changed'});
       let target;
       try { target = await auth.getUser(uid); }
       catch (e) { if (e.code !== 'auth/user-not-found') throw e; }
-      if (target?.customClaims?.admin === true) return res.status(403).json({error: 'protected-admin'});
+      if (!doc.exists && !target) return res.status(200).json({deleted: true, alreadyDeleted: true});
+      if (!doc.exists) return res.status(409).json({error: 'target-profile-missing'});
+      if (target?.customClaims?.admin === true || target?.customClaims?.role === 'admin') return res.status(403).json({error: 'protected-admin'});
       // Remove sign-in first. A retry can finish profile cleanup if it fails afterward.
-      if (target) await auth.deleteUser(uid);
+      if (target) {
+        try { await auth.deleteUser(uid); }
+        catch (error) { if (error.code !== 'auth/user-not-found') throw error; }
+      }
       await db.recursiveDelete(profile);
       return res.status(200).json({deleted: true});
     } catch (error) {

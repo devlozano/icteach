@@ -263,11 +263,66 @@ class _LrnFolderBrowserState extends State<LrnFolderBrowser> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  '${folders[_selected] ?? 'Folder'} / ${records.length} LRN records',
-                  style: Theme.of(context).textTheme.titleMedium,
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    runAlignment: WrapAlignment.center,
+                    spacing: 16,
+                    runSpacing: 10,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.badge_outlined),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                folders[_selected] ?? 'Folder',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                              Text(
+                                '${records.length} LRN record${records.length == 1 ? '' : 's'}',
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Wrap(
+                        spacing: 8,
+                        children: [
+                          Chip(
+                            avatar: const Icon(
+                              Icons.verified_user_outlined,
+                              size: 16,
+                            ),
+                            label: Text(
+                              '${records.where((d) => d.data()['isRegistered'] == true).length} registered',
+                            ),
+                          ),
+                          Chip(
+                            avatar: const Icon(
+                              Icons.schedule_outlined,
+                              size: 16,
+                            ),
+                            label: Text(
+                              '${records.where((d) => d.data()['isRegistered'] != true).length} pending',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 if (records.isEmpty)
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 32),
@@ -285,6 +340,16 @@ class _LrnFolderBrowserState extends State<LrnFolderBrowser> {
                         final registered = data['isRegistered'] == true;
                         final enabled =
                             widget.enabled && !_busy.contains(doc.id);
+                        final officialName =
+                            [
+                                  data['firstName'],
+                                  data['middleName'] ?? data['middleInitial'],
+                                  data['lastName'],
+                                  data['extension'] ?? data['suffix'],
+                                ]
+                                .map((value) => value?.toString().trim() ?? '')
+                                .where((value) => value.isNotEmpty)
+                                .join(' ');
                         return Card(
                           child: ListTile(
                             title: Text(
@@ -296,7 +361,7 @@ class _LrnFolderBrowserState extends State<LrnFolderBrowser> {
                               ),
                             ),
                             subtitle: Text(
-                              '${data['firstName'] ?? ''} ${data['lastName'] ?? ''}\n${registered ? 'Registered' : 'Pending'}',
+                              '$officialName\n${registered ? 'Registered' : 'Pending'}',
                             ),
                             isThreeLine: true,
                             trailing: Row(

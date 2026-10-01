@@ -50,9 +50,17 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
           tested = true;
         });
         final s = session!;
+        final diagnostics = <String>[
+          for (var index = 0; index < s.wireMap.length; index++)
+            if (s.wireMap[index] != s.expectedMap[index])
+              'Miswire: MAIN pin ${index + 1} reaches REMOTE pin ${s.wireMap[index]}; expected pin ${s.expectedMap[index]}.',
+          if (!s.standardEnds)
+            'Pairing standard error: one or both plugs do not follow the required T568A/T568B color and pair assignment.',
+        ];
         attempts.add(
           '${s.kind.name}: main-to-remote ${s.wireMap.join(", ")}; ${s.passed ? "PASS" : "FAIL"}',
         );
+        attempts.addAll(diagnostics);
         widget.onFeedback?.call(List.of(attempts));
       }
     });

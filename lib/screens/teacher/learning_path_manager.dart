@@ -1,12 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../data/simulation_data.dart';
+import '../../models/simulation_model.dart' as simulation_models;
 import '../../services/content_access_service.dart';
 import '../../services/learning_path_service.dart';
 
 class LearningPathManager extends StatefulWidget {
   final String classId;
   const LearningPathManager({super.key, required this.classId});
+
+  static List<simulation_models.Simulation> availableSimulations() =>
+      SimulationData.getAllSimulations();
+
   @override
   State<LearningPathManager> createState() => _LearningPathManagerState();
 }
@@ -176,15 +181,34 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                 'To make a simulation available:\n\n1. In Modules, add the lesson, turn on Publish, then choose Upload & Publish Module. A draft will not unlock it.\n\n2. In Quizzes, create and publish a theory quiz with questions.\n\n3. Select the simulation below, choose its published module and Part 1 theory quiz, then Save.\n\n4. In Content Lock Settings, make sure the lesson, quiz and simulation are unlocked. Students must be enrolled in an active class.\n\nStudents complete the lesson, ungraded practice and the theory quiz before the simulation assessment. Any previous simulation requirement must also be passed.',
               ),
             ),
-            ...SimulationData.getAllSimulations().map(
-              (s) => ListTile(
-                leading: const Icon(Icons.science),
-                title: Text(s.title),
-                subtitle: Text('${s.competency}: ${s.learningOutcome}'),
-                trailing: const Icon(Icons.link),
-                onTap: () => _edit('simulation', s.id, s.title),
+            for (final competency in ['COC1', 'COC2']) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                child: Text(
+                  '$competency simulations',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ),
+              for (final simulation
+                  in LearningPathManager.availableSimulations().where(
+                    (item) => item.competency == competency,
+                  ))
+                ListTile(
+                  key: ValueKey('learning_path_${simulation.id}'),
+                  leading: Icon(
+                    simulation.type == 'disassembly'
+                        ? Icons.build_circle_outlined
+                        : Icons.science,
+                  ),
+                  title: Text(simulation.title),
+                  subtitle: Text(simulation.learningOutcome),
+                  trailing: const Icon(Icons.link),
+                  onTap: () =>
+                      _edit('simulation', simulation.id, simulation.title),
+                ),
+            ],
             const Divider(),
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance

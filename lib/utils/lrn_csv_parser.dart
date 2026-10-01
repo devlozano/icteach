@@ -1,12 +1,36 @@
 import 'dart:convert';
 
 class LrnCsvRecord {
-  final String lrn, firstName, lastName, middleName;
-  const LrnCsvRecord(this.lrn, this.firstName, this.lastName, this.middleName);
+  final String lrn, firstName, lastName, middleName, extension;
+  const LrnCsvRecord(
+    this.lrn,
+    this.firstName,
+    this.lastName,
+    this.middleName, {
+    this.extension = '',
+  });
+  String get displayName => [
+    firstName,
+    middleName,
+    lastName,
+    extension,
+  ].where((part) => part.isNotEmpty).join(' ');
+  static String normalizeMiddleInitial(String value) {
+    final letters = value.replaceAll(RegExp(r'[.\s]'), '');
+    if (letters.isEmpty) return '';
+    if (!RegExp(r'^[A-Za-zÀ-ÖØ-öø-ÿ]{1,5}$').hasMatch(letters)) {
+      throw const FormatException(
+        'Enter up to five middle initials, for example A. or A. B., or leave blank.',
+      );
+    }
+    return '${letters.toUpperCase().split('').join('. ')}.';
+  }
+
   Map<String, dynamic> get names => {
     'firstName': firstName,
     'lastName': lastName,
     'middleName': middleName,
+    'extension': extension,
   };
 }
 
@@ -32,7 +56,16 @@ class LrnCsvParser {
       throw const FormatException('The CSV file has no records.');
     String header(String value) =>
         value.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]'), '');
-    final first = rows.first.map(header).toList();
+    final rawHeaders = rows.first.map(header).toList();
+    final first = rawHeaders
+        .map(
+          (key) => switch (key) {
+            'middleinitial' || 'mi' => 'middlename',
+            'suffix' => 'extension',
+            _ => key,
+          },
+        )
+        .toList();
     final hasHeader = first.contains('lrn');
     var columns = <String, int>{
       'lrn': 0,
@@ -49,7 +82,7 @@ class LrnCsvParser {
       }
       if (!['lrn', 'firstname', 'lastname'].every(columns.containsKey)) {
         throw const FormatException(
-          'Headers must include LRN, First Name and Last Name; Middle Name is optional.',
+          'Headers must include LRN, First Name and Last Name; Middle Name or Middle Initial and Suffix are optional.',
         );
       }
     }
@@ -90,7 +123,21 @@ class LrnCsvParser {
         throw FormatException(
           'CSV record ${i + 1}: each name must be at most 150 characters.',
         );
-      records.add(LrnCsvRecord(lrn, names[0], names[1], names[2]));
+      final suffix = field('extension').replaceAll(RegExp(r'\s+'), ' ');
+      if (suffix.length > 30) {
+        throw FormatException(
+          'CSV record ${i + 1}: suffix must be at most 30 characters.',
+        );
+      }
+      final middle =
+          hasHeader &&
+              (rawHeaders.contains('middleinitial') ||
+                  rawHeaders.contains('mi'))
+          ? LrnCsvRecord.normalizeMiddleInitial(names[2])
+          : names[2];
+      records.add(
+        LrnCsvRecord(lrn, names[0], names[1], middle, extension: suffix),
+      );
       if (records.length > maxRecords)
         throw const FormatException(
           'Import at most 10,000 records per CSV file.',

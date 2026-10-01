@@ -698,7 +698,7 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
             const SizedBox(height: 18),
             _buildTextField(
-              label: 'Middle Name',
+              label: 'Middle Name / Initial',
               controller: _middleNameController,
               readOnly: true,
               hintText: 'Santos',
@@ -720,10 +720,10 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
             const SizedBox(height: 18),
             _buildTextField(
-              label: 'Extension (Optional)',
+              label: 'Suffix',
               controller: _extensionController,
               readOnly: true,
-              hintText: 'Jr., Sr., III',
+              hintText: 'No suffix on school record',
               icon: Icons.person_add_alt_1_outlined,
               validator: _validateExtension,
               isRequired: false,

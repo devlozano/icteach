@@ -4,6 +4,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:icteach/admin/manage_teachers_page.dart';
 import 'package:icteach/admin/manage_trainers_page.dart';
 import 'package:icteach/widgets/admin_delete_staff_button.dart';
+import 'package:icteach/services/admin_staff_deletion.dart';
 
 void main() {
   for (final role in ['teacher', 'trainer']) {
@@ -26,15 +27,49 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('Delete account'));
       await tester.pumpAndSettle();
-      expect(
-        find.textContaining('Permanently delete Staff Member'),
-        findsOneWidget,
-      );
+      expect(find.textContaining('Delete Staff Member'), findsOneWidget);
       await tester.tap(find.text('Cancel'));
       await tester.pumpAndSettle();
       expect((await db.collection('users').doc('staff').get()).exists, true);
     });
+
+    testWidgets('revoked $role is removed from the active list', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      await db.collection('users').doc('revoked').set({
+        'role': role,
+        'name': 'Revoked Staff',
+        'isActive': false,
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: role == 'teacher'
+              ? ManageTeachersPage(firestore: db)
+              : ManageTrainersPage(firestore: db),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Revoked Staff'), findsNothing);
+    });
   }
+
+  test('access removal marks the selected staff profile inactive', () async {
+    final db = FakeFirebaseFirestore();
+    await db.collection('users').doc('staff').set({
+      'role': 'teacher',
+      'isActive': true,
+    });
+    await AdminStaffDeletion.revokeAccess(
+      'staff',
+      'teacher',
+      firestore: db,
+      callerUid: 'admin',
+    );
+    final data = (await db.collection('users').doc('staff').get()).data()!;
+    expect(data['isActive'], false);
+    expect(data['accessRevokedBy'], 'admin');
+  });
   testWidgets('failed deletion remains retryable and never silently closes', (
     tester,
   ) async {
@@ -57,10 +92,10 @@ void main() {
     await tester.tap(find.byTooltip('Delete account'));
     await tester.pumpAndSettle();
     expect(calls, 0);
-    await tester.tap(find.text('Delete permanently'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete account'));
     await tester.pumpAndSettle();
     expect(find.text('Authorization required'), findsOneWidget);
-    await tester.tap(find.text('Delete permanently'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Delete account'));
     await tester.pumpAndSettle();
     expect(calls, 2);
     expect(find.byType(AlertDialog), findsNothing);

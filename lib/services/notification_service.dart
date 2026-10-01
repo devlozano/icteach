@@ -255,16 +255,30 @@ class NotificationService {
     if (storedClassId.isNotEmpty) return storedClassId;
 
     final referenceId = notification.referenceId?.trim() ?? '';
-    if (referenceId.isEmpty) return null;
-    if (notification.type != 'forum') return referenceId;
+    if (notification.type != 'forum') {
+      return referenceId.isEmpty ? null : referenceId;
+    }
 
-    final posts = await _firestore
-        .collectionGroup('forum_posts')
-        .where(FieldPath.documentId, isEqualTo: referenceId)
-        .limit(1)
-        .get();
-    if (posts.docs.isEmpty) return null;
-    return posts.docs.first.reference.parent.parent?.id;
+    final separator = notification.title.indexOf(':');
+    final postTitle = separator < 0
+        ? ''
+        : notification.title.substring(separator + 1).trim();
+    if (postTitle.isEmpty) return null;
+
+    final classes = await _firestore.collection('classes').get();
+    for (final classroom in classes.docs) {
+      final posts = await classroom.reference
+          .collection('forum_posts')
+          .where('title', isEqualTo: postTitle)
+          .limit(10)
+          .get();
+      for (final post in posts.docs) {
+        if (referenceId.isNotEmpty && post.id != referenceId) continue;
+        final postClassId = post.data()['classId']?.toString().trim() ?? '';
+        return postClassId.isNotEmpty ? postClassId : classroom.id;
+      }
+    }
+    return null;
   }
 
   // Send grade notification

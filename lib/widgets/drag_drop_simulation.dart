@@ -1,6 +1,6 @@
+import 'pc_disassembly_workbench.dart';
 import 'rj45_workbench.dart';
 import 'simulation_process_guide.dart';
-import 'summary_print_button.dart';
 import 'dart:async';
 import 'dart:math';
 
@@ -38,6 +38,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
 
   bool _isComplete = false;
   int _mistakes = 0;
+  int _disassemblySession = 0;
   final List<String> _errorLog = [];
   int _streak = 0;
   int _xp = 0;
@@ -64,7 +65,11 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     if (widget.simulation.id == 'sim_coc2_crimping') return;
     _configureVoice();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _speak('Mission started. Drag each pictured part to the correct target.');
+      _speak(
+        widget.simulation.type == 'disassembly'
+            ? 'Isolate power, open the case, then select each component for safe removal.'
+            : 'Mission started. Drag each pictured part to the correct target.',
+      );
     });
   }
 
@@ -90,6 +95,11 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   }
 
   void _resetSimulation({bool notify = true}) {
+    _disassemblySession++;
+    if (widget.simulation.id == 'sim_coc1_disassembly') {
+      _cableZoomController.value = Matrix4.identity();
+      _cableZoom = 1;
+    }
     _placements = <String, String>{};
     final shuffledItems = [...widget.simulation.items]..shuffle(_shuffleRandom);
     _availableItems = shuffledItems.map((item) => item.id).toList();
@@ -303,6 +313,55 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   }
 
   (String, String, String) _resourceProfile(sim_models.DraggableItem item) {
+    if (item.category == 'disassembly') {
+      return switch (item.id) {
+        'disassembly_safety' => (
+          'ESD strap + power isolation checklist',
+          'Unplug, discharge, and verify zero power',
+          'External power is removed, residual charge is discharged, and ESD protection is connected.',
+        ),
+        'disassembly_gpu' => (
+          'Phillips #2 + ESD strap',
+          'PCIe latch and bracket screws',
+          'GPU power is unplugged, the bracket is free, and the slot latch is released before lifting.',
+        ),
+        'disassembly_storage' => (
+          'Phillips #1 + cable labels',
+          'Drive screws and connector housings',
+          'Plugs are removed by their housings and the drive is stored in an antistatic tray.',
+        ),
+        'disassembly_psu' => (
+          'Phillips #2 + support hand',
+          'All internal leads and chassis screws',
+          'No cable remains connected and the PSU is supported before the final screw is removed.',
+        ),
+        'disassembly_cooler' => (
+          'Approved driver + lint-free materials',
+          'CPU fan header and diagonal fastener pattern',
+          'The fan is unplugged, fasteners are loosened evenly, and the thermal seal is released safely.',
+        ),
+        'disassembly_ram' => (
+          'ESD strap + antistatic sleeve',
+          'Both DIMM retaining clips',
+          'Both clips are open and the module is handled only by its edges.',
+        ),
+        'disassembly_cpu' => (
+          'ESD-safe CPU holder',
+          'Socket retention arm',
+          'The socket is released and the CPU is lifted straight up without touching contacts or pins.',
+        ),
+        'disassembly_motherboard' => (
+          'Phillips #2 + screw organizer',
+          'Every connector and motherboard screw',
+          'All wiring and fasteners are free before the board is lifted onto an ESD mat.',
+        ),
+        _ => (
+          'Inspection light + labeled parts organizer',
+          'Inventory and service record',
+          'Parts are inspected, protected, labeled, counted, and documented.',
+        ),
+      };
+    }
     if (widget.simulation.id == 'sim_coc2_crimping') {
       return (
         'RJ45 crimper + cable stripper',
@@ -443,6 +502,15 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       'gpu_power_slot': 'the GPU PCIe power socket',
       'sata_slot': 'the 7-pin SATA data port',
       'front_panel_slot': 'the front-panel header',
+      'safety_station': 'the power isolation and ESD station',
+      'gpu_parts_tray': 'the GPU antistatic tray',
+      'storage_parts_tray': 'the storage antistatic tray',
+      'psu_parts_tray': 'the PSU service area',
+      'cooler_parts_tray': 'the cooler service tray',
+      'ram_parts_tray': 'the RAM antistatic sleeve',
+      'cpu_parts_tray': 'the CPU antistatic holder',
+      'motherboard_parts_tray': 'the motherboard ESD mat',
+      'inventory_station': 'the inspection and inventory station',
     };
     if (slotId.startsWith('pin')) {
       return 'RJ45 ${slotId.replaceFirst('pin', 'pin ')}';
@@ -591,31 +659,6 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
             ),
           ),
           actions: [
-            SummaryPrintButton(
-              title: 'Simulation - ' + widget.simulation.title,
-              load: () async => [
-                SummarySection(
-                  'Session result',
-                  ['Score', 'Total', 'Percentage', 'Outcome', 'Mistakes'],
-                  [
-                    [
-                      correct,
-                      total,
-                      percentage,
-                      passed ? 'Passed' : 'Needs practice',
-                      _mistakes,
-                    ],
-                  ],
-                ),
-                SummarySection(
-                  'Feedback',
-                  ['Observation'],
-                  [
-                    for (final error in _errorLog) [error],
-                  ],
-                ),
-              ],
-            ),
             if (passed)
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
@@ -695,6 +738,35 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
         builder: (context, size) => size.maxHeight < 580
             ? _compactReadiness(false)
             : _buildOsPreflight(),
+      );
+    }
+    if (widget.simulation.id == 'sim_coc1_disassembly') {
+      return Column(
+        children: [
+          _buildStatusBar(),
+          const SizedBox(height: 8),
+          Expanded(
+            child: PcDisassemblyWorkbench(
+              key: ValueKey(_disassemblySession),
+              transformationController: _cableZoomController,
+              items: widget.simulation.items,
+              removed: _placements.keys.toSet(),
+              tools: {
+                for (final item in widget.simulation.items)
+                  item.id: _resourceProfile(item).$1,
+              },
+              locked: _isComplete,
+              onCompleteStep: (id, tool) {
+                _selectedResource = tool;
+                final item = widget.simulation.items.firstWhere(
+                  (item) => item.id == id,
+                );
+                _handleDrop(id, item.correctSlot);
+                return _placements.containsKey(id);
+              },
+            ),
+          ),
+        ],
       );
     }
     return LayoutBuilder(
@@ -1131,7 +1203,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${_placements.length}/${_requiredItems.length} placed  ·  $_mistakes errors  ·  $_formattedElapsed',
+                  '${_placements.length}/${_requiredItems.length} ${widget.simulation.type == 'disassembly' ? 'removed' : 'placed'}  ·  $_mistakes errors  ·  $_formattedElapsed',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1416,6 +1488,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                         compact: size.height < 110,
                         immersive:
                             widget.simulation.id == 'sim_coc1_assembly' ||
+                            widget.simulation.id == 'sim_coc1_disassembly' ||
                             widget.simulation.id == 'sim_coc1_cabling' ||
                             widget.simulation.competency == 'COC2',
                       ),
@@ -1684,6 +1757,8 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     switch (widget.simulation.id) {
       case 'sim_coc1_assembly':
         return 'assets/simulations/pc-case-workbench-realistic.png';
+      case 'sim_coc1_disassembly':
+        return 'assets/simulations/maintenance-workbench-matched.png';
       case 'sim_coc1_cabling':
         return 'assets/simulations/cable-management-workbench.png';
       case 'sim_coc1_identification':

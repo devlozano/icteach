@@ -168,6 +168,120 @@ class SimulationData {
     ],
   );
 
+  static Simulation getPcDisassembly() => _simulation(
+    id: 'sim_coc1_disassembly',
+    title: 'PC Disassembly - COC1',
+    description:
+        'Safely shut down, inspect, and remove computer components in the correct service order.',
+    type: 'disassembly',
+    competency: 'COC1',
+    learningOutcome: 'LO1 - Disassemble computer hardware',
+    timeLimit: 15,
+    requiredSimulationId: 'sim_coc1_assembly',
+    items: [
+      _item(
+        id: 'disassembly_safety',
+        name: 'Power Isolation and ESD Check',
+        description: 'Shut down, unplug, discharge, and apply ESD protection',
+        imageUrl: 'assets/simulations/check.svg',
+        correctSlot: 'safety_station',
+        category: 'disassembly',
+        step: 1,
+        tooltip:
+            'Disconnect external power, discharge residual energy, and wear an ESD strap.',
+      ),
+      _item(
+        id: 'disassembly_gpu',
+        name: 'Remove GPU',
+        description: 'Release auxiliary power, bracket screws, and PCIe latch',
+        imageUrl: 'assets/simulations/assembly-gpu-matched.png',
+        correctSlot: 'gpu_parts_tray',
+        category: 'disassembly',
+        step: 2,
+        tooltip:
+            'Support the card while releasing the PCIe latch; never pull against a locked slot.',
+      ),
+      _item(
+        id: 'disassembly_storage',
+        name: 'Remove SSD Storage',
+        description: 'Disconnect data and power before removing the drive',
+        imageUrl: 'assets/simulations/assembly-ssd-matched.png',
+        correctSlot: 'storage_parts_tray',
+        category: 'disassembly',
+        step: 3,
+        tooltip:
+            'Grip connectors by their housings, label the cables, then remove the mounting screws.',
+      ),
+      _item(
+        id: 'disassembly_psu',
+        name: 'Remove Power Supply',
+        description: 'Disconnect internal power leads and support the PSU',
+        imageUrl: 'assets/simulations/assembly-psu-matched.png',
+        correctSlot: 'psu_parts_tray',
+        category: 'disassembly',
+        step: 4,
+        tooltip:
+            'Confirm every power lead is free and support the PSU before removing its chassis screws.',
+      ),
+      _item(
+        id: 'disassembly_cooler',
+        name: 'Remove CPU Cooler',
+        description: 'Unplug the fan and release the cooler evenly',
+        imageUrl: 'assets/simulations/assembly-cooler-matched.png',
+        correctSlot: 'cooler_parts_tray',
+        category: 'disassembly',
+        step: 5,
+        tooltip:
+            'Loosen fasteners diagonally and gently twist to break the thermal-paste seal.',
+      ),
+      _item(
+        id: 'disassembly_ram',
+        name: 'Remove RAM',
+        description: 'Open both latches and lift the module by its edges',
+        imageUrl: 'assets/simulations/assembly-ram-ddr4-matched.png',
+        correctSlot: 'ram_parts_tray',
+        category: 'disassembly',
+        step: 6,
+        tooltip:
+            'Release the retaining clips fully and avoid touching the gold contacts.',
+      ),
+      _item(
+        id: 'disassembly_cpu',
+        name: 'Remove CPU',
+        description: 'Release the socket arm and lift the processor safely',
+        imageUrl: 'assets/simulations/assembly-cpu-matched.png',
+        correctSlot: 'cpu_parts_tray',
+        category: 'disassembly',
+        step: 7,
+        tooltip:
+            'Lift the CPU straight up by its edges and place it in an antistatic holder.',
+      ),
+      _item(
+        id: 'disassembly_motherboard',
+        name: 'Remove Motherboard',
+        description:
+            'Verify all connectors and fasteners are free before lifting',
+        imageUrl: 'assets/simulations/assembly-motherboard-matched.png',
+        correctSlot: 'motherboard_parts_tray',
+        category: 'disassembly',
+        step: 8,
+        tooltip:
+            'Remove every board screw, check for attached cables, then lift by the edges onto an ESD mat.',
+      ),
+      _item(
+        id: 'disassembly_inventory',
+        name: 'Inspect and Inventory Parts',
+        description: 'Check, label, store, and document all removed components',
+        imageUrl: 'assets/simulations/check.svg',
+        correctSlot: 'inventory_station',
+        category: 'disassembly',
+        step: 9,
+        tooltip:
+            'Inspect for damage, organize screws, protect components, and complete the service record.',
+      ),
+    ],
+  );
+
   static Simulation getCableManagement() => _simulation(
     id: 'sim_coc1_cabling',
     title: 'Cable Management - COC1',
@@ -778,6 +892,7 @@ class SimulationData {
 
   static List<Simulation> getAllSimulations() => [
     getPcAssembly(),
+    getPcDisassembly(),
     getCableManagement(),
     getHardwareIdentification(),
     getOperatingSystemInstallation(),
