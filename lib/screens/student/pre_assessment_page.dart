@@ -150,18 +150,6 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
         : 'Not recorded';
   }
 
-  int? _answerIndex(int index) {
-    final answers = _result?['answers'];
-    return answers is List && index < answers.length && answers[index] is int
-        ? answers[index] as int
-        : null;
-  }
-
-  String _correctAnswerText(int index) {
-    final question = PreAssessmentData.questions[index];
-    return question.options[question.answer];
-  }
-
   @override
   Widget build(BuildContext context) => FutureBuilder<bool>(
     future: _access,
@@ -637,34 +625,50 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
         ),
         const SizedBox(height: 18),
         Text(
-          'Answer review',
+          'Your submitted responses',
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 10),
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF1FF),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.privacy_tip_outlined, color: Color(0xFF2457C5)),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'The answer key is hidden to keep the diagnostic fair for every learner.',
+                  style: TextStyle(color: Color(0xFF173D86), height: 1.35),
+                ),
+              ),
+            ],
+          ),
+        ),
         for (final i in _order.questions)
           Card(
             elevation: 0,
             margin: const EdgeInsets.only(bottom: 8),
             child: ExpansionTile(
               leading: CircleAvatar(
-                backgroundColor:
-                    _answerIndex(i) == PreAssessmentData.questions[i].answer
-                    ? const Color(0xFFDDF5E7)
-                    : const Color(0xFFFFE8E5),
-                child: Icon(
-                  _answerIndex(i) == PreAssessmentData.questions[i].answer
-                      ? Icons.check
-                      : Icons.close,
-                  color:
-                      _answerIndex(i) == PreAssessmentData.questions[i].answer
-                      ? const Color(0xFF287A46)
-                      : const Color(0xFFB83B31),
+                backgroundColor: const Color(0xFFEAF1FF),
+                child: Text(
+                  '${_order.questions.indexOf(i) + 1}',
+                  style: const TextStyle(
+                    color: Color(0xFF2457C5),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               title: Text(
-                '${_order.questions.indexOf(i) + 1}. ${PreAssessmentData.questions[i].prompt}',
+                PreAssessmentData.questions[i].prompt,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -680,17 +684,6 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                           'Your answer: ${_answerText(i)}',
                           style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
-                        if (_answerIndex(i) !=
-                            PreAssessmentData.questions[i].answer) ...[
-                          const SizedBox(height: 7),
-                          Text(
-                            'Correct answer: ${_correctAnswerText(i)}',
-                            style: const TextStyle(
-                              color: Color(0xFF287A46),
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),

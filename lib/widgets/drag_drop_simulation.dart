@@ -832,54 +832,148 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
           ];
     final selected = assembly ? _safetyChecks : _osReadinessChecks;
     final index = _readinessIndex.clamp(0, checks.length - 1);
+    final complete = selected.length;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Safety check ${index + 1} of ${checks.length}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF101A24),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: const Color(0xFF38BDF8).withValues(alpha: .35),
             ),
-            CheckboxListTile(
-              value: selected.contains(index),
-              title: Text(checks[index].$1),
-              subtitle: Text(checks[index].$2),
-              onChanged: (checked) => setState(() {
-                if (checked == true) {
-                  selected.add(index);
-                } else {
-                  selected.remove(index);
-                }
-              }),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                TextButton(
-                  onPressed: index == 0
-                      ? null
-                      : () => setState(() => _readinessIndex--),
-                  child: const Text('Previous'),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0EA5E9).withValues(alpha: .16),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.shield_rounded,
+                      color: Color(0xFF38BDF8),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      assembly
+                          ? 'Assembly safety check'
+                          : 'Installation readiness',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '$complete/${checks.length}',
+                    style: const TextStyle(
+                      color: Color(0xFF7DD3FC),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: complete / checks.length,
+                  minHeight: 5,
+                  color: const Color(0xFF38BDF8),
+                  backgroundColor: Colors.white12,
                 ),
-                FilledButton(
-                  onPressed: !selected.contains(index)
-                      ? null
-                      : () {
-                          if (index < checks.length - 1) {
-                            setState(() => _readinessIndex++);
-                          } else if (assembly) {
-                            _beginAssembly();
-                          } else {
-                            _beginOsInstallation();
-                          }
-                        },
-                  child: Text(index < checks.length - 1 ? 'Next' : 'Start'),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'CHECK ${index + 1} OF ${checks.length}',
+                style: const TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: .8,
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 6),
+              CheckboxListTile(
+                value: selected.contains(index),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 2,
+                ),
+                tileColor: Colors.white.withValues(alpha: .07),
+                activeColor: const Color(0xFF0EA5E9),
+                checkColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                title: Text(
+                  checks[index].$1,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  checks[index].$2,
+                  style: const TextStyle(
+                    color: Color(0xFFCBD5E1),
+                    fontSize: 12,
+                  ),
+                ),
+                onChanged: (checked) => setState(() {
+                  if (checked == true) {
+                    selected.add(index);
+                  } else {
+                    selected.remove(index);
+                  }
+                }),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton.icon(
+                    onPressed: index == 0
+                        ? null
+                        : () => setState(() => _readinessIndex--),
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text('Previous'),
+                  ),
+                  FilledButton.icon(
+                    onPressed: !selected.contains(index)
+                        ? null
+                        : () {
+                            if (index < checks.length - 1) {
+                              setState(() => _readinessIndex++);
+                            } else if (assembly) {
+                              _beginAssembly();
+                            } else {
+                              _beginOsInstallation();
+                            }
+                          },
+                    icon: Icon(
+                      index < checks.length - 1
+                          ? Icons.arrow_forward_rounded
+                          : Icons.play_arrow_rounded,
+                      size: 18,
+                    ),
+                    label: Text(index < checks.length - 1 ? 'Next' : 'Start'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -961,6 +1055,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
         'Clear screws, tools, and packaging',
       ),
     ];
+    final completed = _safetyChecks.length;
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -977,23 +1072,76 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.shield_outlined, color: Color(0xFF38BDF8), size: 38),
-          const SizedBox(height: 12),
-          const Text(
-            'WORKSHOP PRE-FLIGHT',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 21,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1,
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0EA5E9).withValues(alpha: .16),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Icon(
+                  Icons.shield_rounded,
+                  color: Color(0xFF38BDF8),
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'WORKSHOP PRE-FLIGHT',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Verify the workstation before touching hardware.',
+                      style: TextStyle(color: Color(0xFFCBD5E1), fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: completed == checks.length
+                      ? const Color(0xFF16A34A)
+                      : Colors.white12,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Text(
+                  '$completed/${checks.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: completed / checks.length,
+              minHeight: 6,
+              color: completed == checks.length
+                  ? const Color(0xFF22C55E)
+                  : const Color(0xFF38BDF8),
+              backgroundColor: Colors.white12,
             ),
           ),
-          const SizedBox(height: 5),
-          const Text(
-            'A real technician makes the workstation safe before touching hardware.',
-            style: TextStyle(color: Color(0xFFCBD5E1)),
-          ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           for (var i = 0; i < checks.length; i++)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -1004,7 +1152,21 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                       ? _safetyChecks.add(i)
                       : _safetyChecks.remove(i),
                 ),
-                secondary: Icon(checks[i].$1, color: Colors.white),
+                secondary: Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: _safetyChecks.contains(i)
+                        ? const Color(0xFF16A34A).withValues(alpha: .18)
+                        : Colors.white10,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(
+                    checks[i].$1,
+                    color: _safetyChecks.contains(i)
+                        ? const Color(0xFF4ADE80)
+                        : const Color(0xFFCBD5E1),
+                  ),
+                ),
                 title: Text(
                   checks[i].$2,
                   style: const TextStyle(
@@ -1018,7 +1180,9 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                 ),
                 activeColor: const Color(0xFF0EA5E9),
                 checkColor: Colors.white,
-                tileColor: Colors.black38,
+                tileColor: _safetyChecks.contains(i)
+                    ? const Color(0xFF16A34A).withValues(alpha: .1)
+                    : Colors.black38,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),

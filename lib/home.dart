@@ -29,7 +29,6 @@ import 'package:intl/intl.dart';
 import 'widgets/leaderboard_chart.dart';
 import 'data/simulation_data.dart';
 import 'data/pre_assessment_data.dart';
-import 'widgets/user_roles_button.dart';
 import 'services/workspace_preferences.dart';
 import 'services/student_achievement_service.dart';
 
@@ -326,6 +325,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildHomeContent(String course, Map<String, dynamic>? profile) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
       child: Column(
@@ -382,8 +382,97 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 12),
           _buildQuickAccessGrid(),
+          if (userId != null) ...[
+            const SizedBox(height: 24),
+            _buildHomeAchievementShelf(userId),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildHomeAchievementShelf(String userId) {
+    if (_classId == null || _classId!.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return RetainedFutureBuilder<List<StudentAchievement>>(
+      requestKey: 'home-achievements:$userId:$_classId',
+      active: _currentTabIndex == 0,
+      load: () => StudentAchievementService().load(userId, _classId!),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox(
+            height: 120,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final achievements = [...snapshot.data!]
+          ..sort((a, b) {
+            if (a.unlocked == b.unlocked) return 0;
+            return a.unlocked ? -1 : 1;
+          });
+        final unlocked = achievements.where((item) => item.unlocked).length;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Achievement Badges',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Keep learning to unlock your collection',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF3C4),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Text(
+                    '$unlocked/${achievements.length}',
+                    style: const TextStyle(
+                      color: Color(0xFF8A5A00),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 178,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: achievements.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
+                itemBuilder: (context, index) =>
+                    _HomeAchievementBadge(achievement: achievements[index]),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1316,22 +1405,23 @@ class _HomePageState extends State<HomePage> {
   Widget _buildAchievementBadge(StudentAchievement achievement) {
     final unlocked = achievement.unlocked;
     return Container(
-      width: 230,
-      padding: const EdgeInsets.all(12),
+      width: 250,
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: unlocked ? const Color(0xFFFFF8E1) : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: unlocked ? const Color(0xFFFFC44D) : Colors.grey.shade200,
         ),
       ),
       child: Row(
         children: [
+          AchievementMedal(achievement: achievement, size: 52),
           Text(
             unlocked ? achievement.icon : '🔒',
-            style: const TextStyle(fontSize: 24),
+            style: const TextStyle(fontSize: 0),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1512,16 +1602,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-          Card(
-            child: Column(
-              children: [
-                const ListTile(
-                  leading: UserRolesButton(),
-                  title: Text('About ICTeach roles'),
-                ),
-              ],
-            ),
-          ),
         ],
       ),
     );
@@ -1529,15 +1609,40 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildBottomNavBar() {
     final items = [
-      {'icon': Icons.home_outlined, 'label': 'Home', 'index': 0},
-      {'icon': Icons.menu_book_outlined, 'label': 'Modules', 'index': 1},
-      {'icon': Icons.forum_outlined, 'label': 'Forum', 'index': 2},
-      {'icon': Icons.bar_chart_rounded, 'label': 'Progress', 'index': 3},
-      {'icon': Icons.person_outline_rounded, 'label': 'Profile', 'index': 4},
+      {
+        'icon': Icons.home_outlined,
+        'selectedIcon': Icons.home_rounded,
+        'label': 'Home',
+        'index': 0,
+      },
+      {
+        'icon': Icons.menu_book_outlined,
+        'selectedIcon': Icons.menu_book_rounded,
+        'label': 'Modules',
+        'index': 1,
+      },
+      {
+        'icon': Icons.forum_outlined,
+        'selectedIcon': Icons.forum_rounded,
+        'label': 'Forum',
+        'index': 2,
+      },
+      {
+        'icon': Icons.analytics_outlined,
+        'selectedIcon': Icons.analytics_rounded,
+        'label': 'Progress',
+        'index': 3,
+      },
+      {
+        'icon': Icons.person_outline_rounded,
+        'selectedIcon': Icons.person_rounded,
+        'label': 'Profile',
+        'index': 4,
+      },
     ];
 
     return Container(
-      height: 70,
+      height: 76,
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -1560,14 +1665,38 @@ class _HomePageState extends State<HomePage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    item['icon'] as IconData,
-                    color: isSelected
-                        ? const Color(0xFF428DEB)
-                        : Colors.grey.shade600,
-                    size: 24,
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: EdgeInsets.all(isSelected ? 8 : 5),
+                    decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? const LinearGradient(
+                              colors: [Color(0xFF428DEB), Color(0xFF2467B2)],
+                            )
+                          : null,
+                      borderRadius: BorderRadius.circular(13),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF428DEB,
+                                ).withValues(alpha: .24),
+                                blurRadius: 9,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Icon(
+                      (isSelected ? item['selectedIcon'] : item['icon'])
+                          as IconData,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF64748B),
+                      size: isSelected ? 22 : 24,
+                    ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
                   Text(
                     item['label'] as String,
                     style: TextStyle(
@@ -1580,16 +1709,6 @@ class _HomePageState extends State<HomePage> {
                           : FontWeight.w500,
                     ),
                   ),
-                  if (isSelected)
-                    Container(
-                      margin: const EdgeInsets.only(top: 2),
-                      width: 4,
-                      height: 4,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF428DEB),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
                 ],
               ),
             ),
@@ -1631,6 +1750,205 @@ class _HomePageState extends State<HomePage> {
       width: size,
       height: size,
       child: CustomPaint(painter: _HeartMascotPainter()),
+    );
+  }
+}
+
+class _HomeAchievementBadge extends StatelessWidget {
+  const _HomeAchievementBadge({required this.achievement});
+  final StudentAchievement achievement;
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = achievement.unlocked;
+    return Container(
+      width: 152,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: unlocked ? Colors.white : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: unlocked ? const Color(0xFFF6C453) : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: unlocked
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFF59E0B).withValues(alpha: .12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        children: [
+          AchievementMedal(achievement: achievement, size: 66),
+          const SizedBox(height: 8),
+          Text(
+            achievement.title,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            unlocked
+                ? 'Unlocked'
+                : '${achievement.current}/${achievement.target} progress',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: unlocked
+                  ? const Color(0xFFB45309)
+                  : const Color(0xFF64748B),
+            ),
+          ),
+          if (!unlocked) ...[
+            const SizedBox(height: 7),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: achievement.progress,
+                minHeight: 4,
+                color: const Color(0xFF64748B),
+                backgroundColor: const Color(0xFFE2E8F0),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class AchievementMedal extends StatelessWidget {
+  const AchievementMedal({
+    super.key,
+    required this.achievement,
+    this.size = 60,
+  });
+  final StudentAchievement achievement;
+  final double size;
+
+  (IconData, Color, Color) get _style => switch (achievement.title) {
+    'Ready to Learn' => (
+      Icons.explore_rounded,
+      const Color(0xFF2563EB),
+      const Color(0xFF60A5FA),
+    ),
+    'First Quiz' => (
+      Icons.quiz_rounded,
+      const Color(0xFF7C3AED),
+      const Color(0xFFA78BFA),
+    ),
+    'Quiz Explorer' => (
+      Icons.auto_awesome_rounded,
+      const Color(0xFF9333EA),
+      const Color(0xFFD8B4FE),
+    ),
+    'Module Starter' => (
+      Icons.menu_book_rounded,
+      const Color(0xFF0891B2),
+      const Color(0xFF67E8F9),
+    ),
+    'Module Master' => (
+      Icons.library_books_rounded,
+      const Color(0xFF0D9488),
+      const Color(0xFF5EEAD4),
+    ),
+    'Learning Champion' => (
+      Icons.workspace_premium_rounded,
+      const Color(0xFFD97706),
+      const Color(0xFFFCD34D),
+    ),
+    'High Achiever' => (
+      Icons.military_tech_rounded,
+      const Color(0xFFEA580C),
+      const Color(0xFFFDBA74),
+    ),
+    'Perfect Score' => (
+      Icons.gps_fixed_rounded,
+      const Color(0xFFDC2626),
+      const Color(0xFFFCA5A5),
+    ),
+    'Simulation Rookie' => (
+      Icons.build_circle_rounded,
+      const Color(0xFF475569),
+      const Color(0xFF94A3B8),
+    ),
+    'Tech Explorer' => (
+      Icons.memory_rounded,
+      const Color(0xFF0284C7),
+      const Color(0xFF7DD3FC),
+    ),
+    _ => (
+      Icons.shield_rounded,
+      const Color(0xFF16A34A),
+      const Color(0xFF86EFAC),
+    ),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = achievement.unlocked;
+    final style = _style;
+    final primary = unlocked ? style.$2 : const Color(0xFF94A3B8);
+    final secondary = unlocked ? style.$3 : const Color(0xFFCBD5E1);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [secondary, primary],
+              ),
+              border: Border.all(color: Colors.white, width: 3),
+              boxShadow: [
+                BoxShadow(
+                  color: primary.withValues(alpha: .24),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Icon(
+              unlocked ? style.$1 : Icons.lock_rounded,
+              color: Colors.white,
+              size: size * .42,
+            ),
+          ),
+          if (unlocked)
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: EdgeInsets.all(size * .055),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFD54F),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.star_rounded,
+                  color: const Color(0xFF7C4A00),
+                  size: size * .2,
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

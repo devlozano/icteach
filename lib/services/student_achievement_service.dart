@@ -103,6 +103,34 @@ class StudentAchievementService {
         target: 3,
       ),
       StudentAchievement(
+        title: 'Module Starter',
+        description: 'Complete your first module',
+        icon: 'book',
+        current: completedModules,
+        target: 1,
+      ),
+      StudentAchievement(
+        title: 'Learning Champion',
+        description: 'Complete 5 modules',
+        icon: 'crown',
+        current: completedModules,
+        target: 5,
+      ),
+      StudentAchievement(
+        title: 'Quiz Explorer',
+        description: 'Complete 3 quizzes',
+        icon: 'quiz_streak',
+        current: scores.length,
+        target: 3,
+      ),
+      StudentAchievement(
+        title: 'High Achiever',
+        description: 'Earn at least 90% on a quiz',
+        icon: 'medal',
+        current: scores.any((score) => score >= 90) ? 1 : 0,
+        target: 1,
+      ),
+      StudentAchievement(
         title: 'Perfect Score',
         description: 'Earn 100% on a quiz',
         icon: '🎯',
@@ -115,6 +143,20 @@ class StudentAchievementService {
         icon: '🔧',
         current: passedSimulations,
         target: 2,
+      ),
+      StudentAchievement(
+        title: 'Simulation Rookie',
+        description: 'Pass your first simulation',
+        icon: 'wrench',
+        current: passedSimulations,
+        target: 1,
+      ),
+      StudentAchievement(
+        title: 'Simulation Specialist',
+        description: 'Pass 5 simulations',
+        icon: 'shield',
+        current: passedSimulations,
+        target: 5,
       ),
     ];
   }

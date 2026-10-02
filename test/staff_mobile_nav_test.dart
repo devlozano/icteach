@@ -30,18 +30,23 @@ void main() {
             ),
           ),
         );
-        expect(find.byType(NavigationDestination), findsNWidgets(4));
+        expect(find.byType(NavigationDestination), findsNWidgets(5));
         expect(
           tester
               .widget<NavigationBar>(find.byType(NavigationBar))
               .selectedIndex,
-          3,
+          4,
         );
-        await tester.tap(find.text('Modules'));
-        expect(selected, trainer ? 6 : 7);
+        expect(find.text('Discussions'), findsOneWidget);
+        expect(find.byIcon(Icons.grid_view_rounded), findsOneWidget);
+        await tester.tap(find.text('Profile'));
+        expect(selected, trainer ? 2 : 4);
         await tester.tap(find.text('More'));
         await tester.pumpAndSettle();
+        expect(find.text('More tools'), findsOneWidget);
+        expect(find.text('Modules'), findsOneWidget);
         expect(find.text('Class Monitoring'), findsOneWidget);
+        await tester.ensureVisible(find.text('Class Monitoring'));
         await tester.tap(find.text('Class Monitoring'));
         await tester.pumpAndSettle();
         expect(selected, 3);

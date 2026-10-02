@@ -22,8 +22,11 @@ class CreateQuizPage extends StatefulWidget {
 
 class _CreateQuizPageState extends State<CreateQuizPage> {
   final _formKey = GlobalKey<FormState>();
-  final QuizService _quizService = QuizService();
-  final NotificationService _notificationService = NotificationService();
+  QuizService? _quizServiceValue;
+  NotificationService? _notificationServiceValue;
+  QuizService get _quizService => _quizServiceValue ??= QuizService();
+  NotificationService get _notificationService =>
+      _notificationServiceValue ??= NotificationService();
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _timeLimitController = TextEditingController();
@@ -202,380 +205,442 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          Switch(
-            value: _isPublished,
-            onChanged: (value) {
-              setState(() => _isPublished = value);
-            },
-            activeThumbColor: Colors.green,
+          Tooltip(
+            message: _isPublished ? 'Published' : 'Draft',
+            child: Switch(
+              value: _isPublished,
+              onChanged: (value) {
+                setState(() => _isPublished = value);
+              },
+              activeThumbColor: Colors.green,
+            ),
           ),
-          const SizedBox(width: 8),
-          const Text('Publish', style: TextStyle(color: Colors.white70)),
-          const SizedBox(width: 16),
+          if (MediaQuery.sizeOf(context).width >= 400) ...[
+            const SizedBox(width: 4),
+            const Text('Publish', style: TextStyle(color: Colors.white70)),
+            const SizedBox(width: 12),
+          ] else
+            const SizedBox(width: 4),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Class Name Display
-              if (widget.className.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.blue.shade200),
-                  ),
-                  child: Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final pagePadding = constraints.maxWidth < 600 ? 16.0 : 24.0;
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(pagePadding),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 960),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(bottom: 16),
-                        child: Text(
-                          'Publish a quiz with questions and unlock it in Content Lock Settings. Enrolled students can then take it. Quizzes have one scored attempt and no practice mode. No lesson link is required.',
-                        ),
-                      ),
-                      Icon(Icons.class_, color: Colors.blue.shade700),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Class: ${widget.className}',
-                          style: TextStyle(
-                            color: Colors.blue.shade900,
-                            fontWeight: FontWeight.w600,
+                      // Class Name Display
+                      if (widget.className.isNotEmpty) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.info_outline_rounded,
+                                    color: Colors.blue.shade700,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Expanded(
+                                    child: Text(
+                                      'Publish a quiz with questions and unlock it in Content Lock Settings. Enrolled students can then take it. Quizzes have one scored attempt and no practice mode. No lesson link is required.',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.class_,
+                                    color: Colors.blue.shade700,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Class: ${widget.className}',
+                                      style: TextStyle(
+                                        color: Colors.blue.shade900,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                        const SizedBox(height: 16),
+                      ],
 
-              // Title
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Quiz Title',
-                  hintText: 'e.g., CSS Module 1 Quiz',
-                  prefixIcon: Icon(Icons.quiz),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                  ),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Quiz title is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Description
-              TextFormField(
-                controller: _descriptionController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'Brief description of the quiz',
-                  prefixIcon: Icon(Icons.description),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Time Limit
-              TextFormField(
-                controller: _timeLimitController,
-                decoration: const InputDecoration(
-                  labelText: 'Time Limit (minutes)',
-                  hintText: '0 for no time limit',
-                  prefixIcon: Icon(Icons.timer),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Time limit is required';
-                  }
-                  if (int.tryParse(value) == null) {
-                    return 'Please enter a valid number';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // ✅ NEW: Passing Score
-              TextFormField(
-                controller: _passingScoreController,
-                decoration: const InputDecoration(
-                  labelText: 'Passing Score',
-                  hintText: 'Minimum score to pass (0 for no requirement)',
-                  prefixIcon: Icon(Icons.score),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.all(Radius.circular(12)),
-                  ),
-                ),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Passing score is required';
-                  }
-                  final parsed = int.tryParse(value);
-                  if (parsed == null) {
-                    return 'Please enter a valid number';
-                  }
-                  if (parsed < 0) {
-                    return 'Passing score cannot be negative';
-                  }
-                  if (parsed > _totalPoints && _totalPoints > 0) {
-                    return 'Cannot exceed total points ($_totalPoints)';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Questions Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Questions (${_questions.length})',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: _addQuestion,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Question'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF0B2B4A),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Questions List
-              if (_questions.isEmpty)
-                Container(
-                  padding: const EdgeInsets.all(40),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.question_mark,
-                        size: 48,
-                        color: Colors.grey.shade400,
+                      // Title
+                      TextFormField(
+                        controller: _titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Quiz Title',
+                          hintText: 'e.g., CSS Module 1 Quiz',
+                          prefixIcon: Icon(Icons.quiz),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Quiz title is required';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        'No questions yet',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 16,
+
+                      // Description
+                      TextFormField(
+                        controller: _descriptionController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Description',
+                          hintText: 'Brief description of the quiz',
+                          prefixIcon: Icon(Icons.description),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tap "Add Question" to start building your quiz',
-                        style: TextStyle(
-                          color: Colors.grey.shade500,
-                          fontSize: 14,
+                      const SizedBox(height: 16),
+
+                      // Time Limit
+                      TextFormField(
+                        controller: _timeLimitController,
+                        decoration: const InputDecoration(
+                          labelText: 'Time Limit (minutes)',
+                          hintText: '0 for no time limit',
+                          prefixIcon: Icon(Icons.timer),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                          ),
                         ),
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Time limit is required';
+                          }
+                          if (int.tryParse(value) == null) {
+                            return 'Please enter a valid number';
+                          }
+                          return null;
+                        },
                       ),
-                    ],
-                  ),
-                )
-              else
-                ..._questions.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final question = entry.value;
-                  return _QuestionCard(
-                    index: index,
-                    question: question,
-                    onUpdate: (updated) => _updateQuestion(index, updated),
-                    onRemove: () => _removeQuestion(index),
-                  );
-                }),
+                      const SizedBox(height: 16),
 
-              const SizedBox(height: 24),
-
-              // Total Points and Passing Score Summary
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.blue.shade200),
-                ),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Icon(Icons.score, color: Colors.blue.shade700),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Total Points: $_totalPoints',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade900,
-                            fontSize: 16,
+                      // ✅ NEW: Passing Score
+                      TextFormField(
+                        controller: _passingScoreController,
+                        decoration: const InputDecoration(
+                          labelText: 'Passing Score',
+                          hintText:
+                              'Minimum score to pass (0 for no requirement)',
+                          prefixIcon: Icon(Icons.score),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
                           ),
                         ),
-                        const Spacer(),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _isPublished
-                                ? Colors.green.shade100
-                                : Colors.amber.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            _isPublished ? 'Published' : 'Draft',
-                            style: TextStyle(
-                              color: _isPublished
-                                  ? Colors.green.shade800
-                                  : Colors.amber.shade800,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // ✅ Show passing score if set
-                    if (_passingScoreController.text.isNotEmpty &&
-                        int.tryParse(_passingScoreController.text) != null &&
-                        int.parse(_passingScoreController.text) > 0) ...[
-                      const SizedBox(height: 8),
-                      Divider(color: Colors.blue.shade200),
-                      const SizedBox(height: 8),
-                      Row(
+                        keyboardType: TextInputType.number,
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Passing score is required';
+                          }
+                          final parsed = int.tryParse(value);
+                          if (parsed == null) {
+                            return 'Please enter a valid number';
+                          }
+                          if (parsed < 0) {
+                            return 'Passing score cannot be negative';
+                          }
+                          if (parsed > _totalPoints && _totalPoints > 0) {
+                            return 'Cannot exceed total points ($_totalPoints)';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Questions Header
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 12,
+                        runSpacing: 10,
                         children: [
-                          Icon(
-                            Icons.check_circle_outline,
-                            color: Colors.green.shade700,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 8),
                           Text(
-                            'Passing Score: ${_passingScoreController.text} / $_totalPoints',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Colors.green.shade800,
-                              fontSize: 14,
+                            'Questions (${_questions.length})',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const Spacer(),
-                          Text(
-                            '${int.tryParse(_passingScoreController.text) != null && _totalPoints > 0 ? ((int.parse(_passingScoreController.text) / _totalPoints) * 100).toStringAsFixed(0) : 0}%',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green.shade700,
-                              fontSize: 14,
+                          ElevatedButton.icon(
+                            onPressed: _addQuestion,
+                            icon: const Icon(Icons.add),
+                            label: const Text('Add Question'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF0B2B4A),
+                              foregroundColor: Colors.white,
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+                      const SizedBox(height: 16),
 
-              // Notification Info
-              if (_isPublished) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.green.shade200),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.notifications_active,
-                        color: Colors.green.shade700,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Students will be notified about this quiz when you save it.',
-                          style: TextStyle(
-                            color: Colors.green.shade800,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Save Button
-              SizedBox(
-                width: double.infinity,
-                height: 55,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveQuiz,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0B2B4A),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 24,
-                          width: 24,
-                          child: CircularProgressIndicator(
+                      // Questions List
+                      if (_questions.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(40),
+                          decoration: BoxDecoration(
                             color: Colors.white,
-                            strokeWidth: 2.5,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.question_mark,
+                                size: 48,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No questions yet',
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Tap "Add Question" to start building your quiz',
+                                style: TextStyle(
+                                  color: Colors.grey.shade500,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
                           ),
                         )
-                      : Text(
-                          _isEditing
-                              ? (_isPublished
-                                    ? 'Update & Publish'
-                                    : 'Update Draft')
-                              : (_isPublished
-                                    ? 'Publish Quiz'
-                                    : 'Save as Draft'),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                      else
+                        ..._questions.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final question = entry.value;
+                          return _QuestionCard(
+                            index: index,
+                            question: question,
+                            onUpdate: (updated) =>
+                                _updateQuestion(index, updated),
+                            onRemove: () => _removeQuestion(index),
+                          );
+                        }),
+
+                      const SizedBox(height: 24),
+
+                      // Total Points and Passing Score Summary
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade200),
+                        ),
+                        child: Column(
+                          children: [
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 12,
+                              runSpacing: 8,
+                              children: [
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.score,
+                                      color: Colors.blue.shade700,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        'Total Points: $_totalPoints',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue.shade900,
+                                          fontSize: 16,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _isPublished
+                                        ? Colors.green.shade100
+                                        : Colors.amber.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    _isPublished ? 'Published' : 'Draft',
+                                    style: TextStyle(
+                                      color: _isPublished
+                                          ? Colors.green.shade800
+                                          : Colors.amber.shade800,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // ✅ Show passing score if set
+                            if (_passingScoreController.text.isNotEmpty &&
+                                int.tryParse(_passingScoreController.text) !=
+                                    null &&
+                                int.parse(_passingScoreController.text) >
+                                    0) ...[
+                              const SizedBox(height: 8),
+                              Divider(color: Colors.blue.shade200),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.green.shade700,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Passing Score: ${_passingScoreController.text} / $_totalPoints',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.green.shade800,
+                                        fontSize: 14,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    '${int.tryParse(_passingScoreController.text) != null && _totalPoints > 0 ? ((int.parse(_passingScoreController.text) / _totalPoints) * 100).toStringAsFixed(0) : 0}%',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Notification Info
+                      if (_isPublished) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.green.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.notifications_active,
+                                color: Colors.green.shade700,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Students will be notified about this quiz when you save it.',
+                                  style: TextStyle(
+                                    color: Colors.green.shade800,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        const SizedBox(height: 16),
+                      ],
+
+                      // Save Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 55,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _saveQuiz,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF0B2B4A),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : Text(
+                                  _isEditing
+                                      ? (_isPublished
+                                            ? 'Update & Publish'
+                                            : 'Update Draft')
+                                      : (_isPublished
+                                            ? 'Publish Quiz'
+                                            : 'Save as Draft'),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

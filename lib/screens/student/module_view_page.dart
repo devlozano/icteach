@@ -357,6 +357,28 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
             );
           }
 
+          String statusOf(ModuleModel module) => _progress[module.id] == true
+              ? 'Completed'
+              : _progress.containsKey(module.id)
+              ? 'In Progress'
+              : 'Not Started';
+          final statusCounts = <String, int>{
+            'All': modules.length,
+            'In Progress': modules
+                .where((m) => statusOf(m) == 'In Progress')
+                .length,
+            'Completed': modules
+                .where((m) => statusOf(m) == 'Completed')
+                .length,
+            'Not Started': modules
+                .where((m) => statusOf(m) == 'Not Started')
+                .length,
+          };
+          final visibleModules = modules.asMap().entries.where((entry) {
+            return _selectedFilter == 'All' ||
+                statusOf(entry.value) == _selectedFilter;
+          }).toList();
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -369,7 +391,7 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
                 child: SizedBox(
-                  height: 40,
+                  height: 70,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: _filters.length,
@@ -377,46 +399,25 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
                     itemBuilder: (context, index) {
                       final filter = _filters[index];
                       final isSelected = _selectedFilter == filter;
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.easeInOut,
-                        child: FilterChip(
-                          label: Text(
-                            filter,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w500,
-                              color: isSelected
-                                  ? Colors.white
-                                  : const Color(0xFF475569),
-                            ),
-                          ),
-                          selected: isSelected,
-                          onSelected: (_) {
-                            setState(() {
-                              _selectedFilter = filter;
-                            });
-                          },
-                          backgroundColor: const Color(0xFF428DEB),
-                          selectedColor: const Color(0xFF4F46E5),
-                          elevation: isSelected ? 4 : 0,
-                          pressElevation: 0,
-                          shadowColor: const Color(0xFF4F46E5).withOpacity(0.4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(
-                              color: isSelected
-                                  ? Colors.transparent
-                                  : Colors.grey.shade300,
-                            ),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                        ),
+                      final color = switch (filter) {
+                        'In Progress' => const Color(0xFFF59E0B),
+                        'Completed' => const Color(0xFF16A34A),
+                        'Not Started' => const Color(0xFF64748B),
+                        _ => const Color(0xFF2563EB),
+                      };
+                      final icon = switch (filter) {
+                        'In Progress' => Icons.play_circle_outline_rounded,
+                        'Completed' => Icons.check_circle_outline_rounded,
+                        'Not Started' => Icons.schedule_rounded,
+                        _ => Icons.grid_view_rounded,
+                      };
+                      return ModuleStatusFilter(
+                        label: filter,
+                        count: statusCounts[filter] ?? 0,
+                        icon: icon,
+                        color: color,
+                        selected: isSelected,
+                        onTap: () => setState(() => _selectedFilter = filter),
                       );
                     },
                   ),
@@ -425,40 +426,37 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
 
               // Module List
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.only(
-                    left: 20,
-                    right: 20,
-                    bottom: 30,
-                  ),
-                  itemCount: modules.length,
-                  itemBuilder: (context, index) {
-                    final module = modules[index];
-                    final status = _progress[module.id] == true
-                        ? 'Completed'
-                        : _progress.containsKey(module.id)
-                        ? 'In Progress'
-                        : 'Not Started';
-                    if (_selectedFilter != 'All' && _selectedFilter != status) {
-                      return const SizedBox.shrink();
-                    }
-                    return _ModuleCard(
-                      module: module,
-                      index: index,
-                      status: status,
-                      onTap: () {
-                        _saveProgress(module, false);
-                        setState(() {
-                          _selectedModuleIndex = index;
-                          WorkspacePreferences.saveSelection(
-                            'module_${widget.classId}',
-                            module.id,
+                child: visibleModules.isEmpty
+                    ? _ModuleFilterEmptyState(filter: _selectedFilter)
+                    : ListView.builder(
+                        padding: const EdgeInsets.only(
+                          left: 20,
+                          right: 20,
+                          bottom: 30,
+                        ),
+                        itemCount: visibleModules.length,
+                        itemBuilder: (context, index) {
+                          final entry = visibleModules[index];
+                          final module = entry.value;
+                          final moduleIndex = entry.key;
+                          final status = statusOf(module);
+                          return _ModuleCard(
+                            module: module,
+                            index: moduleIndex,
+                            status: status,
+                            onTap: () {
+                              _saveProgress(module, false);
+                              setState(() {
+                                _selectedModuleIndex = moduleIndex;
+                                WorkspacePreferences.saveSelection(
+                                  'module_${widget.classId}',
+                                  module.id,
+                                );
+                              });
+                            },
                           );
-                        });
-                      },
-                    );
-                  },
-                ),
+                        },
+                      ),
               ),
             ],
           );
@@ -779,6 +777,131 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
   }
 }
 
+class ModuleStatusFilter extends StatelessWidget {
+  const ModuleStatusFilter({
+    super.key,
+    required this.label,
+    required this.count,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final int count;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: selected ? color : Colors.white,
+    elevation: selected ? 3 : 0,
+    shadowColor: color.withValues(alpha: .28),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: BorderSide(color: selected ? color : color.withValues(alpha: .24)),
+    ),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withValues(alpha: .18)
+                    : color.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: selected ? Colors.white : color,
+              ),
+            ),
+            const SizedBox(width: 9),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : const Color(0xFF334155),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+              decoration: BoxDecoration(
+                color: selected
+                    ? Colors.white.withValues(alpha: .2)
+                    : color.withValues(alpha: .1),
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: Text(
+                '$count',
+                style: TextStyle(
+                  color: selected ? Colors.white : color,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+class _ModuleFilterEmptyState extends StatelessWidget {
+  const _ModuleFilterEmptyState({required this.filter});
+  final String filter;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: const BoxDecoration(
+              color: Color(0xFFEFF6FF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.auto_stories_outlined,
+              size: 34,
+              color: Color(0xFF2563EB),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            'No $filter modules',
+            style: const TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 5),
+          const Text(
+            'Choose another status to see your learning modules.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Color(0xFF64748B)),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 class _ModuleCard extends StatelessWidget {
   final ModuleModel module;
   final int index;
@@ -794,8 +917,6 @@ class _ModuleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progress = status == 'Completed' ? 1.0 : 0.0;
-
     final statusColor = status == 'Completed'
         ? Colors.green.shade600
         : status == 'In Progress'
@@ -807,12 +928,23 @@ class _ModuleCard extends StatelessWidget {
         : status == 'In Progress'
         ? Colors.amber.shade50
         : Colors.grey.shade100;
+    final statusIcon = status == 'Completed'
+        ? Icons.check_circle_rounded
+        : status == 'In Progress'
+        ? Icons.play_circle_fill_rounded
+        : Icons.schedule_rounded;
+    final actionLabel = status == 'Completed'
+        ? 'Review module'
+        : status == 'In Progress'
+        ? 'Continue learning'
+        : 'Start module';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border(left: BorderSide(color: statusColor, width: 4)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -899,38 +1031,31 @@ class _ModuleCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Progress',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade500,
-                                ),
-                              ),
-                              Text(
-                                '${(progress * 100).toInt()}%',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: statusColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 6,
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: statusBgColor,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              statusIcon,
+                              size: 18,
                               color: statusColor,
-                              backgroundColor: Colors.grey.shade100,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text(
+                              actionLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: statusColor,
+                              ),
                             ),
                           ),
                         ],
