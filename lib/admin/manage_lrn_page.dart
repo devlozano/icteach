@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../utils/lrn_csv_parser.dart';
 import '../services/lrn_csv_import_service.dart';
+import '../services/student_invitation_service.dart';
 
 class ManageLRNPage extends StatefulWidget {
   final bool useStandaloneScaffold;
@@ -172,6 +173,11 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
                 icon: const Icon(Icons.add),
                 label: const Text('Add LRN'),
               ),
+              FilledButton.icon(
+                onPressed: _isUploading ? null : _showInviteStudentDialog,
+                icon: const Icon(Icons.mark_email_unread_outlined),
+                label: const Text('Invite student by email'),
+              ),
             ],
           ),
         ),
@@ -252,6 +258,40 @@ class _ManageLRNPageState extends State<ManageLRNPage> {
       ),
       body: SingleChildScrollView(child: pageContent),
     );
+  }
+
+  Future<void> _showInviteStudentDialog() async {
+    final email = TextEditingController();
+    final firstName = TextEditingController();
+    final lastName = TextEditingController();
+    final form = GlobalKey<FormState>();
+    final send = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Invite student by email'),
+        content: Form(
+          key: form,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextFormField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Student email'), validator: (value) => RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value?.trim() ?? '') ? null : 'Enter a valid email address.'),
+            TextFormField(controller: firstName, decoration: const InputDecoration(labelText: 'First name (optional)')),
+            TextFormField(controller: lastName, decoration: const InputDecoration(labelText: 'Last name (optional)')),
+          ]),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () { if (form.currentState!.validate()) Navigator.pop(context, true); }, child: const Text('Create and email invite')),
+        ],
+      ),
+    );
+    if (send != true) return;
+    try {
+      await StudentInvitationService.invite(email: email.text.trim(), firstName: firstName.text.trim(), lastName: lastName.text.trim());
+      if (mounted) _showSnackBar('Student account created. A password-setup email was sent.', Colors.green);
+    } catch (error) {
+      if (mounted) _showSnackBar(error.toString().replaceFirst('Bad state: ', ''), Colors.red);
+    } finally {
+      email.dispose(); firstName.dispose(); lastName.dispose();
+    }
   }
 
   void _showAddLRNDialog() {

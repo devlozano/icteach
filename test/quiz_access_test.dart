@@ -17,6 +17,15 @@ void main() {
         {'text': 'Question'},
       ],
     });
+    await db.collection('classes').doc('c').collection('modules').doc('m').set({
+      'isPublished': true,
+    });
+    await db.collection('classes').doc('c').collection('learning_paths').doc('quiz_q').set({
+      'moduleId': 'm',
+    });
+    await db.collection('users').doc('student').collection('module_progress').doc('c_m').set({
+      'completed': true,
+    });
   });
   Future<void> open({String student = 'student'}) =>
       LearningPathService.requireQuizAvailable(
@@ -31,7 +40,7 @@ void main() {
       throwsStateError,
     );
   });
-  test('published quiz opens with no lesson link or practice record', () async {
+  test('published quiz opens after its assigned module is complete', () async {
     await open();
   });
   test('current saved result completes simulation Part A', () async {
@@ -111,22 +120,25 @@ void main() {
       );
     },
   );
-  test(
-    'obsolete lesson link and module lock cannot strand a published quiz',
-    () async {
+  test('missing, unpublished, incomplete, or locked module blocks a quiz', () async {
       await db
           .collection('classes')
           .doc('c')
           .collection('learning_paths')
           .doc('quiz_q')
-          .set({'moduleId': 'deleted-lesson'});
+          .delete();
+      await expectLater(open(), throwsStateError);
+      await db.collection('classes').doc('c').collection('learning_paths').doc('quiz_q').set({'moduleId': 'm'});
+      await db.collection('users').doc('student').collection('module_progress').doc('c_m').set({'completed': false});
+      await expectLater(open(), throwsStateError);
+      await db.collection('users').doc('student').collection('module_progress').doc('c_m').set({'completed': true});
       await db.collection('content_locks').add({
         'classId': 'c',
         'contentType': 'module',
         'contentId': '*',
         'isLocked': true,
       });
-      await open();
+      await expectLater(open(), throwsStateError);
     },
   );
   test(

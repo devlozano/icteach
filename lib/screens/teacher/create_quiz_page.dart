@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../models/quiz_model.dart';
@@ -100,8 +102,120 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
 
   void _calculateTotalPoints() {
     setState(() {
-      _totalPoints = _questions.length;
+      _totalPoints = _questions.fold(0, (sum, question) => sum + question.points);
     });
+  }
+
+  Future<void> _importQuestionsFromCsv() async {
+    try {
+      final picked = await FilePicker.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: const ['csv'],
+        withData: true,
+      );
+      if (picked == null) return;
+      final bytes = picked.files.single.bytes;
+      if (bytes == null) {
+        throw const FormatException('The selected CSV could not be read.');
+      }
+      final rows = _parseCsv(utf8.decode(bytes, allowMalformed: false));
+      if (rows.length < 2) {
+        throw const FormatException('Add a header and at least one question.');
+      }
+      final headers = rows.first
+          .map((value) => value.trim().toLowerCase().replaceAll(' ', ''))
+          .toList();
+      int column(String name) => headers.indexOf(name);
+      final questionColumn = column('question');
+      final a = column('optiona');
+      final b = column('optionb');
+      final c = column('optionc');
+      final d = column('optiond');
+      final answer = column('correctanswer');
+      final explanation = column('explanation');
+      final points = column('points');
+      if ([questionColumn, a, b, c, d, answer].any((index) => index < 0)) {
+        throw const FormatException(
+          'Required headers: Question, Option A, Option B, Option C, Option D, Correct Answer.',
+        );
+      }
+      final imported = <Question>[];
+      for (var rowNumber = 1; rowNumber < rows.length; rowNumber++) {
+        final row = rows[rowNumber];
+        if (row.every((value) => value.trim().isEmpty)) continue;
+        String valueAt(int index) => index < row.length ? row[index].trim() : '';
+        final answerText = valueAt(answer).toUpperCase();
+        final answerIndex = const {'A': 0, 'B': 1, 'C': 2, 'D': 3}[answerText] ??
+            ((int.tryParse(answerText) ?? 0) - 1);
+        final options = [valueAt(a), valueAt(b), valueAt(c), valueAt(d)];
+        if (valueAt(questionColumn).isEmpty ||
+            options.any((option) => option.isEmpty) ||
+            answerIndex < 0 ||
+            answerIndex > 3) {
+          throw FormatException('Check row ${rowNumber + 1}: every option and a correct answer (A-D or 1-4) are required.');
+        }
+        imported.add(Question(
+          id: const Uuid().v4(),
+          text: valueAt(questionColumn),
+          options: options,
+          correctAnswer: answerIndex,
+          explanation: explanation < 0 ? '' : valueAt(explanation),
+          points: points < 0
+              ? 1
+              : (int.tryParse(valueAt(points)) ?? 1).clamp(1, 100),
+        ));
+      }
+      if (imported.isEmpty) throw const FormatException('No question rows were found.');
+      if (_questions.length + imported.length > 200) {
+        throw const FormatException('A quiz can contain at most 200 questions.');
+      }
+      setState(() => _questions.addAll(imported));
+      _calculateTotalPoints();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${imported.length} question(s) imported from CSV.'), backgroundColor: Colors.green),
+        );
+      }
+    } on FormatException catch (error) {
+      _showMessage(error.message);
+    } catch (error) {
+      _showMessage('Unable to import CSV: $error');
+    }
+  }
+
+  List<List<String>> _parseCsv(String source) {
+    final rows = <List<String>>[];
+    var row = <String>[];
+    final field = StringBuffer();
+    var quoted = false;
+    for (var index = 0; index < source.length; index++) {
+      final char = source[index];
+      if (char == '"') {
+        if (quoted && index + 1 < source.length && source[index + 1] == '"') {
+          field.write('"');
+          index++;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (char == ',' && !quoted) {
+        row.add(field.toString());
+        field.clear();
+      } else if ((char == '\n' || char == '\r') && !quoted) {
+        if (char == '\r' && index + 1 < source.length && source[index + 1] == '\n') index++;
+        row.add(field.toString());
+        field.clear();
+        rows.add(row);
+        row = <String>[];
+      } else {
+        field.write(char);
+      }
+    }
+    if (quoted) throw const FormatException('The CSV has an unclosed quoted value.');
+    if (field.isNotEmpty || row.isNotEmpty) {
+      row.add(field.toString());
+      rows.add(row);
+    }
+    return rows;
   }
 
   Future<void> _saveQuiz() async {
@@ -260,7 +374,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                                   const SizedBox(width: 8),
                                   const Expanded(
                                     child: Text(
-                                      'Publish a quiz with questions and unlock it in Content Lock Settings. Enrolled students can then take it. Quizzes have one scored attempt and no practice mode. No lesson link is required.',
+                                      'Publish a quiz with questions, assign its required module in Lesson & assessment links, and unlock it in Content Lock Settings. Students complete that module before their one scored attempt.',
                                     ),
                                   ),
                                 ],
@@ -406,6 +520,11 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                               foregroundColor: Colors.white,
                             ),
                           ),
+                          OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _importQuestionsFromCsv,
+                            icon: const Icon(Icons.upload_file_outlined),
+                            label: const Text('Import CSV'),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -436,7 +555,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Tap "Add Question" to start building your quiz',
+                                'Add questions manually or import a CSV. Required headers: Question, Option A-D, Correct Answer (A-D or 1-4).',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 14,

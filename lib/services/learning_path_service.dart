@@ -123,7 +123,8 @@ class LearningPathService {
     }
   }
 
-  /// Published quizzes do not depend on simulation lesson/practice setup.
+  /// A quiz is available only after its teacher-assigned published module is
+  /// complete. This preserves the required Module -> Quiz -> Simulation flow.
   static Future<void> requireQuizAvailable(
     String classId,
     String quizId, {
@@ -150,6 +151,31 @@ class LearningPathService {
         'This quiz has no questions yet. Ask your teacher to add questions.',
       );
     }
+    final root = db.collection('classes').doc(classId);
+    final path =
+        (await root.collection('learning_paths').doc(key('quiz', quizId)).get())
+            .data();
+    final moduleId = path?['moduleId']?.toString();
+    if (moduleId == null || moduleId.isEmpty) {
+      throw StateError(
+        'Your teacher has not assigned a module to this quiz yet.',
+      );
+    }
+    final module = (await root.collection('modules').doc(moduleId).get()).data();
+    if (module?['isPublished'] != true) {
+      throw StateError('The module assigned to this quiz is not published.');
+    }
+    final uid = studentId ?? FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) throw StateError('Please sign in.');
+    final progress = await db
+        .collection('users')
+        .doc(uid)
+        .collection('module_progress')
+        .doc('${classId}_$moduleId')
+        .get();
+    if (progress.data()?['completed'] != true) {
+      throw StateError('Complete the assigned module before taking this quiz.');
+    }
     final locks = await db
         .collection('content_locks')
         .where('classId', isEqualTo: classId)
@@ -158,8 +184,11 @@ class LearningPathService {
       final lock = doc.data();
       if (lock['isLocked'] == true &&
           (lock['contentType'] == 'quiz' ||
-              lock['contentType'] == 'practice') &&
-          (lock['contentId'] == quizId || lock['contentId'] == '*')) {
+              lock['contentType'] == 'practice' ||
+              lock['contentType'] == 'module') &&
+          (lock['contentId'] == quizId ||
+              lock['contentId'] == moduleId ||
+              lock['contentId'] == '*')) {
         throw StateError('Your teacher/trainer has locked this quiz.');
       }
     }

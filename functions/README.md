@@ -10,3 +10,16 @@ Deployment (project icteach-free):
 The project must support Cloud Functions billing. An authorized operator must grant the intended administrator the admin: true custom claim using Firebase Admin SDK in a trusted environment, preserving existing claims. Do not grant this claim from client code or use a client-editable Firestore role as the authority. The client refreshes its token before each deletion.
 
 Deletion removes Firebase Auth first, then recursively removes users/{uid}. Shared classes, assessment records and authored content remain. A failed profile cleanup can be retried. Assign a replacement teacher for any retained classes as needed. No accounts are deleted by tests or deployment.
+
+## Student email invitations
+
+`inviteStudentAccount` requires a server-managed `admin: true` custom claim. It creates a student account with an unknown server-generated password, generates a Firebase password-setup link, and delivers it through EmailJS. Configure these secrets before deployment:
+
+    firebase functions:secrets:set EMAILJS_SERVICE_ID
+    firebase functions:secrets:set EMAILJS_TEMPLATE_ID
+    firebase functions:secrets:set EMAILJS_PUBLIC_KEY
+    firebase functions:secrets:set EMAILJS_PRIVATE_KEY
+
+The EmailJS template requires `{{to_email}}`, `{{student_name}}`, and `{{setup_link}}`. Then deploy:
+
+    npx firebase-tools deploy --only functions:inviteStudentAccount --project icteach-free

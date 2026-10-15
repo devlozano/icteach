@@ -205,7 +205,17 @@ class QuizResult {
       'studentName': studentName,
       'score': score,
       'totalPoints': totalPoints,
-      'userAnswers': userAnswers.map((a) => a.toMap()).toList(),
+      // A student result is readable from the student's workspace. Do not
+      // persist the answer key, explanations, or per-item correctness there:
+      // the total score is the feedback released to students.
+      'userAnswers': userAnswers
+          .map(
+            (a) => {
+              'questionId': a.questionId,
+              'selectedAnswer': a.selectedAnswer,
+            },
+          )
+          .toList(),
       'completedAt': FieldValue.serverTimestamp(),
       'timeSpent': timeSpent,
     };

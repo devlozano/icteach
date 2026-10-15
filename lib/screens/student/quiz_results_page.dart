@@ -101,35 +101,30 @@ class QuizResultsPage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Summary
-            const Text(
-              'Review Answers',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // Students receive their score only. Answer keys and per-question
+            // correctness remain available to teaching staff for review.
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline, color: Color(0xFF1D4ED8)),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Your score has been recorded. Your teacher will discuss answers and feedback with the class.',
+                      style: TextStyle(color: Color(0xFF1E3A8A), height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 16),
-
-            // Questions Review
-            ...questions.asMap().entries.map((entry) {
-              final index = entry.key;
-              final question = entry.value;
-              final userAnswer = result.userAnswers.firstWhere(
-                (a) => a.questionId == question.id,
-                orElse: () => UserAnswer(
-                  questionId: question.id,
-                  selectedAnswer: -1,
-                  isCorrect: false,
-                  correctAnswerText: '',
-                  explanation: '',
-                ),
-              );
-
-              return _AnswerReviewCard(
-                index: index,
-                question: question,
-                userAnswer: userAnswer,
-              );
-            }),
-
             const SizedBox(height: 20),
 
             // Close Button
@@ -164,120 +159,5 @@ class QuizResultsPage extends StatelessWidget {
     final minutes = seconds ~/ 60;
     final remainingSeconds = seconds % 60;
     return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
-  }
-}
-
-class _AnswerReviewCard extends StatelessWidget {
-  final int index;
-  final Question question;
-  final UserAnswer userAnswer;
-
-  const _AnswerReviewCard({
-    required this.index,
-    required this.question,
-    required this.userAnswer,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isCorrect = userAnswer.isCorrect;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isCorrect ? Colors.green.shade200 : Colors.red.shade200,
-          width: 2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: isCorrect
-                      ? Colors.green.shade100
-                      : Colors.red.shade100,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Icon(
-                  isCorrect ? Icons.check_circle : Icons.cancel,
-                  color: isCorrect ? Colors.green : Colors.red,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Q${index + 1}: ${question.text}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Your answer: ${_getOptionText(question, userAnswer.selectedAnswer)}',
-            style: TextStyle(
-              color: isCorrect ? Colors.green.shade700 : Colors.red.shade700,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (!isCorrect) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Correct answer: ${_getOptionText(question, question.correctAnswer)}',
-              style: TextStyle(
-                color: Colors.green.shade700,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-          if (userAnswer.explanation.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    size: 18,
-                    color: Colors.blue.shade700,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      userAnswer.explanation,
-                      style: TextStyle(
-                        color: Colors.blue.shade900,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  String _getOptionText(Question question, int optionIndex) {
-    if (optionIndex >= 0 && optionIndex < question.options.length) {
-      return '${String.fromCharCode(65 + optionIndex)}. ${question.options[optionIndex]}';
-    }
-    return 'Not answered';
   }
 }

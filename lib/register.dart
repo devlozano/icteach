@@ -30,6 +30,9 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isLrnValid = false;
   bool _verifyingLrn = false;
   bool _showAccountDetails = false;
+  // Kept non-final so legacy enrollment can be removed in a later cleanup
+  // without changing the invitation-only production behavior.
+  bool _invitationOnly = true;
   LrnIdentity? _verifiedIdentity;
   Future<LrnIdentity> _lookupLrn(String lrn) =>
       widget.lrnVerifier?.call(lrn) ??
@@ -557,6 +560,34 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_invitationOnly) return Scaffold(
+      backgroundColor: const Color(0xFF2F80ED),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.mark_email_unread_outlined, size: 52, color: Color(0xFF2F80ED)),
+                    const SizedBox(height: 18),
+                    const Text('Student accounts are email-invitation only', textAlign: TextAlign.center, style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 10),
+                    const Text('Ask your teacher or school office to create your account. Check your email for the password setup link, then sign in.', textAlign: TextAlign.center),
+                    const SizedBox(height: 22),
+                    FilledButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Back to sign in')),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
     const primaryBlue = Color(0xFF2F80ED);
     const registerGreen = Color(0xFF12A150);
 

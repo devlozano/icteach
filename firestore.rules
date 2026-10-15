@@ -57,9 +57,10 @@ service cloud.firestore {
         && master.isRegistered == true && master.registeredUid == uid
         && matchesSchoolIdentity(data, master);
     }
+    // Student profiles are created only by trusted server-side invitation
+    // functions. Do not let a client turn knowledge of an LRN into an account.
     function profileCreate(data, uid) {
-      return (isAdminProfile() && data.role in ['teacher', 'trainer'])
-        || (request.auth != null && officialProfile(data, uid));
+      return isAdminProfile() && data.role in ['teacher', 'trainer'];
     }
     function profileUpdate(uid) {
       return isAdminProfile()
@@ -94,19 +95,16 @@ service cloud.firestore {
       allow delete: if canAdmin();
     }
     match /lrn_master_list/{lrn} {
-      // Preserve the existing exact-LRN eligibility check before account creation.
-      allow get: if request.auth != null
-        || (resource.data.isRegistered == false && resource.data.get('archived', false) == false);
+      // LRN master data contains school-managed identity information.
+      allow get: if canAdmin();
       allow list: if canAdmin();
       allow create: if canAdmin() && validMaster(request.resource.data, lrn)
         && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'middleName', 'extension', 'isRegistered', 'uploadedAt', 'folderId'])
         && request.resource.data.isRegistered == false
         && request.resource.data.uploadedAt == request.time;
-      allow update: if request.auth != null && validMaster(request.resource.data, lrn)
-        && ((canAdmin()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['folderId', 'archived'])
-          && (request.resource.data.get('archived', false) == false || resource.data.isRegistered == true))
-          || claimsLrn(lrn));
+      allow update: if canAdmin() && validMaster(request.resource.data, lrn)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['folderId', 'archived'])
+        && (request.resource.data.get('archived', false) == false || resource.data.isRegistered == true);
       allow delete: if canAdmin() && resource.data.isRegistered == false;
     }
 

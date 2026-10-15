@@ -63,7 +63,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                     Text(
                       type == 'simulation'
                           ? 'Choose the lesson students must complete before simulation practice, and the theory quiz required before simulation assessment.'
-                          : 'This lesson link is an optional reference. Published, unlocked quizzes are available to enrolled students without a lesson prerequisite. Quizzes have no practice mode.',
+                          : 'Choose the published lesson students must complete before taking this quiz. Quizzes have one scored attempt and no practice mode.',
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -72,7 +72,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                       decoration: InputDecoration(
                         labelText: type == 'simulation'
                             ? 'Required published module'
-                            : 'Reference lesson',
+                            : 'Required published module',
                       ),
                       items: modules
                           .map(
@@ -266,8 +266,8 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                               icon: Icons.menu_book_outlined,
                               title: quiz.data()['title'] ?? quiz.id,
                               subtitle:
-                                  'Optional lesson reference for this quiz',
-                              actionLabel: 'Set reference',
+                                  'Required lesson before students can take this quiz',
+                              actionLabel: 'Assign module',
                               onTap: () => _edit(
                                 'quiz',
                                 quiz.id,
