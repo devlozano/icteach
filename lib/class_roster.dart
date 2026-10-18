@@ -1,6 +1,7 @@
 import 'widgets/roster_directory.dart';
 import 'widgets/summary_print_button.dart';
 import 'services/content_access_service.dart';
+import 'services/student_invitation_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +54,94 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       }
     } catch (e) {
       print('Error fetching class data: $e');
+    }
+  }
+
+  Future<void> _inviteStudent() async {
+    final email = TextEditingController();
+    final firstName = TextEditingController();
+    final lastName = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final send = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Invite student by email'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Student email'),
+                validator: (value) =>
+                    RegExp(
+                      r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                    ).hasMatch(value?.trim() ?? '')
+                    ? null
+                    : 'Enter a valid email address.',
+              ),
+              TextFormField(
+                controller: firstName,
+                decoration: const InputDecoration(
+                  labelText: 'First name (optional)',
+                ),
+              ),
+              TextFormField(
+                controller: lastName,
+                decoration: const InputDecoration(
+                  labelText: 'Last name (optional)',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState!.validate())
+                Navigator.pop(context, true);
+            },
+            child: const Text('Create and send invite'),
+          ),
+        ],
+      ),
+    );
+    if (send != true) return;
+    try {
+      await StudentInvitationService.invite(
+        classId: widget.classId,
+        email: email.text.trim(),
+        firstName: firstName.text.trim(),
+        lastName: lastName.text.trim(),
+      );
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Student added to this class. A password-setup email was sent.',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      await _loadRoster();
+    } catch (error) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Bad state: ', '')),
+            backgroundColor: Colors.red,
+          ),
+        );
+    } finally {
+      email.dispose();
+      firstName.dispose();
+      lastName.dispose();
     }
   }
 
@@ -649,6 +738,11 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         foregroundColor: const Color(0xFF0F172A),
         elevation: 0,
         actions: [
+          IconButton(
+            onPressed: _inviteStudent,
+            icon: const Icon(Icons.person_add_alt_1_outlined),
+            tooltip: 'Invite student by email',
+          ),
           SummaryPrintButton(
             title: 'Student roster - ' + widget.className,
             load: () async => [

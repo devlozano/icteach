@@ -3,7 +3,7 @@ const {onRequest} = require('firebase-functions/v2/https');
 const {defineSecret} = require('firebase-functions/params');
 const {initializeApp} = require('firebase-admin/app');
 const {getAuth} = require('firebase-admin/auth');
-const {getFirestore} = require('firebase-admin/firestore');
+const {getFirestore, FieldValue} = require('firebase-admin/firestore');
 const {makeDeleteStaffHandler} = require('./delete-staff');
 const {makeInviteStudentHandler} = require('./invite-student');
 const emailjsServiceId = defineSecret('EMAILJS_SERVICE_ID');
@@ -15,7 +15,7 @@ exports.deleteStaffAccount = onRequest({region: 'us-central1', cors: true, timeo
   makeDeleteStaffHandler({auth: getAuth(), db: getFirestore()}));
 exports.inviteStudentAccount = onRequest({region: 'us-central1', cors: true, timeoutSeconds: 120,
   secrets: [emailjsServiceId, emailjsTemplateId, emailjsPublicKey, emailjsPrivateKey]},
-makeInviteStudentHandler({auth: getAuth(), db: getFirestore(), emailjs: {
+makeInviteStudentHandler({auth: getAuth(), db: getFirestore(), fieldValue: FieldValue, emailjs: {
   send: async ({toEmail, studentName, setupLink}) => {
     const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({

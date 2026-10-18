@@ -13,7 +13,7 @@ Deletion removes Firebase Auth first, then recursively removes users/{uid}. Shar
 
 ## Student email invitations
 
-`inviteStudentAccount` requires a server-managed `admin: true` custom claim. It creates a student account with an unknown server-generated password, generates a Firebase password-setup link, and delivers it through EmailJS. Configure these secrets before deployment:
+`inviteStudentAccount` is available from a teacher's own class roster. The server verifies both the caller's `teacher` profile and that the selected class has that caller as `teacherId`; it then creates and enrolls the student, generates a Firebase password-setup link, and delivers it through EmailJS. An Admin custom claim may also operate the endpoint for support purposes. Configure these secrets before deployment:
 
     firebase functions:secrets:set EMAILJS_SERVICE_ID
     firebase functions:secrets:set EMAILJS_TEMPLATE_ID

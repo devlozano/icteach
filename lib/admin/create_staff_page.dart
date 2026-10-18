@@ -26,6 +26,9 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
   late String _selectedRole;
   bool _isLoading = false;
 
+  String get _accountLabel =>
+      _selectedRole == 'trainer' ? 'Trainer Account' : 'Teacher Account';
+
   @override
   void initState() {
     super.initState();
@@ -174,9 +177,9 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
               children: [
                 Icon(Icons.check_circle, color: Colors.green.shade600),
                 const SizedBox(width: 8),
-                const Flexible(
+                Flexible(
                   child: Text(
-                    'Staff Created',
+                    '${_selectedRole == 'trainer' ? 'Trainer' : 'Teacher'} Created',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -194,38 +197,6 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.amber.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.amber.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Temporary Password:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      SelectableText(
-                        tempPassword,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber.shade900,
-                          letterSpacing: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(
@@ -236,7 +207,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Credentials sent to: $email',
+                        'A temporary-password email was sent to $email.',
                         style: TextStyle(
                           color: Colors.grey.shade700,
                           fontSize: 13,
@@ -298,7 +269,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
       appBar: AppBar(
-        title: const Text('Create Staff Account'),
+        title: Text('Create $_accountLabel'),
         backgroundColor: const Color(0xFF0B2B4A),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -316,8 +287,8 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
               key: _formKey,
               child: Column(
                 children: [
-                  const Text(
-                    'Add New Staff Member',
+                  Text(
+                    'Add New ${_selectedRole == 'trainer' ? 'Trainer' : 'Teacher'}',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -326,7 +297,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Fill in the details to create a new staff account',
+                    'Fill in the details to create a new ${_selectedRole == 'trainer' ? 'trainer' : 'teacher'} account',
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 24),
@@ -418,8 +389,8 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                                 strokeWidth: 2.5,
                               ),
                             )
-                          : const Text(
-                              'Create Staff Account',
+                          : Text(
+                              'Create $_accountLabel',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,

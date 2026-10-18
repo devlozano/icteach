@@ -151,9 +151,13 @@ class _CreateClassPageState extends State<CreateClassPage> {
           .data()?['activeSchoolYear']
           ?.toString()
           .trim();
-      final schoolYear = configuredYear != null && configuredYear.isNotEmpty
-          ? configuredYear
-          : _getCurrentSchoolYear();
+      if (configuredYear == null || configuredYear.isEmpty) {
+        _showMessage(
+          'The principal must set the active School Year before classes can be created.',
+        );
+        return;
+      }
+      final schoolYear = configuredYear;
 
       // Use the proper teacher name
       String teacherEmail = teacher.email ?? "No email provided";
@@ -219,18 +223,6 @@ class _CreateClassPageState extends State<CreateClassPage> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
-    }
-  }
-
-  String _getCurrentSchoolYear() {
-    final now = DateTime.now();
-    final year = now.year;
-    final month = now.month;
-    // Philippine school year starts in June
-    if (month >= 6) {
-      return '$year-${year + 1}';
-    } else {
-      return '${year - 1}-$year';
     }
   }
 
@@ -306,31 +298,61 @@ class _CreateClassPageState extends State<CreateClassPage> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.blue.shade200),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              color: Colors.blue.shade700,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              "School Year: ${_getCurrentSchoolYear()}",
-                              style: TextStyle(
-                                color: Colors.blue.shade900,
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
+                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('system_settings')
+                            .doc('academic_year')
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          final schoolYear = snapshot.data
+                              ?.data()?['activeSchoolYear']
+                              ?.toString()
+                              .trim();
+                          final configured =
+                              schoolYear != null && schoolYear.isNotEmpty;
+                          return Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: configured
+                                  ? Colors.blue.shade50
+                                  : Colors.orange.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: configured
+                                    ? Colors.blue.shade200
+                                    : Colors.orange.shade200,
                               ),
                             ),
-                          ],
-                        ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  configured
+                                      ? Icons.calendar_today
+                                      : Icons.warning_amber_rounded,
+                                  color: configured
+                                      ? Colors.blue.shade700
+                                      : Colors.orange.shade800,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    configured
+                                        ? 'School Year: $schoolYear'
+                                        : 'The principal must set the active School Year before a class can be created.',
+                                    style: TextStyle(
+                                      color: configured
+                                          ? Colors.blue.shade900
+                                          : Colors.orange.shade900,
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 24),
                       TextFormField(
