@@ -1,3 +1,4 @@
+import '../data/simulation_step_detail.dart';
 import 'pc_disassembly_mechanics.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -565,6 +566,35 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
                 ),
               ),
             ),
+            if (SimulationStepDetail.forSlot(item.correctSlot)
+                case final detail?)
+              ExpansionTile(
+                key: ValueKey('detail-${item.id}'),
+                tilePadding: EdgeInsets.zero,
+                title: const Text(
+                  'Detailed procedure and inspection',
+                  style: TextStyle(fontSize: 12),
+                ),
+                children: [
+                  for (var i = 0; i < detail.actions.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                        '${i + 1}. ${detail.actions[i]}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  Text(
+                    'Accept: ${detail.expected}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Stop and correct: ${detail.fault}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
             if (kind == 'psu')
               const Padding(
                 padding: EdgeInsets.only(top: 8),

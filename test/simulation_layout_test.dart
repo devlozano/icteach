@@ -1,3 +1,4 @@
+import 'package:icteach/widgets/simulation_step_lab.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
@@ -354,6 +355,41 @@ void main() {
           tester.getCenter(target) - tester.getCenter(part()),
         );
         await tester.pump();
+        await tester.pumpAndSettle();
+        expect(find.byType(SimulationStepLab), findsOneWidget);
+        // Cancelling an operation must not award placement credit.
+        if (step == 1) {
+          await tester.tap(find.byTooltip('Cancel operation'));
+          await tester.pumpAndSettle();
+          expect(tester.widget<DropTargetWidget>(target).placedItem, isNull);
+          await tester.dragFrom(
+            tester.getCenter(part()),
+            tester.getCenter(target) - tester.getCenter(part()),
+          );
+          await tester.pumpAndSettle();
+        }
+        Future<void> labAction(String key) async {
+          final button = find.byKey(ValueKey(key));
+          await tester.ensureVisible(button);
+          await tester.tap(button);
+          await tester.pumpAndSettle();
+        }
+
+        for (var operation = 0; operation < 4; operation++) {
+          if (operation == 2) {
+            final alignment = find.byKey(const ValueKey('component-alignment'));
+            await tester.ensureVisible(alignment);
+            await tester.tapAt(tester.getCenter(alignment));
+            await tester.pump();
+          }
+          await labAction('perform-operation');
+        }
+        if (step.isEven) {
+          await labAction('rework-operation');
+          await labAction('perform-operation');
+        }
+        await labAction('accept-operation');
+        expect(find.byType(SimulationStepLab), findsNothing);
         expect(tester.widget<DropTargetWidget>(target).placedItem?.id, item.id);
         ScaffoldMessenger.of(
           tester.element(find.byType(DragDropSimulation)),

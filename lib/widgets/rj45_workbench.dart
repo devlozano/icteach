@@ -260,6 +260,28 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Text(instruction()),
                     ),
+                    AnimatedSwitcher(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 300),
+                      child: Container(
+                        key: ValueKey('inspection-$active-${end.stage.name}'),
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xffe0f2fe),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Inspection checkpoint: ${inspection()}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xff0c4a6e),
+                          ),
+                        ),
+                      ),
+                    ),
                     DragTarget<String>(
                       onWillAcceptWithDetails: (d) =>
                           ['stripper', 'cutters', 'crimper'].contains(d.data),
@@ -435,6 +457,16 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
       ),
     ],
   );
+  String inspection() => [
+    'After stripping, check that every conductor insulation is intact. Cut back and restart if any conductor is nicked.',
+    'Remove the spline without cutting or pinching the surrounding conductors. No sharp remnant should obstruct the plug.',
+    'Separate all four pairs only as far as the plug preparation requires. Keep twists close to the termination.',
+    'Compare all eight positions with the selected standard before trimming. Confirm plug orientation and the required standard at the other end.',
+    'All tips must form one straight line with enough jacket remaining to reach the strain relief.',
+    'Look through the plug: every conductor tip reaches the front stop and the jacket is under the strain-relief tab.',
+    'Use the matching crimper die. Check that all contacts are pressed evenly and the jacket is retained.',
+    'Inspect both ends before connecting MAIN and REMOTE. Verify the wire map and pair assignments; continuity alone does not certify cable performance.',
+  ][end.stage.index];
   String stageTitle() => [
     'Strip outer jacket',
     'Cut the spline',

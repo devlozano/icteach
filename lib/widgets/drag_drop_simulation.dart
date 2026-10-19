@@ -1,3 +1,4 @@
+import 'simulation_step_lab.dart';
 import 'pc_disassembly_workbench.dart';
 import 'rj45_workbench.dart';
 import 'simulation_process_guide.dart';
@@ -37,6 +38,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   late List<String> _availableSlots;
 
   bool _isComplete = false;
+  bool _operationPending = false;
   int _mistakes = 0;
   int _disassemblySession = 0;
   final List<String> _errorLog = [];
@@ -152,8 +154,9 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     _speak('Readiness confirmed. Begin with requirements and backup.');
   }
 
-  void _handleDrop(String itemId, String slotId) {
+  void _handleDrop(String itemId, String slotId, {bool verified = false}) {
     if (_isComplete ||
+        _operationPending ||
         !_availableItems.contains(itemId) ||
         !_availableSlots.contains(slotId)) {
       return;
@@ -266,6 +269,12 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       return;
     }
 
+    // Dedicated disassembly and crimping benches validate physical operations.
+    if (!verified && widget.simulation.type != 'disassembly') {
+      _runStepOperation(item, slotId);
+      return;
+    }
+
     setState(() {
       final existingItemId = _placements.entries
           .where((entry) => entry.value == slotId)
@@ -310,6 +319,37 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     if (_requiredItems.every((item) => _placements.containsKey(item.id))) {
       _calculateScore();
     }
+  }
+
+  Future<void> _runStepOperation(
+    sim_models.DraggableItem item,
+    String slotId,
+  ) async {
+    final session = _disassemblySession;
+    _operationPending = true;
+    bool? passed;
+    try {
+      passed = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => SimulationStepLab(
+          simulation: widget.simulation,
+          item: item,
+          onMistake: (message) {
+            if (!mounted || session != _disassemblySession) return;
+            setState(() {
+              _errorLog.add('Operation check: $message');
+              _mistakes++;
+              _streak = 0;
+            });
+          },
+        ),
+      );
+    } finally {
+      _operationPending = false;
+    }
+    if (!mounted || session != _disassemblySession || passed != true) return;
+    _handleDrop(item.id, slotId, verified: true);
   }
 
   (String, String, String) _resourceProfile(sim_models.DraggableItem item) {
@@ -1330,7 +1370,8 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       content: Text(
         '1. Choose the correct tool or resource in the parts tray.\n\n'
         '2. Drag a part onto its matching target on the workbench.\n\n'
-        '3. Tap a part to inspect its specifications and technical guidance.\n\n'
+        '3. Perform each operation in the animated step workbench. Inspect the result and rework faults before accepting the step.\n\n'
+        '4. Tap a part to inspect its specifications and technical guidance.\n\n'
         'Use the tray arrows to see more parts. Pinch the workbench or use Zoom to inspect small targets.\n\n'
         'Passing score: ${widget.simulation.passingScore}%.',
       ),
