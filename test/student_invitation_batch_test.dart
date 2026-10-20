@@ -70,7 +70,7 @@ void main() {
     },
   );
   test(
-    'missing backend stops the queue without reporting unsent students as sent',
+    'service failure stops the queue without reporting unsent students as sent',
     () async {
       final batch = StudentInvitationBatch(
         students,
@@ -107,48 +107,4 @@ void main() {
       expect(calls, 1);
     },
   );
-  test('only an explicit service acknowledgement counts as success', () {
-    expect(
-      StudentInvitationService.parseResponse(
-        200,
-        '{"notificationSent":true}',
-      ).skipped,
-      false,
-    );
-    expect(
-      StudentInvitationService.parseResponse(200, '{"skipped":true}').skipped,
-      true,
-    );
-    for (final response in [
-      (200, '{}'),
-      (200, '<html>OK</html>'),
-      (404, '<html>Missing</html>'),
-      (401, '{}'),
-      (429, '{}'),
-    ]) {
-      expect(
-        () => StudentInvitationService.parseResponse(response.$1, response.$2),
-        throwsA(
-          isA<StudentInvitationException>().having(
-            (e) => e.stopBatch,
-            'stopBatch',
-            true,
-          ),
-        ),
-      );
-    }
-    expect(
-      () => StudentInvitationService.parseResponse(
-        409,
-        '{"error":"email-in-use"}',
-      ),
-      throwsA(
-        isA<StudentInvitationException>().having(
-          (e) => e.stopBatch,
-          'stopBatch',
-          false,
-        ),
-      ),
-    );
-  });
 }

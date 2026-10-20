@@ -13,7 +13,9 @@ Deletion removes Firebase Auth first, then recursively removes users/{uid}. Shar
 
 ## Student email invitations
 
-`inviteStudentAccount` is available from a teacher's own class roster. The server verifies both the caller's `teacher` profile and that the selected class has that caller as `teacherId`; it then creates and enrolls the student, generates a Firebase password-setup link, and delivers it through EmailJS. An Admin custom claim may also operate the endpoint for support purposes. Configure these secrets before deployment:
+`inviteStudentAccount` remains available as an optional server deployment. The production web app now uses the Spark-plan invitation flow in `StudentInvitationService`: a temporary secondary Firebase Auth session creates the student without replacing the teacher's session, Firestore rules restrict profile creation to the assigned teacher's class, and Firebase Authentication sends the password-reset email directly.
+
+The optional Function verifies both the caller's `teacher` profile and that the selected class has that caller as `teacherId`; it then creates and enrolls the student, generates a Firebase password-setup link, and delivers it through EmailJS. An Admin custom claim may also operate the endpoint for support purposes. Configure these secrets before deploying that version:
 
     firebase functions:secrets:set EMAILJS_SERVICE_ID
     firebase functions:secrets:set EMAILJS_TEMPLATE_ID
@@ -30,7 +32,7 @@ Teacher > Student Management > class roster > **Upload Gmail CSV** accepts CSV U
 
 The teacher reviews all validated addresses before sending. Duplicate addresses in one file are removed case-insensitively. Invitations are sequential, with per-address results and stop/retry controls; successful rows are not retried in the same upload. Global service/authentication failures stop the batch and leave remaining students pending. A timeout is unconfirmed delivery, not a claim that no email was sent.
 
-The upload calls `inviteStudentAccount` with `skipIfAlreadyInvited: true`. The server still verifies class ownership for every request, preserves existing student names, skips confirmed invitations/ordinary existing enrollment, and retains failed delivery records as retryable. `notificationSent` on the class membership is set only after EmailJS accepts the send. Single-student invitations retain explicit resend behavior. Simultaneous requests or a failure after the mail provider accepts a message can still result in duplicate mail; check inboxes before manually retrying unconfirmed delivery.
+The upload calls `StudentInvitationService` with `skipIfAlreadyInvited: true`. The client verifies class ownership before every request and Firestore independently checks ownership before accepting new student profiles. Existing student names are preserved; confirmed invitations and ordinary existing enrollment are skipped. `notificationSent` on the class membership is set only after Firebase accepts the password-reset email request. A failure after Firebase accepts a message can still result in duplicate mail, so check inboxes before manually retrying unconfirmed delivery.
 
 Deploy the updated Function with the existing EmailJS secrets before enabling live delivery. Frontend hosting deployment alone does not deploy this backend. Automated tests use fake recipients and do not send real email.
 

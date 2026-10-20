@@ -17,6 +17,15 @@ service cloud.firestore {
     function canAdmin() {
       return isAdmin() || isAdminProfile();
     }
+    function isActiveTeacher() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true;
+    }
+    function ownsClass(classId) {
+      return classId is string && classId.size() > 0 && classId.size() <= 128
+        && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
     function validFolder(data) {
       return data.keys().hasOnly(['name', 'kind', 'createdAt'])
         && data.name is string && data.name.size() > 0 && data.name.size() <= 80
@@ -60,7 +69,27 @@ service cloud.firestore {
     // Student profiles are created only by trusted server-side invitation
     // functions. Do not let a client turn knowledge of an LRN into an account.
     function profileCreate(data, uid) {
-      return isAdminProfile() && data.role in ['teacher', 'trainer'];
+      return (isAdminProfile() && data.role in ['teacher', 'trainer'])
+        || invitedStudentProfile(data, uid);
+    }
+    function invitedStudentProfile(data, uid) {
+      return isActiveTeacher() && ownsClass(data.invitedClassId)
+        && data.keys().hasOnly([
+          'uid', 'email', 'role', 'firstName', 'lastName', 'name',
+          'displayName', 'invitationStatus', 'invitedAt', 'invitedBy',
+          'invitedClassId', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == uid && data.role == 'student'
+        && data.invitedBy == request.auth.uid
+        && data.email is string && data.email.size() > 3 && data.email.size() <= 254
+        && data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
+        && data.firstName is string && data.firstName.size() <= 80
+        && data.lastName is string && data.lastName.size() <= 80
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 161
+        && data.displayName == data.name
+        && data.invitationStatus == 'pending'
+        && data.invitedAt == request.time
+        && data.createdAt == request.time && data.updatedAt == request.time;
     }
     function profileUpdate(uid) {
       return isAdminProfile()
