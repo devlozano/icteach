@@ -8,6 +8,7 @@ import 'home_router.dart';
 import 'register.dart';
 import 'services/network_service.dart';
 import 'services/session_service.dart';
+import 'services/invitation_enrollment_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -100,12 +101,28 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
+      if (role == 'student') {
+        try {
+          await InvitationEnrollmentService.reconcile(
+            firestore: FirebaseFirestore.instance,
+            uid: user.uid,
+            authEmail: user.email ?? _emailController.text.trim(),
+          );
+        } on InvitationEnrollmentException {
+          await FirebaseAuth.instance.signOut();
+          rethrow;
+        }
+      }
+
       await WorkspaceNavigation.instance.startFreshSession(user.uid);
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Signed in successfully.')));
       _openHome();
+    } on InvitationEnrollmentException catch (error) {
+      if (!mounted) return;
+      _showError(error.message);
     } on FirebaseAuthException catch (error) {
       if (!mounted) return;
       _showError(_authErrorMessage(error));

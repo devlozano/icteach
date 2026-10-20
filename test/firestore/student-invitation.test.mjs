@@ -98,4 +98,6 @@ test('student cannot change protected invitation identity after creation', async
   const student = teacherDb('student');
   await assertFails(updateDoc(doc(student, 'users/student'), {role: 'admin'}));
   await assertFails(updateDoc(doc(student, 'users/student'), {firstName: 'Changed'}));
+  await assertFails(updateDoc(doc(student, 'users/student'), {invitedClassId: 'other'}));
+  await assertFails(updateDoc(doc(student, 'users/student'), {invitedBy: 'attacker'}));
 });

@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import 'invitation_enrollment_service.dart';
+
 class StudentInvitationException implements Exception {
   const StudentInvitationException(this.message, {this.stopBatch = true});
   final String message;
@@ -144,6 +146,7 @@ class StudentInvitationService {
         ? enteredName
         : 'Student';
     final now = FieldValue.serverTimestamp();
+    final classData = classSnapshot.data()!;
     final profileData = <String, dynamic>{
       'uid': uid,
       'email': address,
@@ -171,6 +174,11 @@ class StudentInvitationService {
         'classId': classId,
         'notificationSent': false,
       }, SetOptions(merge: true));
+      batch.set(
+        db.collection('users').doc(uid).collection('classes').doc(classId),
+        InvitationEnrollmentService.membershipData(classId, classData),
+        SetOptions(merge: true),
+      );
       batch.update(classroom, {
         'enrolledStudentIds': FieldValue.arrayUnion([uid]),
       });

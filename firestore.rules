@@ -97,7 +97,8 @@ service cloud.firestore {
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
               'uid', 'role', 'lrn', 'firstName', 'middleName', 'middleInitial',
               'lastName', 'extension', 'suffix', 'name', 'displayName',
-              'isActive', 'accessRevokedAt', 'accessRevokedBy']));
+              'isActive', 'accessRevokedAt', 'accessRevokedBy',
+              'invitationStatus', 'invitedAt', 'invitedBy', 'invitedClassId']));
     }
     function claimsLrn(lrn) {
       let after = request.resource.data;
