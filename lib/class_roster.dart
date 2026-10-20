@@ -1,3 +1,5 @@
+import 'screens/teacher/student_email_upload_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'widgets/roster_directory.dart';
 import 'widgets/summary_print_button.dart';
 import 'services/content_access_service.dart';
@@ -24,6 +26,7 @@ class ClassRosterPage extends StatefulWidget {
 
 class _ClassRosterPageState extends State<ClassRosterPage> {
   String _classCode = '';
+  bool _canInvite = false;
   String _teacherName = '';
   bool _isLoading = true;
   List<Map<String, dynamic>> _students = [];
@@ -45,8 +48,10 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
 
       if (doc.exists) {
         final data = doc.data();
-        if (data != null) {
+        if (data != null && mounted) {
           setState(() {
+            final uid = FirebaseAuth.instance.currentUser?.uid;
+            _canInvite = uid != null && data['teacherId'] == uid;
             _classCode = data['classCode']?.toString() ?? '';
             _teacherName = data['teacherName']?.toString() ?? 'Unknown Teacher';
           });
@@ -55,6 +60,19 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
     } catch (e) {
       print('Error fetching class data: $e');
     }
+  }
+
+  Future<void> _uploadStudentEmails() async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudentEmailUploadPage(
+          classId: widget.classId,
+          className: widget.className,
+        ),
+      ),
+    );
+    if (mounted) await _loadRoster();
   }
 
   Future<void> _inviteStudent() async {
@@ -112,7 +130,12 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         ],
       ),
     );
-    if (send != true) return;
+    if (send != true) {
+      email.dispose();
+      firstName.dispose();
+      lastName.dispose();
+      return;
+    }
     try {
       await StudentInvitationService.invite(
         classId: widget.classId,
@@ -738,11 +761,12 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         foregroundColor: const Color(0xFF0F172A),
         elevation: 0,
         actions: [
-          IconButton(
-            onPressed: _inviteStudent,
-            icon: const Icon(Icons.person_add_alt_1_outlined),
-            tooltip: 'Invite student by email',
-          ),
+          if (_canInvite)
+            IconButton(
+              onPressed: _inviteStudent,
+              icon: const Icon(Icons.person_add_alt_1_outlined),
+              tooltip: 'Invite student by email',
+            ),
           SummaryPrintButton(
             title: 'Student roster - ' + widget.className,
             load: () async => [
@@ -805,14 +829,32 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           ),
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RosterDirectory(
-              students: _students,
-              trainers: _trainers,
-              itemBuilder: (user, trainer) =>
-                  _buildUserCard(context, user, isTrainer: trainer),
+      body: Column(
+        children: [
+          if (_canInvite)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FilledButton.icon(
+                  onPressed: _uploadStudentEmails,
+                  icon: const Icon(Icons.upload_file),
+                  label: const Text('Upload Gmail CSV'),
+                ),
+              ),
             ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : RosterDirectory(
+                    students: _students,
+                    trainers: _trainers,
+                    itemBuilder: (user, trainer) =>
+                        _buildUserCard(context, user, isTrainer: trainer),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 

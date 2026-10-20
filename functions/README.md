@@ -23,3 +23,15 @@ Deletion removes Firebase Auth first, then recursively removes users/{uid}. Shar
 The EmailJS template requires `{{to_email}}`, `{{student_name}}`, and `{{setup_link}}`. Then deploy:
 
     npx firebase-tools deploy --only functions:inviteStudentAccount --project icteach-free
+
+## Teacher Gmail CSV uploads
+
+Teacher > Student Management > class roster > **Upload Gmail CSV** accepts CSV UTF-8 files up to 1 MB and 100 student rows. Use `Gmail,First Name,Last Name`; names are optional and `Email` is an accepted header. A one-column list is supported. No LRN or student password is required. The template contains headers only.
+
+The teacher reviews all validated addresses before sending. Duplicate addresses in one file are removed case-insensitively. Invitations are sequential, with per-address results and stop/retry controls; successful rows are not retried in the same upload. Global service/authentication failures stop the batch and leave remaining students pending. A timeout is unconfirmed delivery, not a claim that no email was sent.
+
+The upload calls `inviteStudentAccount` with `skipIfAlreadyInvited: true`. The server still verifies class ownership for every request, preserves existing student names, skips confirmed invitations/ordinary existing enrollment, and retains failed delivery records as retryable. `notificationSent` on the class membership is set only after EmailJS accepts the send. Single-student invitations retain explicit resend behavior. Simultaneous requests or a failure after the mail provider accepts a message can still result in duplicate mail; check inboxes before manually retrying unconfirmed delivery.
+
+Deploy the updated Function with the existing EmailJS secrets before enabling live delivery. Frontend hosting deployment alone does not deploy this backend. Automated tests use fake recipients and do not send real email.
+
+Live setup requires a Firebase Blaze plan: the project's current plan cannot enable Secret Manager. Upgrade billing in the Firebase console, configure the four EmailJS secrets above, then deploy the invitation Function. No billing change or real email send is performed by the upload implementation.

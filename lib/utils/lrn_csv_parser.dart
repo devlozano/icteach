@@ -1,3 +1,4 @@
+import 'csv_rows.dart';
 import 'dart:convert';
 
 class LrnCsvRecord {
@@ -51,7 +52,11 @@ class LrnCsvParser {
         'Save the file as CSV UTF-8, then upload it again.',
       );
     }
-    final rows = _readRows(text.replaceFirst(RegExp(r'^\uFEFF'), ''));
+    final rows = CsvRows.parse(
+      text.replaceFirst(RegExp(r'^\uFEFF'), ''),
+      maxRecords: maxRecords,
+      limitMessage: 'Import at most 10,000 records per CSV file.',
+    );
     if (rows.isEmpty)
       throw const FormatException('The CSV file has no records.');
     String header(String value) =>
@@ -148,68 +153,5 @@ class LrnCsvParser {
         'The CSV contains headers but no student records.',
       );
     return List.unmodifiable(records);
-  }
-
-  // CSV state machine: quoted commas/newlines and doubled quotes are data.
-  static List<List<String>> _readRows(String text) {
-    final rows = <List<String>>[];
-    var row = <String>[];
-    var field = StringBuffer();
-    var quoted = false, closed = false;
-    void endField() {
-      row.add(field.toString());
-      field = StringBuffer();
-      closed = false;
-    }
-
-    void endRow() {
-      endField();
-      if (row.any((value) => value.trim().isNotEmpty)) rows.add(row);
-      row = [];
-      if (rows.length > maxRecords + 1)
-        throw const FormatException(
-          'Import at most 10,000 records per CSV file.',
-        );
-    }
-
-    for (var i = 0; i < text.length; i++) {
-      final c = text[i];
-      if (quoted) {
-        if (c == '"') {
-          if (i + 1 < text.length && text[i + 1] == '"') {
-            field.write('"');
-            i++;
-          } else {
-            quoted = false;
-            closed = true;
-          }
-        } else {
-          field.write(c);
-        }
-      } else if (c == ',') {
-        endField();
-      } else if (c == '\n' || c == '\r') {
-        endRow();
-        if (c == '\r' && i + 1 < text.length && text[i + 1] == '\n') i++;
-      } else if (c == '"') {
-        if (closed || field.toString().trim().isNotEmpty)
-          throw const FormatException(
-            'Unexpected quote in CSV. Escape quotes inside names as two double quotes.',
-          );
-        field = StringBuffer();
-        quoted = true;
-      } else if (closed) {
-        if (c != ' ' && c != '\t')
-          throw const FormatException(
-            'Unexpected text after a quoted CSV field.',
-          );
-      } else {
-        field.write(c);
-      }
-    }
-    if (quoted)
-      throw const FormatException('The CSV contains an unclosed quoted field.');
-    if (field.isNotEmpty || row.isNotEmpty || closed) endRow();
-    return rows;
   }
 }
