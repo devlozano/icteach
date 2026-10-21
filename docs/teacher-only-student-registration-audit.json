@@ -1,0 +1,21 @@
+{
+  "score": 1,
+  "summary": "Scoped student-account creation and LRN retirement checks pass. This is not a full-database security certification.",
+  "verified": [
+    "Assigned active teachers can create constrained student profiles.",
+    "Admin cannot create student profiles or convert existing staff profiles into students.",
+    "Admin can still create teacher accounts and deactivate existing staff.",
+    "Other teachers, inactive teachers and forged invitation fields are rejected.",
+    "Admin, teacher and student writes to the retired LRN namespaces are rejected.",
+    "Historical LRN records remain readable by Admin and are not deleted.",
+    "The server invitation handler rejects Admin overrides and inactive teachers."
+  ],
+  "findings": [
+    {
+      "check": "Scope and authority",
+      "severity": "critical",
+      "issue": "Existing rules still broadly allow authenticated writes to collections outside users, students and the retired LRN namespaces, including class records. Existing profile reads and subcollection access are also broad.",
+      "recommendation": "Audit and migrate those collections separately with their current application queries and workflows; do not interpret this scoped change as complete database hardening."
+    }
+  ]
+}

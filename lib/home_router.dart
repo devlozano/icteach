@@ -81,14 +81,14 @@ class _HomeRouterState extends State<HomeRouter> {
                   children: [
                     const Text(
                       'Your sign-in exists, but student registration is incomplete. '
-                      'Use the same email and password, your LRN and a valid school code to finish.',
+                      'Ask your teacher to invite this email address to your class.',
                     ),
                     const SizedBox(height: 16),
                     FilledButton(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const RegisterPage()),
                       ),
-                      child: const Text('Complete LRN registration'),
+                      child: const Text('Student invitation information'),
                     ),
                     TextButton(
                       onPressed: () async {

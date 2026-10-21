@@ -63,6 +63,22 @@ test('assigned active teacher can create a constrained student profile', async (
   assert.equal((await getDoc(doc(db, 'users/student'))).data().role, 'student');
 });
 
+test('admin can manage staff but cannot create or convert student profiles', async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), 'users/admin'), {role: 'admin'});
+    await setDoc(doc(context.firestore(), 'classes/admin-class'), {teacherId: 'admin'});
+    await setDoc(doc(context.firestore(), 'users/existing'), {uid: 'existing', role: 'trainer'});
+  });
+  const db = teacherDb('admin');
+  await assertSucceeds(setDoc(doc(db, 'users/staff'), {role: 'teacher', uid: 'staff'}));
+  for (const collection of ['users', 'students']) {
+    await assertFails(setDoc(doc(db, `${collection}/student`), invitedProfile({invitedBy: 'admin', invitedClassId: 'admin-class'})));
+  }
+  await assertFails(setDoc(doc(db, 'students/staff'), {role: 'teacher', uid: 'staff'}));
+  await assertFails(updateDoc(doc(db, 'users/existing'), {role: 'student'}));
+  await assertSucceeds(updateDoc(doc(db, 'users/existing'), {isActive: false}));
+});
+
 test('another teacher cannot create a profile for a class they do not own', async () => {
   await assertFails(setDoc(
     doc(teacherDb('other'), 'users/student'),

@@ -9,12 +9,21 @@ function run({token = {uid: 'teacher'}, body = {classId: 'class', email: 'studen
   return makeInviteStudentHandler({auth, db: db || {}, fieldValue: {arrayUnion: value => value}, emailjs: {send: async () => {}}, logger: {error() {}}})(req, res).then(() => res);
 }
 
-test('rejects callers without a teacher role or admin claim before account creation', async () => {
+test('rejects callers without an assigned teacher role before account creation', async () => {
   const db = {collection: name => ({doc: id => ({get: async () => name === 'users' ? {exists: true, data: () => ({role: 'student'})} : {exists: true, data: () => ({teacherId: 'teacher'})}})})};
   const result = await run({db});
   assert.equal(result.code, 403);
   assert.equal(result.body.error, 'teacher-class-required');
 });
+
+for (const profile of [{role: 'admin'}, {role: 'trainer'}, {role: 'teacher', isActive: false}]) {
+  test(`rejects ${JSON.stringify(profile)} even with an admin claim`, async () => {
+    const db = {collection: name => ({doc: () => ({get: async () => ({exists: true,
+      data: () => name === 'users' ? profile : {teacherId: 'teacher'}})})})};
+    const result = await run({token: {uid: 'teacher', admin: true}, db});
+    assert.equal(result.code, 403);
+  });
+}
 
 test('rejects malformed or missing class identifiers', async () => {
   const result = await run({body: {classId: 'classes/other', email: 'student@example.com'}});

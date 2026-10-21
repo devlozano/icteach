@@ -66,8 +66,8 @@ service cloud.firestore {
         && master.isRegistered == true && master.registeredUid == uid
         && matchesSchoolIdentity(data, master);
     }
-    // Student profiles are created only by trusted server-side invitation
-    // functions. Do not let a client turn knowledge of an LRN into an account.
+    // Only assigned active teachers can provision student profiles.
+    // Admin account creation is limited to teachers and trainers.
     function profileCreate(data, uid) {
       return (isAdminProfile() && data.role in ['teacher', 'trainer'])
         || invitedStudentProfile(data, uid);
@@ -92,7 +92,9 @@ service cloud.firestore {
         && data.createdAt == request.time && data.updatedAt == request.time;
     }
     function profileUpdate(uid) {
-      return isAdminProfile()
+      return (isAdminProfile()
+          && request.resource.data.get('role', '') == resource.data.get('role', '')
+          && request.resource.data.get('uid', uid) == resource.data.get('uid', uid))
         || (request.auth != null && request.auth.uid == uid
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny([
               'uid', 'role', 'lrn', 'firstName', 'middleName', 'middleInitial',
@@ -118,24 +120,14 @@ service cloud.firestore {
     }
     match /lrn_folders/{folder} {
       allow read: if canAdmin();
-      allow create: if canAdmin() && validFolder(request.resource.data)
-        && request.resource.data.createdAt == request.time;
-      allow update: if canAdmin() && validFolder(request.resource.data)
-        && request.resource.data.createdAt == resource.data.createdAt;
-      allow delete: if canAdmin();
+      // Retired registration namespace: preserve historical records only.
+      allow write: if false;
     }
     match /lrn_master_list/{lrn} {
       // LRN master data contains school-managed identity information.
       allow get: if canAdmin();
       allow list: if canAdmin();
-      allow create: if canAdmin() && validMaster(request.resource.data, lrn)
-        && request.resource.data.keys().hasOnly(['firstName', 'lastName', 'middleName', 'extension', 'isRegistered', 'uploadedAt', 'folderId'])
-        && request.resource.data.isRegistered == false
-        && request.resource.data.uploadedAt == request.time;
-      allow update: if canAdmin() && validMaster(request.resource.data, lrn)
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['folderId', 'archived'])
-        && (request.resource.data.get('archived', false) == false || resource.data.isRegistered == true);
-      allow delete: if canAdmin() && resource.data.isRegistered == false;
+      allow write: if false;
     }
 
     // Narrow the previous signed-in catch-all: registered student names cannot
@@ -148,7 +140,7 @@ service cloud.firestore {
     }
     match /students/{uid} {
       allow read: if request.auth != null;
-      allow create: if profileCreate(request.resource.data, uid);
+      allow create: if invitedStudentProfile(request.resource.data, uid);
       allow update: if profileUpdate(uid);
       allow delete: if canAdmin();
     }

@@ -28,8 +28,9 @@ function makeInviteStudentHandler({auth, db, fieldValue, emailjs, logger = conso
       ]);
       if (!classSnapshot.exists) return res.status(404).json({error: 'class-not-found'});
       const isAssignedTeacher = callerProfile.data()?.role === 'teacher' &&
+        callerProfile.data()?.isActive !== false &&
         classSnapshot.data()?.teacherId === caller.uid;
-      if (caller.admin !== true && !isAssignedTeacher) return res.status(403).json({error: 'teacher-class-required'});
+      if (!isAssignedTeacher) return res.status(403).json({error: 'teacher-class-required'});
       let user;
       let created = false;
       try { user = await auth.getUserByEmail(address); }

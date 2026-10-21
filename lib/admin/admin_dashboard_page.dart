@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'manage_lrn_page.dart';
 import 'manage_teachers_page.dart';
 import 'manage_trainers_page.dart';
 
@@ -17,7 +16,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
     const _DashboardOverview(),
     const ManageTeachersPage(),
     const ManageTrainersPage(),
-    const ManageLRNPage(),
     const _SystemSettingsPage(),
   ];
 
@@ -47,10 +45,6 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
               NavigationRailDestination(
                 icon: Icon(Icons.verified_user),
                 label: Text('Trainers'),
-              ),
-              NavigationRailDestination(
-                icon: Icon(Icons.numbers),
-                label: Text('LRN Registration'),
               ),
               NavigationRailDestination(
                 icon: Icon(Icons.settings),

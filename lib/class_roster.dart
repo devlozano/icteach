@@ -48,10 +48,20 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
 
       if (doc.exists) {
         final data = doc.data();
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        final profile = uid == null
+            ? null
+            : await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(uid)
+                  .get();
         if (data != null && mounted) {
           setState(() {
-            final uid = FirebaseAuth.instance.currentUser?.uid;
-            _canInvite = uid != null && data['teacherId'] == uid;
+            _canInvite =
+                uid != null &&
+                data['teacherId'] == uid &&
+                profile?.data()?['role'] == 'teacher' &&
+                profile?.data()?['isActive'] != false;
             _classCode = data['classCode']?.toString() ?? '';
             _teacherName = data['teacherName']?.toString() ?? 'Unknown Teacher';
           });

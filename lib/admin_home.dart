@@ -15,7 +15,6 @@ import 'admin/content_overview_page.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'admin/create_staff_page.dart';
-import 'admin/manage_lrn_page.dart';
 import 'admin/manage_trainers_page.dart';
 import 'admin/evaluation_reports_page.dart';
 import 'package:icteach/services/quiz_service.dart';
@@ -46,7 +45,8 @@ class AdminHomePage extends StatefulWidget {
 class _AdminHomePageState extends State<AdminHomePage> {
   String _currentSelectedLabel =
       (WorkspacePreferences.selection('admin_panel') ?? 'Dashboard')
-          .replaceFirst('LRN Registry', 'LRN Registration');
+          .replaceFirst('LRN Registry', 'Dashboard')
+          .replaceFirst('LRN Registration', 'Dashboard');
   String? _staffDirectory;
   void _selectPanel(String label) {
     _staffDirectory = null;
@@ -69,7 +69,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
         const labels = [
           'Dashboard',
           'Manage Users',
-          'LRN Registration',
           'Manage Classes',
           'Content Overview',
           'Performance',
@@ -87,7 +86,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
             items: const [
               (Icons.dashboard_outlined, 'Dashboard'),
               (Icons.people_outline, 'Manage Users'),
-              (Icons.badge_outlined, 'LRN Registration'),
               (Icons.school_outlined, 'Manage Classes'),
               (Icons.menu_book_outlined, 'Content Overview'),
               (Icons.insights_outlined, 'Performance'),
@@ -209,8 +207,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return 'Track student quiz performance and leaderboards';
       case 'Reports':
         return 'Student counts and NC II pass monitoring';
-      case 'LRN Registration':
-        return 'Manage LRN registration and master records';
       case 'Settings':
         return 'Manage your account and app preferences';
       default:
@@ -228,8 +224,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return Icons.analytics_outlined;
       case 'Reports':
         return Icons.description_outlined;
-      case 'LRN Registration':
-        return Icons.badge_outlined;
       case 'Settings':
         return Icons.settings_outlined;
       default:
@@ -251,8 +245,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return const _PerformanceContent();
       case 'Reports':
         return const StaffOutcomes(admin: true);
-      case 'LRN Registration':
-        return const _LRNRegistryContent();
       case 'Feedback':
         return const Column(
           children: [
@@ -559,60 +551,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
         const SizedBox(height: 16),
 
-        // LRN Master List
-        _buildCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0B2B4A).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.numbers,
-                      color: Color(0xFF0B2B4A),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'LRN Registration',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => _selectPanel('LRN Registration'),
-                  icon: const Icon(Icons.numbers, color: Color(0xFF0B2B4A)),
-                  label: const Text('Open LRN Master List'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF0B2B4A),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    side: const BorderSide(color: Color(0xFF0B2B4A)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Upload LRN CSVs, validate registrations, and manage the student master list.',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
         // Students overview
         _buildCard(
           child: Column(
@@ -654,7 +592,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     return const _EmptyState(
                       icon: Icons.people_outline,
                       message: 'No students registered',
-                      subtitle: 'Students will appear once they register',
+                      subtitle:
+                          'Students appear after their teachers invite them',
                     );
                   }
 
@@ -915,12 +854,6 @@ class _SideNav extends StatelessWidget {
                   onTap: () => onSelected('Manage Users'),
                 ),
                 _NavTile(
-                  icon: Icons.numbers_rounded,
-                  label: 'LRN Registration',
-                  selected: currentSelection == 'LRN Registration',
-                  onTap: () => onSelected('LRN Registration'),
-                ),
-                _NavTile(
                   icon: Icons.class_rounded,
                   label: 'Manage Classes',
                   selected: currentSelection == 'Manage Classes',
@@ -1108,15 +1041,6 @@ class _NavTile extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════════════════════════
 // TOP BAR (FIXED: removed duplicate notification icon, fixed hardcoded avatar)
 // ═══════════════════════════════════════════════════════════════════════════════
-
-class _LRNRegistryContent extends StatelessWidget {
-  const _LRNRegistryContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return const ManageLRNPage(useStandaloneScaffold: false);
-  }
-}
 
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();

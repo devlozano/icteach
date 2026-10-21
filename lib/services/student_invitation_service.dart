@@ -61,6 +61,13 @@ class StudentInvitationService {
     }
 
     final db = FirebaseFirestore.instance;
+    final teacherProfile = await db.collection('users').doc(teacher.uid).get();
+    if (teacherProfile.data()?['role'] != 'teacher' ||
+        teacherProfile.data()?['isActive'] == false) {
+      throw const StudentInvitationException(
+        'Only active teachers can add students through class invitations.',
+      );
+    }
     final classroom = db.collection('classes').doc(classId);
     final classSnapshot = await classroom.get();
     if (!classSnapshot.exists) {
