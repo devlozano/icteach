@@ -479,12 +479,14 @@ class SimulationOperationScene extends StatelessWidget {
                       child: _asset(),
                     ),
                     Positioned(
-                      right: 22,
-                      top: 69,
-                      child: Icon(
-                        Icons.hub_outlined,
-                        size: 55,
-                        color: fault ? Colors.amber : Colors.cyanAccent,
+                      right: 12,
+                      top: 60,
+                      width: 85,
+                      height: 70,
+                      child: Image.asset(
+                        'assets/simulations/coc2-switch-matched.png',
+                        fit: BoxFit.contain,
+                        semanticLabel: 'Ethernet switch',
                       ),
                     ),
                     Positioned(
@@ -525,6 +527,44 @@ class SimulationOperationScene extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ] else if (service) ...[
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      top: 38,
+                      bottom: 44,
+                      child: Image.asset(
+                        simulation.id.contains('maintenance')
+                            ? 'assets/simulations/maintenance-workbench-matched.png'
+                            : 'assets/simulations/troubleshooting-workbench-matched.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
+                    Positioned(
+                      left: box.maxWidth * .25 + box.maxWidth * .45 * progress,
+                      top: 44,
+                      height: 110,
+                      width: 28,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.transparent,
+                              (fault ? Colors.amber : Colors.cyanAccent)
+                                  .withValues(alpha: .35),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                        child: Icon(
+                          simulation.id.contains('maintenance')
+                              ? Icons.cleaning_services
+                              : Icons.search,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                    ),
                   ] else ...[
                     Positioned(
                       left: box.maxWidth * .38,
@@ -536,12 +576,9 @@ class SimulationOperationScene extends StatelessWidget {
                           border: Border.all(color: Colors.white24, width: 2),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.developer_board,
-                            color: Colors.white24,
-                            size: 72,
-                          ),
+                        child: Image.asset(
+                          'assets/simulations/assembly-motherboard-matched.png',
+                          fit: BoxFit.contain,
                         ),
                       ),
                     ),

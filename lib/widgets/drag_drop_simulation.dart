@@ -1,5 +1,6 @@
 import 'simulation_step_lab.dart';
 import 'pc_disassembly_workbench.dart';
+import 'pc_build_workbench.dart';
 import 'rj45_workbench.dart';
 import 'simulation_process_guide.dart';
 import 'dart:async';
@@ -739,7 +740,9 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
         onFeedback: widget.onFeedback,
       );
     }
-    if (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height) {
+    if (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height &&
+        widget.simulation.id != 'sim_coc1_assembly' &&
+        widget.simulation.id != 'sim_coc1_cabling') {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
@@ -778,6 +781,37 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
         builder: (context, size) => size.maxHeight < 580
             ? _compactReadiness(false)
             : _buildOsPreflight(),
+      );
+    }
+    if (widget.simulation.id == 'sim_coc1_assembly' ||
+        widget.simulation.id == 'sim_coc1_cabling') {
+      return Column(
+        children: [
+          _buildStatusBar(),
+          const SizedBox(height: 8),
+          Expanded(
+            child: PcBuildWorkbench(
+              key: ValueKey('build-$_disassemblySession'),
+              items: widget.simulation.items,
+              completed: _placements.keys.toSet(),
+              cabling: widget.simulation.id == 'sim_coc1_cabling',
+              locked: _isComplete,
+              onMistake: (message) => setState(() {
+                _mistakes++;
+                _streak = 0;
+                _errorLog.add('Physical operation: $message');
+              }),
+              onCompleteStep: (id) {
+                final item = widget.simulation.items.firstWhere(
+                  (i) => i.id == id,
+                );
+                _selectedResource = _resourceProfile(item).$1;
+                _handleDrop(id, item.correctSlot, verified: true);
+                return _placements.containsKey(id);
+              },
+            ),
+          ),
+        ],
       );
     }
     if (widget.simulation.id == 'sim_coc1_disassembly') {

@@ -58,13 +58,13 @@ class SimulationData {
 
   static Simulation getPcAssembly() => _simulation(
     id: 'sim_coc1_assembly',
-    title: 'PC Assembly - COC1',
+    title: 'Build and Commission a PC - COC1',
     description:
-        'Assemble a computer system by placing components in the correct installation order.',
+        'Build a working desktop: prepare the chassis, install and secure hardware, connect its circuits, inspect the build, run POST and document the result.',
     type: 'assembly',
     competency: 'COC1',
     learningOutcome: 'LO1 - Assemble computer hardware',
-    timeLimit: 15,
+    timeLimit: 30,
     requiredSimulationId: null,
     items: [
       _item(

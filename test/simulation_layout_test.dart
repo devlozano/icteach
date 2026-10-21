@@ -142,6 +142,14 @@ void main() {
           expect(tester.takeException(), isNull);
           return;
         }
+        if (simulation.id == 'sim_coc1_assembly' ||
+            simulation.id == 'sim_coc1_cabling') {
+          expect(find.byKey(const ValueKey('build-hotspot')), findsOneWidget);
+          expect(find.byType(DropTargetWidget), findsNothing);
+          expect(find.byType(InteractiveViewer), findsOneWidget);
+          expect(tester.takeException(), isNull);
+          return;
+        }
         expect(find.byType(DropTargetWidget).evaluate().length, greaterThan(1));
         expect(find.byType(SingleChildScrollView), findsNothing);
         final bench = tester.getRect(find.byType(InteractiveViewer));
@@ -280,7 +288,9 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final simulation = SimulationData.getSimulationById('sim_coc1_cabling')!;
+      final simulation = SimulationData.getSimulationById(
+        'sim_coc1_software_config',
+      )!;
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
@@ -348,7 +358,7 @@ void main() {
         }
         await tester.tap(find.byType(DropdownButtonFormField<String>));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Connector key + latch inspection').last);
+        await tester.tap(find.text('Manufacturer manual + job checklist').last);
         await tester.pumpAndSettle();
         await tester.dragFrom(
           tester.getCenter(part()),
@@ -376,12 +386,6 @@ void main() {
         }
 
         for (var operation = 0; operation < 4; operation++) {
-          if (operation == 2) {
-            final alignment = find.byKey(const ValueKey('component-alignment'));
-            await tester.ensureVisible(alignment);
-            await tester.tapAt(tester.getCenter(alignment));
-            await tester.pump();
-          }
           await labAction('perform-operation');
         }
         if (step.isEven) {
