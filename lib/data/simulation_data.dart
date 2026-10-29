@@ -58,9 +58,9 @@ class SimulationData {
 
   static Simulation getPcAssembly() => _simulation(
     id: 'sim_coc1_assembly',
-    title: 'Build and Commission a PC - COC1',
+    title: 'PC Assembly - COC1',
     description:
-        'Build a working desktop: prepare the chassis, install and secure hardware, connect its circuits, inspect the build, run POST and document the result.',
+        'Build a working desktop: prepare the chassis, install and secure hardware, connect its circuits, inspect the build, and verify safe operation.',
     type: 'assembly',
     competency: 'COC1',
     learningOutcome: 'LO1 - Assemble computer hardware',
@@ -71,7 +71,7 @@ class SimulationData {
         id: 'motherboard',
         name: 'Motherboard',
         description: 'Main circuit board - install first in the case',
-        imageUrl: 'assets/simulations/assembly-motherboard-matched.png',
+        imageUrl: 'assets/simulations/assembly-motherboard-nine-hole-v2.png',
         correctSlot: 'motherboard_tray',
         category: 'motherboard',
         step: 1,
@@ -145,7 +145,7 @@ class SimulationData {
       _item(
         id: 'psu',
         name: 'Power Supply',
-        description: 'Install last and connect all cables',
+        description: 'Mount securely before routing and connecting its cables',
         imageUrl: 'assets/simulations/assembly-psu-matched.png',
         correctSlot: 'psu_mount',
         category: 'power',
@@ -153,13 +153,100 @@ class SimulationData {
         tooltip: 'Face the fan toward the case ventilation.',
       ),
       _item(
+        id: 'power_cable',
+        name: 'Connect 24-pin Motherboard Power',
+        description: 'Route and latch the main ATX motherboard supply',
+        imageUrl: 'assets/simulations/cable-atx-24pin-v2.png',
+        correctSlot: 'power_slot',
+        category: 'cable',
+        step: 8,
+        tooltip:
+            'Align the keyed 24-pin housing and press on the connector until its latch closes.',
+        specification: 'ATX 24-pin • motherboard main power • keyed latch',
+      ),
+      _item(
+        id: 'cpu_power',
+        name: 'Connect CPU Power',
+        description: 'Route the 4+4-pin EPS lead around the motherboard edge',
+        imageUrl: 'assets/simulations/cable-cpu-4plus4.png',
+        correctSlot: 'cpu_power_slot',
+        category: 'cable',
+        step: 9,
+        tooltip:
+            'Join the correct 4+4 halves, match their rounded and square keys, and latch them near the CPU socket.',
+        specification: 'EPS12V 4+4 pin • CPU power • rounded/square keying',
+      ),
+      _item(
+        id: 'gpu_power',
+        name: 'Connect GPU Power',
+        description: 'Seat the PCIe 6+2-pin auxiliary power connector',
+        imageUrl: 'assets/simulations/cable-gpu-6plus2.png',
+        correctSlot: 'gpu_power_slot',
+        category: 'cable',
+        step: 10,
+        tooltip:
+            'Use the PCIe lead rather than the similar CPU lead and confirm the GPU connector latch.',
+        specification: 'PCIe 6+2 pin • GPU auxiliary power • not EPS12V',
+      ),
+      _item(
+        id: 'sata_cable',
+        name: 'Connect SATA Data',
+        description: 'Link the covered 2.5-inch SSD to motherboard SATA0',
+        imageUrl: 'assets/simulations/cable-sata-data-v2.png',
+        correctSlot: 'sata_slot',
+        category: 'cable',
+        step: 11,
+        tooltip:
+            'Match both L-shaped data connectors and route the cable without sharp bends.',
+        specification: 'SATA 7-pin data • L-shaped key • not SATA power',
+      ),
+      _item(
+        id: 'sata_power',
+        name: 'Connect SATA Power',
+        description: 'Connect the wider 15-pin PSU lead to the covered SSD',
+        imageUrl: 'assets/simulations/cable-sata-power-v2.png',
+        correctSlot: 'sata_power_device',
+        category: 'cable',
+        step: 12,
+        tooltip:
+            'Use the wider SATA power housing, align its L-shaped key, and press only on the connector body.',
+        specification: 'SATA 15-pin power • PSU to drive • keyed housing',
+      ),
+      _item(
+        id: 'front_panel',
+        name: 'Wire the Front Panel Header',
+        description:
+            'Match POWER SW, RESET SW, HDD LED, and POWER LED to their pins',
+        imageUrl: 'assets/simulations/cable-front-panel-leads-v2.png',
+        correctSlot: 'front_panel_slot',
+        category: 'cable',
+        step: 13,
+        tooltip:
+            'Follow each connector label and wire color; LED positive and negative polarity must match the training-board diagram.',
+        specification: 'F_PANEL header • polarity matters for LEDs',
+      ),
+      _item(
+        id: 'cable_inspection',
+        name: 'Cable Routing Inspection',
+        description:
+            'Verify every latch, header position, polarity, and fan clearance',
+        imageUrl: 'assets/simulations/check.svg',
+        correctSlot: 'cable_test_station',
+        category: 'diagnostic',
+        step: 14,
+        tooltip:
+            'Trace the same connections that must be released during disassembly and correct loose or misrouted cables before power-on.',
+        specification:
+            'TESDA evidence: keyed connections • header accuracy • safe cable routing',
+      ),
+      _item(
         id: 'assembly_test',
-        name: 'POST and Inspection',
+        name: 'Functional Test and Inspection',
         description: 'Inspect the assembly and verify safe initial operation',
         imageUrl: 'assets/simulations/check.svg',
         correctSlot: 'assembly_test_station',
         category: 'diagnostic',
-        step: 8,
+        step: 15,
         tooltip:
             'Check clearances, fasteners, and connections before power-on. Confirm POST, fan operation, hardware detection, and document the result.',
         specification:
@@ -261,7 +348,7 @@ class SimulationData {
         name: 'Remove Motherboard',
         description:
             'Verify all connectors and fasteners are free before lifting',
-        imageUrl: 'assets/simulations/assembly-motherboard-matched.png',
+        imageUrl: 'assets/simulations/assembly-motherboard-nine-hole-v2.png',
         correctSlot: 'motherboard_parts_tray',
         category: 'disassembly',
         step: 8,
@@ -297,7 +384,7 @@ class SimulationData {
         id: 'power_cable',
         name: '24-pin Motherboard Cable',
         description: 'Main motherboard power connector',
-        imageUrl: 'assets/simulations/cable-atx-24pin.png',
+        imageUrl: 'assets/simulations/cable-atx-24pin-v2.png',
         correctSlot: 'power_slot',
         category: 'cable',
         step: 1,
@@ -330,7 +417,7 @@ class SimulationData {
         id: 'sata_cable',
         name: 'SATA Data Cable',
         description: 'Connects storage drives to the motherboard',
-        imageUrl: 'assets/simulations/cable-sata-power-15pin-matched.png',
+        imageUrl: 'assets/simulations/cable-sata-data-v2.png',
         correctSlot: 'sata_slot',
         category: 'cable',
         step: 4,
@@ -338,13 +425,25 @@ class SimulationData {
         specification: 'SATA 7-pin data • L-shaped key • not SATA power',
       ),
       _item(
+        id: 'sata_power',
+        name: 'SATA Power Cable',
+        description: '15-pin PSU power connector for the SATA SSD',
+        imageUrl: 'assets/simulations/cable-sata-power-v2.png',
+        correctSlot: 'sata_power_device',
+        category: 'cable',
+        step: 5,
+        tooltip:
+            'Use the wider keyed housing from the PSU and press on the connector body.',
+        specification: 'SATA 15-pin power • PSU to drive • keyed housing',
+      ),
+      _item(
         id: 'front_panel',
         name: 'Front Panel Connectors',
         description: 'Connects power, reset, and LED controls',
-        imageUrl: 'assets/simulations/cable-front-panel.png',
+        imageUrl: 'assets/simulations/cable-front-panel-leads-v2.png',
         correctSlot: 'front_panel_slot',
         category: 'cable',
-        step: 5,
+        step: 6,
         tooltip: 'Use the motherboard manual for the pin layout.',
         specification: 'F_PANEL header • polarity matters for LEDs',
       ),
@@ -355,25 +454,11 @@ class SimulationData {
         imageUrl: 'assets/simulations/check.svg',
         correctSlot: 'cable_test_station',
         category: 'diagnostic',
-        step: 6,
+        step: 7,
         tooltip:
             'Inspect every keyed connector and latch, keep cables clear of fans, then perform a controlled power-on test and record the result.',
         specification:
             'TESDA evidence: manufacturer requirements • OHS • inspection and testing',
-      ),
-      _item(
-        id: 'sata_power_distractor',
-        name: 'SATA Power Cable',
-        description: '15-pin PSU power connector for SATA drives',
-        imageUrl: 'assets/simulations/cable-sata-data.png',
-        correctSlot: 'sata_power_device',
-        category: 'cable',
-        step: 0,
-        tooltip:
-            'This is a 15-pin power lead, not the 7-pin motherboard data cable.',
-        specification:
-            'SATA 15-pin power • PSU to drive • incompatible with SATA data port',
-        isRequired: false,
       ),
     ],
   );

@@ -14,17 +14,32 @@ import '../../services/learning_path_service.dart';
 class SimulationPage extends StatelessWidget {
   final String classId;
   final String simulationId;
+  /// Opens simulations directly for local testing. The default follows
+  /// Flutter's build mode, so release builds always enforce normal access.
+  final bool testingBypass;
   final String title;
   final String? className;
   const SimulationPage({
     super.key,
     required this.classId,
     required this.simulationId,
+    this.testingBypass = kDebugMode,
     required this.title,
     this.className,
   });
   @override
-  Widget build(BuildContext context) => ContentAccessGate(
+  Widget build(BuildContext context) {
+    if (testingBypass) {
+      return _SimulationSession(
+        practice: true,
+        testingBypass: true,
+        classId: classId,
+        simulationId: simulationId,
+        title: '$title (Tester Mode)',
+      );
+    }
+
+    return ContentAccessGate(
     classId: classId,
     contentType: 'simulation',
     contentId: simulationId,
@@ -41,11 +56,13 @@ class SimulationPage extends StatelessWidget {
         className: className,
       ),
     ),
-  );
+    );
+  }
 }
 
 class _SimulationSession extends StatefulWidget {
   final bool practice;
+  final bool testingBypass;
   final String classId;
   final String simulationId;
   final String title;
@@ -53,6 +70,7 @@ class _SimulationSession extends StatefulWidget {
 
   const _SimulationSession({
     required this.practice,
+    this.testingBypass = false,
     required this.classId,
     required this.simulationId,
     required this.title,
@@ -765,7 +783,11 @@ class _SimulationPageState extends State<_SimulationSession> {
     if (user == null) return false;
     try {
       final db = FirebaseFirestore.instance;
-      await LearningPathService.requirePrepared(
+    // Debug tester sessions can show the complete flow without creating
+    // progress that would satisfy a student's real learning path.
+    if (widget.testingBypass) return true;
+
+    await LearningPathService.requirePrepared(
         widget.classId,
         'simulation',
         widget.simulationId,
@@ -875,7 +897,9 @@ class _SimulationPageState extends State<_SimulationSession> {
     return '$action You need ${_simulation!.passingScore}% to pass.';
   }
 
-  bool _isLocked() => _simulation!.isLocked || !_prerequisiteCompleted;
+  bool _isLocked() =>
+      !widget.testingBypass &&
+      (_simulation!.isLocked || !_prerequisiteCompleted);
   String _getPrerequisiteName() =>
       SimulationData.getSimulationById(
         _simulation!.requiredSimulationId ?? '',

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../data/pc_build_procedure.dart';
 
 /// Anchors share the assembly artwork's normalized chassis coordinates.
 const pcServicePoints = <String, List<Offset>>{
@@ -240,12 +241,7 @@ class PcDisassemblyMechanicsPainter extends CustomPainter {
         width: 10,
         routeLeft: true,
       );
-      screws(const [
-        Offset(.235, .78),
-        Offset(.235, .91),
-        Offset(.442, .78),
-        Offset(.442, .91),
-      ], p('psu', 1));
+      screws(PcBuildProcedure.fasteners['psu']!, p('psu', 1));
     }
     if (present('motherboard')) {
       lead(
@@ -257,23 +253,16 @@ class PcDisassemblyMechanicsPainter extends CustomPainter {
       );
     }
     if (present('storage')) {
-      screws(const [Offset(.662, .505), Offset(.737, .633)], p('storage', 1));
+      screws(PcBuildProcedure.fasteners['ssd']!, p('storage', 1));
     }
     if (present('gpu')) {
-      screws(const [Offset(.253, .575), Offset(.253, .65)], p('gpu', 1));
+      screws(PcBuildProcedure.fasteners['gpu']!, p('gpu', 1));
     }
     if (present('motherboard')) {
       clip(const Offset(.575, .625), p('gpu', 2), lower: true);
       clip(const Offset(.532, .216), p('ram', 0));
       clip(const Offset(.532, .516), p('ram', 1), lower: true);
-      screws(const [
-        Offset(.266, .18),
-        Offset(.549, .18),
-        Offset(.549, .433),
-        Offset(.266, .433),
-        Offset(.266, .693),
-        Offset(.549, .693),
-      ], p('motherboard', 1));
+      screws(PcBuildProcedure.fasteners['motherboard']!, p('motherboard', 1));
       lead(
         const Offset(.71, .705),
         const Offset(.508, .704),
@@ -290,8 +279,9 @@ class PcDisassemblyMechanicsPainter extends CustomPainter {
         const Color(0xFF8E9A78),
         width: 7,
       );
-      screws(const [Offset(.335, .244), Offset(.452, .444)], p('cooler', 1));
-      screws(const [Offset(.452, .244), Offset(.335, .444)], p('cooler', 2));
+      final coolerFasteners = PcBuildProcedure.fasteners['cpu_fan']!;
+      screws([coolerFasteners[0], coolerFasteners[1]], p('cooler', 1));
+      screws([coolerFasteners[2], coolerFasteners[3]], p('cooler', 2));
     } else if (present('cpu')) {
       // Used thermal compound is visible once the heatsink is lifted away.
       canvas.drawOval(

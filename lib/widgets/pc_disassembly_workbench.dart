@@ -1,8 +1,10 @@
 import '../data/simulation_step_detail.dart';
+import '../data/pc_build_procedure.dart';
 import 'pc_disassembly_mechanics.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/simulation_model.dart';
+import 'installed_dimm.dart';
 
 /// Layered hardware removal. Assessment and progress stay in the parent.
 class PcDisassemblyWorkbench extends StatefulWidget {
@@ -87,14 +89,14 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
       'Record the completed parts inventory',
     ],
   };
-  static const _rects = <String, Rect>{
-    'motherboard': Rect.fromLTWH(.255, .16, .31, .55),
-    'cpu': Rect.fromLTWH(.361, .29, .064, .10),
-    'ram': Rect.fromLTWH(.512, .22, .043, .29),
-    'cooler': Rect.fromLTWH(.326, .23, .14, .23),
-    'gpu': Rect.fromLTWH(.253, .56, .33, .12),
-    'storage': Rect.fromLTWH(.65, .49, .10, .16),
-    'psu': Rect.fromLTWH(.227, .765, .23, .16),
+  static final _rects = <String, Rect>{
+    'motherboard': PcBuildProcedure.rects['motherboard']!,
+    'cpu': PcBuildProcedure.rects['cpu']!,
+    'ram': PcBuildProcedure.rects['ram']!,
+    'cooler': PcBuildProcedure.rects['cpu_fan']!,
+    'gpu': PcBuildProcedure.rects['gpu']!,
+    'storage': PcBuildProcedure.rects['ssd']!,
+    'psu': PcBuildProcedure.rects['psu']!,
   };
   static const _layers = [
     'motherboard',
@@ -746,7 +748,18 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
                     _operation == 3
                 ? .035 * math.sin(_motion.value * math.pi * 4)
                 : 0,
-            child: Image.asset(item.imageUrl, fit: BoxFit.fill),
+            child: kind == 'ram'
+                ? const InstalledDimm()
+                : kind == 'gpu'
+                ? Image.asset(
+                    'assets/simulations/assembly-gpu-installed-edge-v2.png',
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.high,
+                  )
+                : RotatedBox(
+                    quarterTurns: kind == 'storage' ? 1 : 0,
+                    child: Image.asset(item.imageUrl, fit: BoxFit.fill),
+                  ),
           ),
         ),
       ),
