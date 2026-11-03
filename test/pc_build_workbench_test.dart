@@ -28,20 +28,41 @@ void main() {
       SimulationData.getCableManagement(),
     ]) {
       for (final item in sim.items.where((i) => i.isRequired)) {
-        final operations = PcBuildProcedure.operations[item.id]!;
+        final operations = PcBuildProcedure.stepsFor(item.id);
         expect(operations.length, greaterThanOrEqualTo(4));
         expect(
           operations.every((o) => PcBuildProcedure.tools.contains(o.tool)),
           isTrue,
         );
         if (item.category != 'diagnostic') {
+          final expectedPlacements = switch (item.id) {
+            'front_panel' => 4,
+            'sata_cable' => 2,
+            _ => 1,
+          };
           expect(
             operations.where((o) => o.place),
-            hasLength(item.id == 'front_panel' ? 5 : 1),
+            hasLength(expectedPlacements),
           );
         }
       }
     }
+  });
+
+  test('assembly seats every circuit before its functional test', () {
+    final steps = PcBuildProcedure.stepsFor('assembly_test');
+    final powerOn = steps.indexWhere((step) => step.result.isNotEmpty);
+    final seated = steps
+        .take(powerOn)
+        .where((step) => step.place)
+        .map((step) => step.dropToken)
+        .toSet();
+    expect(seated, containsAll(PcBuildProcedure.requiredConnections));
+    expect(seated, hasLength(13));
+    expect(
+      steps.where((step) => step.dropToken?.startsWith('front_') == true),
+      hasLength(4),
+    );
   });
 
   test('case component layers keep realistic orientation and proportions', () {
@@ -102,6 +123,35 @@ void main() {
         predicate<String>(PcBuildProcedure.frontPanelLeadNames.containsKey),
       ),
     );
+  });
+
+  test('final cable test requires external leads before power-on', () {
+    final operations = PcBuildProcedure.operations['cable_inspection']!;
+    expect(
+      operations
+          .where((operation) => operation.place)
+          .map((operation) => operation.dropToken),
+      orderedEquals(['test_display', 'test_keyboard', 'test_mains']),
+    );
+    expect(
+      operations.any(
+        (operation) =>
+            operation.label.contains('PSU ON') &&
+            operation.label.contains('case power button'),
+      ),
+      isTrue,
+    );
+  });
+
+  test('both SATA data ends require their own keyed drop', () {
+    final drops = PcBuildProcedure.operations['sata_cable']!
+        .where((operation) => operation.place)
+        .toList();
+    expect(
+      drops.map((operation) => operation.dropToken),
+      orderedEquals(['sata_data_drive', 'sata_data_board']),
+    );
+    expect(drops.map((operation) => operation.requiredQuarterTurns), [0, 2]);
   });
 
   testWidgets('system unit rotates between open side and rear panel', (
@@ -204,7 +254,8 @@ void main() {
           expect(mistakes, hasLength(1));
           expect(completed, isEmpty);
           for (final item in simulation.items.where((i) => i.isRequired)) {
-            final steps = PcBuildProcedure.operations[item.id]!;
+            final steps = PcBuildProcedure.stepsFor(item.id);
+            var connectorTurns = 1;
             for (var n = 0; n < steps.length; n++) {
               final step = steps[n];
               final tool = find.byKey(ValueKey('build-tool-${item.id}'));
@@ -214,39 +265,38 @@ void main() {
               await tester.tap(find.text(step.tool).last);
               await tester.pumpAndSettle();
               if (step.place) {
-                final dropToken = item.id == 'front_panel'
-                    ? PcBuildProcedure.frontPanelDropTokens[n] ?? item.id
-                    : item.id;
-                final firstAttemptToken = dropToken == item.id
-                    ? dropToken
-                    : PcBuildProcedure.frontPanelLeadNames.keys.firstWhere(
-                        (token) => token != dropToken,
-                      );
-                final unaligned = find.byWidgetPredicate(
-                  (w) => w is Draggable<String> && w.data == firstAttemptToken,
-                );
-                await tester.ensureVisible(unaligned);
-                await tester.pumpAndSettle();
-                final previousMistakes = mistakes.length;
-                await tester.dragFrom(
-                  tester.getCenter(unaligned),
-                  tester.getCenter(
-                        find.byKey(const ValueKey('build-drop-target')),
-                      ) -
-                      tester.getCenter(unaligned),
-                );
-                await tester.pumpAndSettle();
-                expect(mistakes.length, previousMistakes + 1);
-                expect(completed, isNot(contains(item.id)));
-                if (dropToken == item.id) {
-                  final rotate = find.byKey(
-                    const ValueKey('rotate-build-part'),
+                final dropToken =
+                    step.dropToken ??
+                    (item.id == 'front_panel'
+                        ? PcBuildProcedure.frontPanelDropTokens[n] ?? item.id
+                        : item.id);
+                final isFrontPanelLead = PcBuildProcedure.frontPanelLeadNames
+                    .containsKey(dropToken);
+                if (isFrontPanelLead) {
+                  final wrongToken = PcBuildProcedure.frontPanelLeadNames.keys
+                      .firstWhere((token) => token != dropToken);
+                  final wrongSource = find.byWidgetPredicate(
+                    (w) => w is Draggable<String> && w.data == wrongToken,
                   );
-                  await tester.ensureVisible(rotate);
-                  for (var i = 0; i < 3; i++) {
-                    await tester.tap(rotate);
-                    await tester.pump();
-                  }
+                  await tester.ensureVisible(wrongSource);
+                  final previousMistakes = mistakes.length;
+                  await tester.dragFrom(
+                    tester.getCenter(wrongSource),
+                    tester.getCenter(
+                          find.byKey(const ValueKey('build-drop-target')),
+                        ) -
+                        tester.getCenter(wrongSource),
+                  );
+                  await tester.pumpAndSettle();
+                  expect(mistakes.length, previousMistakes + 1);
+                }
+                final requiredTurns = step.requiredQuarterTurns ?? 0;
+                final rotate = find.byKey(const ValueKey('rotate-build-part'));
+                await tester.ensureVisible(rotate);
+                while (connectorTurns != requiredTurns) {
+                  await tester.tap(rotate);
+                  await tester.pump();
+                  connectorTurns = (connectorTurns + 1) % 4;
                 }
                 final source = find.byWidgetPredicate(
                   (w) => w is Draggable<String> && w.data == dropToken,

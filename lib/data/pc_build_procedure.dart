@@ -8,10 +8,14 @@ class PcBuildOperation {
     this.point, {
     this.place = false,
     this.result = '',
+    this.dropToken,
+    this.requiredQuarterTurns,
   });
   final String label, tool, result;
   final Offset point;
   final bool place;
+  final String? dropToken;
+  final int? requiredQuarterTurns;
 }
 
 class PcBuildProcedure {
@@ -31,6 +35,17 @@ class PcBuildProcedure {
     'front_reset_sw': 'RESET SW â€¢ orange/white â€¢ pins 5/7',
     'front_hdd_led': 'HDD LED â€¢ red + / white âˆ’ â€¢ pins 1/3',
     'front_power_led': 'POWER LED â€¢ green + / white âˆ’ â€¢ pins 2/4',
+  };
+  static const connectorNames = <String, String>{
+    'atx_24pin_plug': '24-pin ATX plug • motherboard main power',
+    'eps_8pin_plug': '4+4 EPS plug • CPU power socket',
+    'pcie_8pin_plug': '6+2 PCIe plug • GPU auxiliary power',
+    'sata_data_drive': 'SATA data end • SSD data port',
+    'sata_data_board': 'SATA data end • motherboard SATA0 port',
+    'sata_power_drive': '15-pin SATA power • SSD power port',
+    'test_display': 'Display cable • graphics output',
+    'test_keyboard': 'USB keyboard • rear USB port',
+    'test_mains': 'IEC mains lead • PSU inlet',
   };
   static const rects = <String, Rect>{
     // These rectangles are calibrated against the photographed chassis. Their
@@ -170,6 +185,23 @@ class PcBuildProcedure {
       'Rear switch and mains socket remain accessible',
       'Four rear screw holes align before tightening',
     ],
+  };
+  static const wiringSequence = [
+    'power_cable',
+    'cpu_power',
+    'gpu_power',
+    'sata_cable',
+    'sata_power',
+    'front_panel',
+    'cable_inspection',
+  ];
+  static List<PcBuildOperation> stepsFor(String? id) => id == 'assembly_test'
+      ? [for (final key in wiringSequence) ...operations[key]!]
+      : operations[id] ?? const [];
+  static Set<String> get requiredConnections => {
+    for (final key in wiringSequence)
+      for (final step in operations[key]!)
+        if (step.dropToken != null) step.dropToken!,
   };
   static const operations = <String, List<PcBuildOperation>>{
     'motherboard': [
@@ -526,6 +558,8 @@ class PcBuildProcedure {
         hand,
         Offset(.501, .338),
         place: true,
+        dropToken: 'atx_24pin_plug',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
         'Inspect the closed latch and flush connector housing',
@@ -549,6 +583,8 @@ class PcBuildProcedure {
         hand,
         Offset(.326, .187),
         place: true,
+        dropToken: 'eps_8pin_plug',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
         'Inspect the engaged CPU power latch',
@@ -572,6 +608,8 @@ class PcBuildProcedure {
         hand,
         Offset(.455, .58),
         place: true,
+        dropToken: 'pcie_8pin_plug',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
         'Inspect the latched plug without pulling its wires',
@@ -590,11 +628,16 @@ class PcBuildProcedure {
         hand,
         Offset(.635, .315),
         place: true,
+        dropToken: 'sata_data_drive',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
-        'Connect the other end to motherboard SATA0',
+        'Rotate and drag the other end into motherboard SATA0',
         hand,
         Offset(.501, .585),
+        place: true,
+        dropToken: 'sata_data_board',
+        requiredQuarterTurns: 2,
       ),
       PcBuildOperation(
         'Route the data cable without sharp bends',
@@ -618,6 +661,8 @@ class PcBuildProcedure {
         hand,
         Offset(.675, .315),
         place: true,
+        dropToken: 'sata_power_drive',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
         'Inspect both SSD connectors and keep their cables free of strain',
@@ -632,34 +677,39 @@ class PcBuildProcedure {
         Offset(.49, .68),
       ),
       PcBuildOperation(
-        'Connect the front-panel harness at F_PANEL',
-        hand,
+        'Separate the four front-panel leads and verify every printed label',
+        inspect,
         Offset(.49, .68),
-        place: true,
       ),
       PcBuildOperation(
         'Seat PWR_SW on pins 6/8; switch polarity does not matter',
         hand,
         Offset(.505, .69),
         place: true,
+        dropToken: 'front_power_sw',
       ),
       PcBuildOperation(
         'Seat RESET on pins 5/7; switch polarity does not matter',
         hand,
         Offset(.495, .685),
         place: true,
+        dropToken: 'front_reset_sw',
       ),
       PcBuildOperation(
         'Seat HDD_LED positive on 1 and negative on 3',
         hand,
         Offset(.475, .675),
         place: true,
+        dropToken: 'front_hdd_led',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
         'Seat PWR_LED positive on 2 and negative on 4',
         hand,
         Offset(.485, .68),
         place: true,
+        dropToken: 'front_power_led',
+        requiredQuarterTurns: 0,
       ),
     ],
     'cable_inspection': [
@@ -679,7 +729,31 @@ class PcBuildProcedure {
         Offset(.40, .34),
       ),
       PcBuildOperation(
-        'Connect display and keyboard, then mains; switch on and test',
+        'Drag the display cable into the graphics output',
+        hand,
+        Offset(.785, .26),
+        place: true,
+        dropToken: 'test_display',
+        requiredQuarterTurns: 0,
+      ),
+      PcBuildOperation(
+        'Drag the keyboard USB plug into a rear USB port',
+        hand,
+        Offset(.785, .32),
+        place: true,
+        dropToken: 'test_keyboard',
+        requiredQuarterTurns: 0,
+      ),
+      PcBuildOperation(
+        'Connect the IEC mains lead to the PSU inlet',
+        hand,
+        Offset(.785, .82),
+        place: true,
+        dropToken: 'test_mains',
+        requiredQuarterTurns: 0,
+      ),
+      PcBuildOperation(
+        'Switch the PSU ON and press the case power button',
         hand,
         Offset(.77, .14),
         result:

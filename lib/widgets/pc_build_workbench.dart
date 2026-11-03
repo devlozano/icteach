@@ -35,6 +35,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
   final _record = TextEditingController();
   final _zoom = TransformationController();
   final _seated = <String>{};
+  final _connections = <String>{};
   final _history = <String>[];
   int _operation = 0, _turns = 1;
   String? _tool, _feedback;
@@ -48,8 +49,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     return pending.firstOrNull;
   }
 
-  List<PcBuildOperation> get _steps =>
-      PcBuildProcedure.operations[_current?.id] ?? const [];
+  List<PcBuildOperation> get _steps => PcBuildProcedure.stepsFor(_current?.id);
   PcBuildOperation? get _step =>
       _operation < _steps.length ? _steps[_operation] : null;
   bool get _diagnostic => _current?.category == 'diagnostic';
@@ -77,22 +77,47 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       _mistake('Use ${step.tool} for this operation.');
       return;
     }
-    final expectedDrop = item.id == 'front_panel'
-        ? PcBuildProcedure.frontPanelDropTokens[_operation] ?? item.id
-        : item.id;
+    final expectedDrop =
+        step.dropToken ??
+        (item.id == 'front_panel'
+            ? PcBuildProcedure.frontPanelDropTokens[_operation] ?? item.id
+            : item.id);
     if (step.place && dropped != expectedDrop) {
       _mistake(
         item.id == 'front_panel' && expectedDrop != item.id
             ? 'That lead does not match these F_PANEL pins. Follow the wire color and connector label.'
+            : step.dropToken != null
+            ? 'That connector does not belong in this port. Match the connector label, key, and latch.'
             : 'Select the compatible ${item.name} from the parts tray.',
       );
       return;
     }
-    if (step.place && expectedDrop == item.id && _turns % 4 != 0) {
+    final requiredTurns = step.requiredQuarterTurns ?? 0;
+    final checksOrientation =
+        step.requiredQuarterTurns != null || expectedDrop == item.id;
+    if (step.place && checksOrientation && _turns % 4 != requiredTurns) {
       _mistake(
-        'The key or marked corner is reversed. Rotate the part to match the socket; do not force it.',
+        'The connector key is facing the wrong way. Rotate it until the notch and latch match the port; never twist or force it.',
       );
       return;
+    }
+    if (step.result.isNotEmpty) {
+      final missing = PcBuildProcedure.requiredConnections.difference(
+        _connections,
+      );
+      for (final id in widget.completed) {
+        missing.removeAll(
+          PcBuildProcedure.stepsFor(
+            id,
+          ).map((s) => s.dropToken).whereType<String>(),
+        );
+      }
+      if (missing.isNotEmpty) {
+        _mistake(
+          'Power-on blocked: missing connections: ${missing.join(', ')}',
+        );
+        return;
+      }
     }
     if (_diagnostic &&
         _operation == _steps.length - 1 &&
@@ -118,8 +143,16 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     }
     if (!mounted) return;
     setState(() {
-      if (step.place) _seated.add(item.id);
+      if (step.place && PcBuildProcedure.rects.containsKey(item.id)) {
+        _seated.add(item.id);
+      }
+      if (step.dropToken != null) _connections.add(step.dropToken!);
       _history.add(step.result.isEmpty ? step.label : step.result);
+      if (step.result.isNotEmpty) {
+        _history.add(
+          'POST: CPU and memory detected; CPU fan running; SATA SSD detected; display and keyboard responding; POWER SW, RESET SW, HDD LED and POWER LED circuits passed.',
+        );
+      }
       if (_diagnostic && _operation == _steps.length - 1) {
         _history.add('Service record: ${_record.text.trim()}');
       }
@@ -168,9 +201,10 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
   Widget _controls() {
     final item = _current;
     final step = _step;
-    final frontPanelToken = item?.id == 'front_panel'
-        ? PcBuildProcedure.frontPanelDropTokens[_operation]
+    final frontPanelToken = step?.dropToken?.startsWith('front_') == true
+        ? step!.dropToken
         : null;
+    final connectorToken = step?.dropToken;
     return Card(
       margin: EdgeInsets.zero,
       child: SingleChildScrollView(
@@ -237,7 +271,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
               const SizedBox(height: 10),
               Text(
                 step.place
-                    ? 'Rotate the part to match the gold corner marker, then drag it onto the highlighted socket.'
+                    ? 'Rotate the keyed connector until its notch and latch match, then drag it onto the highlighted port.'
                     : 'Touch the highlighted fastener, latch or connector on the chassis.',
                 style: const TextStyle(fontSize: 12),
               ),
@@ -294,6 +328,8 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                 const SizedBox(height: 8),
                 if (frontPanelToken != null)
                   _frontPanelLeadTray(frontPanelToken)
+                else if (connectorToken != null && connectorToken != item.id)
+                  _connectorTray(connectorToken, item)
                 else ...[
                   Draggable<String>(
                     data: item.id,
@@ -308,15 +344,15 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                     ),
                     child: _part(item),
                   ),
-                  TextButton.icon(
-                    key: const ValueKey('rotate-build-part'),
-                    onPressed: _busy || widget.locked
-                        ? null
-                        : () => setState(() => _turns = (_turns + 1) % 4),
-                    icon: const Icon(Icons.rotate_right),
-                    label: const Text('Rotate 90°'),
-                  ),
                 ],
+                TextButton.icon(
+                  key: const ValueKey('rotate-build-part'),
+                  onPressed: _busy || widget.locked
+                      ? null
+                      : () => setState(() => _turns = (_turns + 1) % 4),
+                  icon: const Icon(Icons.rotate_right),
+                  label: Text('Rotate connector 90° • ${_turns * 90}°'),
+                ),
                 for (final other in widget.items.where((i) => !i.isRequired))
                   Draggable<String>(
                     data: other.id,
@@ -403,6 +439,79 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     );
   }
 
+  Widget _connectorTray(String token, DraggableItem item) {
+    final label = PcBuildProcedure.connectorNames[token] ?? item.name;
+    final visual = _connectorTile(token, label);
+    return Draggable<String>(
+      data: token,
+      maxSimultaneousDrags: _busy || widget.locked ? 0 : 1,
+      feedback: Material(color: Colors.transparent, child: visual),
+      childWhenDragging: Opacity(opacity: .25, child: visual),
+      child: visual,
+    );
+  }
+
+  String? _connectorAsset(String token) => switch (token) {
+    'atx_24pin_plug' => 'cable-atx-24pin-v2.png',
+    'eps_8pin_plug' => 'cable-cpu-4plus4.png',
+    'pcie_8pin_plug' => 'cable-gpu-6plus2.png',
+    'sata_data_drive' || 'sata_data_board' => 'cable-sata-data-v2.png',
+    'sata_power_drive' => 'cable-sata-power-v2.png',
+    _ => null,
+  };
+  Widget _connectorTile(String token, String label) {
+    final icon = switch (token) {
+      'test_display' => Icons.monitor_rounded,
+      'test_keyboard' => Icons.keyboard_rounded,
+      'test_mains' => Icons.power_rounded,
+      'sata_data_drive' || 'sata_data_board' => Icons.cable_rounded,
+      _ => Icons.electrical_services_rounded,
+    };
+    final color = token.startsWith('sata_data')
+        ? const Color(0xFFB83C31)
+        : token.startsWith('test_')
+        ? const Color(0xFF2563EB)
+        : const Color(0xFF303840);
+    return Container(
+      width: 210,
+      padding: const EdgeInsets.all(9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF4F7FA),
+        border: Border.all(color: const Color(0xFF8DA3B8)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          RotatedBox(
+            quarterTurns: _turns,
+            child: Container(
+              width: 42,
+              height: 30,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.black54),
+              ),
+              child: _connectorAsset(token) == null
+                  ? Icon(icon, color: Colors.white, size: 20)
+                  : Image.asset(
+                      'assets/simulations/${_connectorAsset(token)}',
+                      fit: BoxFit.contain,
+                    ),
+            ),
+          ),
+          const SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _frontPanelLeadTray(String expected) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -411,6 +520,8 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
       ),
       const SizedBox(height: 6),
+      _frontPanelHeaderDiagram(expected),
+      const SizedBox(height: 8),
       for (var i = 0; i < PcBuildProcedure.frontPanelLeadNames.length; i++)
         Padding(
           padding: const EdgeInsets.only(bottom: 5),
@@ -422,7 +533,10 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
               child: SizedBox(
                 width: 190,
                 height: 50,
-                child: _FrontPanelLeadSprite(index: i),
+                child: RotatedBox(
+                  quarterTurns: _turns,
+                  child: _FrontPanelLeadSprite(index: i),
+                ),
               ),
             ),
             childWhenDragging: Opacity(
@@ -434,6 +548,76 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
         ),
     ],
   );
+
+  Widget _frontPanelHeaderDiagram(String expected) {
+    const assignments = <(String, String, String)>[
+      ('front_hdd_led', '1+/3−', 'HDD LED'),
+      ('front_power_led', '2+/4−', 'POWER LED'),
+      ('front_reset_sw', '5/7', 'RESET SW'),
+      ('front_power_sw', '6/8', 'POWER SW'),
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17212B),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Wrap(
+        spacing: 5,
+        runSpacing: 5,
+        children: [
+          for (final assignment in assignments)
+            DragTarget<String>(
+              onWillAcceptWithDetails: (_) => !_busy && !widget.locked,
+              onAcceptWithDetails: (details) {
+                if (details.data != assignment.$1 ||
+                    assignment.$1 != expected) {
+                  _mistake(
+                    'Wrong F_PANEL pins. Match the lead label and LED polarity.',
+                  );
+                } else {
+                  _act(dropped: details.data);
+                }
+              },
+              builder: (context, candidates, rejected) => Container(
+                key: ValueKey('header-${assignment.$1}'),
+                width: 87,
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+                decoration: BoxDecoration(
+                  color: assignment.$1 == expected
+                      ? const Color(0xFF087F8C)
+                      : const Color(0xFF293744),
+                  border: Border.all(
+                    color: assignment.$1 == expected
+                        ? Colors.cyanAccent
+                        : Colors.white24,
+                  ),
+                  borderRadius: BorderRadius.circular(5),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      assignment.$2,
+                      style: const TextStyle(
+                        color: Colors.amberAccent,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      assignment.$3,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 8),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   Widget _frontPanelLeadTile(int index, String expected) {
     final token = PcBuildProcedure.frontPanelLeadNames.keys.elementAt(index);
@@ -456,7 +640,10 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
           SizedBox(
             width: 76,
             height: 42,
-            child: _FrontPanelLeadSprite(index: index),
+            child: RotatedBox(
+              quarterTurns: _turns,
+              child: _FrontPanelLeadSprite(index: index),
+            ),
           ),
           const SizedBox(width: 6),
           Expanded(
@@ -712,10 +899,15 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
   }
 
   Offset? _cableEndpoint(String id, int operation) => switch (id) {
+    'assembly_test' => _step?.dropToken != null ? _step!.point : null,
     'power_cable' => const Offset(.501, .338),
     'cpu_power' => const Offset(.326, .187),
     'gpu_power' => const Offset(.455, .58),
-    'sata_cable' => const Offset(.635, .315),
+    'sata_cable' => switch (operation) {
+      1 => const Offset(.635, .315),
+      2 => const Offset(.501, .585),
+      _ => null,
+    },
     'sata_power' => const Offset(.675, .315),
     'front_panel' => switch (operation) {
       1 => const Offset(.49, .68),
@@ -723,6 +915,12 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       3 => const Offset(.495, .685),
       4 => const Offset(.475, .675),
       5 => const Offset(.485, .68),
+      _ => null,
+    },
+    'cable_inspection' => switch (operation) {
+      3 => const Offset(.785, .26),
+      4 => const Offset(.785, .32),
+      5 => const Offset(.785, .82),
       _ => null,
     },
     _ => null,
@@ -738,6 +936,8 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     final end = _cableEndpoint(item.id, operation)!;
     final start = item.id == 'front_panel'
         ? const Offset(.77, .22)
+        : item.id == 'sata_cable' && operation == 2
+        ? const Offset(.635, .315)
         : const Offset(.68, .78);
     final position = Offset.lerp(
       start,
@@ -748,6 +948,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     final leadIndex = item.id == 'front_panel' && operation >= 2
         ? operation - 2
         : null;
+    final connectorToken = _step?.dropToken;
     return Positioned(
       left: position.dx * w - extent / 2,
       top: position.dy * h - extent / 2,
@@ -758,13 +959,21 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
           angle: (1 - progress) * -.18,
           child: Opacity(
             opacity: .72 + .28 * progress,
-            child: leadIndex == null
-                ? Image.asset(
+            child: leadIndex != null
+                ? _FrontPanelLeadSprite(index: leadIndex)
+                : connectorToken != null
+                ? FittedBox(
+                    child: _connectorTile(
+                      connectorToken,
+                      PcBuildProcedure.connectorNames[connectorToken] ??
+                          connectorToken,
+                    ),
+                  )
+                : Image.asset(
                     item.imageUrl,
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
-                  )
-                : _FrontPanelLeadSprite(index: leadIndex),
+                  ),
           ),
         ),
       ),
@@ -1210,14 +1419,15 @@ class _BuildMechanicsPainter extends CustomPainter {
       );
     }
 
-    final testing = current == 'assembly_test'
-        ? operation
-        : installed.contains('assembly_test')
-        ? 10
-        : 0;
+    bool connected(String token) => history.contains(
+      PcBuildProcedure.operations.values
+          .expand((s) => s)
+          .firstWhere((s) => s.dropToken == token)
+          .label,
+    );
     wire(
       installed.contains('power_cable') ||
-          testing > 0 ||
+          connected('atx_24pin_plug') ||
           (current == 'power_cable' && operation == 2 && busy),
       p(.501, .338),
       Colors.orange,
@@ -1226,7 +1436,7 @@ class _BuildMechanicsPainter extends CustomPainter {
     );
     wire(
       installed.contains('cpu_power') ||
-          testing > 1 ||
+          connected('eps_8pin_plug') ||
           (current == 'cpu_power' && operation == 2 && busy),
       p(.326, .187),
       Colors.amber,
@@ -1236,7 +1446,7 @@ class _BuildMechanicsPainter extends CustomPainter {
     );
     wire(
       installed.contains('gpu_power') ||
-          testing > 2 ||
+          connected('pcie_8pin_plug') ||
           (current == 'gpu_power' && operation == 2 && busy),
       p(.455, .58),
       Colors.yellow,
@@ -1245,17 +1455,28 @@ class _BuildMechanicsPainter extends CustomPainter {
     );
     wire(
       installed.contains('sata_cable') ||
-          testing > 3 ||
-          (current == 'sata_cable' && operation == 1 && busy),
+          connected('sata_data_board') ||
+          (current == 'sata_cable' &&
+              (operation > 1 || operation == 1 && busy)),
       p(.635, .315),
       Colors.redAccent,
       start: p(.501, .585),
-      progress: current == 'sata_cable' && operation == 1 && busy ? motion : 1,
+      progress: current == 'sata_cable'
+          ? operation == 1 && busy
+                ? motion * .5
+                : operation == 2 && busy
+                ? .5 + motion * .5
+                : operation > 2
+                ? 1
+                : operation > 1
+                ? .5
+                : 0
+          : 1,
       contacts: 7,
     );
     wire(
       installed.contains('sata_power') ||
-          testing > 4 ||
+          connected('sata_power_drive') ||
           (current == 'sata_power' && operation == 2 && busy),
       p(.675, .315),
       Colors.orangeAccent,
@@ -1264,9 +1485,10 @@ class _BuildMechanicsPainter extends CustomPainter {
     );
     final frontPanelComplete =
         (installed.contains('front_panel') && current != 'front_panel') ||
-        testing > 5;
+        connected('front_power_led');
     wire(
-      frontPanelComplete ||
+      connected('front_power_sw') ||
+          frontPanelComplete ||
           (current == 'front_panel' &&
               (operation > 2 || operation == 2 && busy)),
       p(.505, .69),
@@ -1276,7 +1498,8 @@ class _BuildMechanicsPainter extends CustomPainter {
       progress: current == 'front_panel' && operation == 2 && busy ? motion : 1,
     );
     wire(
-      frontPanelComplete ||
+      connected('front_reset_sw') ||
+          frontPanelComplete ||
           (current == 'front_panel' &&
               (operation > 3 || operation == 3 && busy)),
       p(.495, .685),
@@ -1286,7 +1509,8 @@ class _BuildMechanicsPainter extends CustomPainter {
       progress: current == 'front_panel' && operation == 3 && busy ? motion : 1,
     );
     wire(
-      frontPanelComplete ||
+      connected('front_hdd_led') ||
+          frontPanelComplete ||
           (current == 'front_panel' &&
               (operation > 4 || operation == 4 && busy)),
       p(.475, .675),
@@ -1296,7 +1520,8 @@ class _BuildMechanicsPainter extends CustomPainter {
       progress: current == 'front_panel' && operation == 4 && busy ? motion : 1,
     );
     wire(
-      frontPanelComplete ||
+      connected('front_power_led') ||
+          frontPanelComplete ||
           (current == 'front_panel' &&
               (operation > 5 || operation == 5 && busy)),
       p(.485, .68),
