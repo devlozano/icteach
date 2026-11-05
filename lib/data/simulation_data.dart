@@ -1,4 +1,5 @@
 import '../models/simulation_model.dart';
+import 'motherboard_parts.dart';
 
 class SimulationData {
   static DraggableItem _item({
@@ -638,7 +639,7 @@ class SimulationData {
     competency: 'COC2',
     learningOutcome: 'LO1 - Install network cables',
     timeLimit: 10,
-    requiredSimulationId: 'sim_coc2_topology',
+    requiredSimulationId: null,
     items: List.generate(8, (index) {
       final pin = index + 1;
       const colors = [
@@ -673,7 +674,7 @@ class SimulationData {
     competency: 'COC2',
     learningOutcome: 'LO3 - Set-up network protocols',
     timeLimit: 10,
-    requiredSimulationId: 'sim_coc2_topology',
+    requiredSimulationId: null,
     items: [
       _ip('ip_pc1', 'PC 1: 192.168.1.10', 'pc1_ip', 1),
       _ip('ip_pc2', 'PC 2: 192.168.1.11', 'pc2_ip', 2),
@@ -976,18 +977,38 @@ class SimulationData {
   static Simulation getNetworkSetup() => getNetworkTopology();
 
   static List<Simulation> getAllSimulations() => [
+    getMotherboardIdentification(),
     getPcAssembly(),
     getPcDisassembly(),
     getCableManagement(),
-    getOperatingSystemInstallation(),
-    getSoftwareConfiguration(),
-    getPreventiveMaintenance(),
-    getComputerTroubleshooting(),
-    getNetworkTopology(),
     getRj45Crimping(),
     getIpConfiguration(),
-    getConnectivityDiagnostics(),
   ];
+
+  static Simulation getMotherboardIdentification() => _simulation(
+    id: 'sim_coc1_motherboard',
+    title: 'Motherboard Parts Identification - COC1',
+    description:
+        'Inspect a zoomable motherboard and locate its sockets, slots, power connectors, ports, and chipset.',
+    type: 'identification',
+    competency: 'COC1',
+    learningOutcome: 'LO1',
+    timeLimit: 600,
+    requiredSimulationId: null,
+    items: [
+      for (var i = 0; i < MotherboardParts.entries.length; i++)
+        _item(
+          id: MotherboardParts.entries[i].$1,
+          name: MotherboardParts.entries[i].$2,
+          description: MotherboardParts.entries[i].$4,
+          imageUrl: MotherboardParts.asset,
+          correctSlot: MotherboardParts.entries[i].$1,
+          category: 'motherboard',
+          step: i + 1,
+          tooltip: MotherboardParts.entries[i].$4,
+        ),
+    ],
+  );
 
   static List<Simulation> getSimulationsByCompetency(String competency) =>
       getAllSimulations().where((sim) => sim.competency == competency).toList();

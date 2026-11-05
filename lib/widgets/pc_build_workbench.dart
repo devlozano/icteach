@@ -445,7 +445,10 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     return Draggable<String>(
       data: token,
       maxSimultaneousDrags: _busy || widget.locked ? 0 : 1,
-      feedback: Material(color: Colors.transparent, child: visual),
+      feedback: Material(
+        color: Colors.transparent,
+        child: _connectorPhoto(token),
+      ),
       childWhenDragging: Opacity(opacity: .25, child: visual),
       child: visual,
     );
@@ -460,6 +463,14 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     _ => null,
   };
   Widget _connectorTile(String token, String label) {
+    return Tooltip(
+      message: label,
+      triggerMode: TooltipTriggerMode.longPress,
+      child: _connectorPhoto(token),
+    );
+  }
+
+  Widget _connectorPhoto(String token) {
     final icon = switch (token) {
       'test_display' => Icons.monitor_rounded,
       'test_keyboard' => Icons.keyboard_rounded,
@@ -467,47 +478,18 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       'sata_data_drive' || 'sata_data_board' => Icons.cable_rounded,
       _ => Icons.electrical_services_rounded,
     };
-    final color = token.startsWith('sata_data')
-        ? const Color(0xFFB83C31)
-        : token.startsWith('test_')
-        ? const Color(0xFF2563EB)
-        : const Color(0xFF303840);
-    return Container(
-      width: 210,
-      padding: const EdgeInsets.all(9),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF4F7FA),
-        border: Border.all(color: const Color(0xFF8DA3B8)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          RotatedBox(
-            quarterTurns: _turns,
-            child: Container(
-              width: 42,
-              height: 30,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.black54),
+    return SizedBox(
+      width: 140,
+      height: 90,
+      child: RotatedBox(
+        quarterTurns: _turns,
+        child: _connectorAsset(token) == null
+            ? Icon(icon, color: const Color(0xFF2563EB), size: 48)
+            : Image.asset(
+                'assets/simulations/${_connectorAsset(token)}',
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
               ),
-              child: _connectorAsset(token) == null
-                  ? Icon(icon, color: Colors.white, size: 20)
-                  : Image.asset(
-                      'assets/simulations/${_connectorAsset(token)}',
-                      fit: BoxFit.contain,
-                    ),
-            ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ],
       ),
     );
   }

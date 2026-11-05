@@ -1,4 +1,5 @@
 import 'simulation_step_lab.dart';
+import 'motherboard_identification.dart';
 import 'pc_disassembly_workbench.dart';
 import 'pc_build_workbench.dart';
 import 'rj45_workbench.dart';
@@ -734,6 +735,9 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.simulation.id == 'sim_coc1_motherboard') {
+      return MotherboardIdentification(onComplete: widget.onComplete);
+    }
     if (widget.simulation.id == 'sim_coc2_crimping') {
       return Rj45Workbench(
         onComplete: widget.onComplete,
