@@ -11,7 +11,7 @@ void main() {
       final catalog = SimulationData.getAllSimulations();
       final ids = catalog.map((s) => s.id).toSet();
       expect(ids.length, catalog.length);
-      expect(ids, hasLength(11));
+      expect(ids, hasLength(6));
       expect(ids, isNot(contains('sim_coc1_identification')));
       expect(
         SimulationData.getSimulationById('sim_coc1_identification'),
@@ -21,6 +21,8 @@ void main() {
         if (simulation.requiredSimulationId != null) {
           expect(ids, contains(simulation.requiredSimulationId));
         }
+        // Motherboard inspection uses direct image taps, not the step lab.
+        if (simulation.id == 'sim_coc1_motherboard') continue;
         for (final item in simulation.items.where((i) => i.isRequired)) {
           final detail = SimulationStepDetail.forItem(simulation, item);
           expect(

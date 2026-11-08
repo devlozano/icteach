@@ -48,7 +48,9 @@ class GradingWeightsCard extends StatelessWidget {
               ),
             ),
           const Text(
-            '— means no STs–TE component. Activity averages below are progress indicators, not quarterly grades.',
+            'DepEd Order 015, s. 2026. Three terms per school year. '
+            '— means no exam component. Use the Grades tab for CSS term and final grades. '
+            'Activity averages below are progress indicators.',
             style: TextStyle(fontSize: 12),
           ),
         ],

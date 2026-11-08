@@ -111,6 +111,23 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('Place on target'), findsNothing);
         expect(find.text('Drop Here'), findsNothing);
+        if (simulation.id == 'sim_coc1_motherboard') {
+          expect(
+            find.byKey(const ValueKey('motherboard-image')),
+            findsOneWidget,
+          );
+          expect(find.byType(InteractiveViewer), findsOneWidget);
+          expect(find.textContaining('Locate:'), findsOneWidget);
+          final board = tester.getRect(
+            find.byKey(const ValueKey('motherboard-image')),
+          );
+          expect(board.width, greaterThan(0));
+          expect(board.height, greaterThan(0));
+          expect(board.left, greaterThanOrEqualTo(0));
+          expect(board.right, lessThanOrEqualTo(size.width));
+          expect(board.bottom, lessThanOrEqualTo(size.height));
+          return;
+        }
         if (simulation.id == 'sim_coc2_crimping') {
           expect(find.text('Straight-through'), findsOneWidget);
           expect(find.text('Crossover (10/100)'), findsOneWidget);
@@ -288,9 +305,9 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final simulation = SimulationData.getSimulationById(
-        'sim_coc1_software_config',
-      )!;
+      // Keep the generic tray regression using its original fixture, which is
+      // no longer offered in the active student catalog.
+      final simulation = SimulationData.getSoftwareConfiguration();
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,

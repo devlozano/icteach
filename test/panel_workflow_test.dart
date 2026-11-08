@@ -7,13 +7,14 @@ import 'package:icteach/data/simulation_data.dart';
 import 'package:icteach/screens/teacher/learning_path_manager.dart';
 
 void main() {
-  test('advanced module-related labs are present', () {
+  test('active practical labs are available for lesson linking', () {
     final ids = SimulationData.getAllSimulations().map((s) => s.id).toSet();
     for (final keyword in [
-      'os_install',
-      'maintenance',
-      'repair',
-      'diagnostics',
+      'motherboard',
+      'assembly',
+      'cabling',
+      'crimping',
+      'ipconfig',
     ]) {
       expect(ids.any((id) => id.contains(keyword)), isTrue, reason: keyword);
     }

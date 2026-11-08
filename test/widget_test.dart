@@ -14,6 +14,7 @@ void main() {
     expect(simulations.map((sim) => sim.competency).toSet(), {'COC1', 'COC2'});
     expect(simulations.any((sim) => sim.id == 'sim_coc1_assembly'), isTrue);
     expect(simulations.any((sim) => sim.id == 'sim_coc1_disassembly'), isTrue);
-    expect(simulations.any((sim) => sim.id == 'sim_coc2_topology'), isTrue);
+    expect(simulations.any((sim) => sim.id == 'sim_coc2_crimping'), isTrue);
+    expect(simulations.any((sim) => sim.id == 'sim_coc2_ipconfig'), isTrue);
   });
 }

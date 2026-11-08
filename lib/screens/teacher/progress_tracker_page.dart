@@ -1,4 +1,6 @@
-import '../../widgets/grading_weights_card.dart';
+import '../../widgets/insights_ui.dart';
+import '../../services/css_gradebook_service.dart';
+import 'css_gradebook_page.dart';
 import '../../widgets/summary_print_button.dart';
 import '../../services/class_summary_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -9,14 +11,20 @@ import 'assessment_review_page.dart';
 import '../../widgets/leaderboard_chart.dart';
 import '../../services/report_export_service.dart';
 
+part 'class_insights_tabs.dart';
+
 class ProgressTrackerPage extends StatefulWidget {
   final String classId;
   final String className;
+  final FirebaseFirestore? firestore;
+  final CssGradebookService? gradebookService;
 
   const ProgressTrackerPage({
     super.key,
     required this.classId,
     required this.className,
+    this.firestore,
+    this.gradebookService,
   });
 
   @override
@@ -37,7 +45,7 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
   }
 
   Future<_ClassInsights> _loadInsights() async {
-    final db = FirebaseFirestore.instance;
+    final db = widget.firestore ?? FirebaseFirestore.instance;
     final classSnapshot = await db
         .collection('classes')
         .doc(widget.classId)
@@ -175,11 +183,14 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 4,
-      initialIndex: WorkspacePreferences.tab('insights_${widget.classId}', 4),
+      length: 5,
+      initialIndex: WorkspacePreferences.tab('insights_${widget.classId}', 5),
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F7FB),
         appBar: AppBar(
+          toolbarHeight: MediaQuery.textScalerOf(context).scale(20) > 26
+              ? 80
+              : 64,
           backgroundColor: const Color(0xFF0B2B4A),
           foregroundColor: Colors.white,
           title: Column(
@@ -191,6 +202,8 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
               ),
               Text(
                 widget.className,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w400,
@@ -198,92 +211,134 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
               ),
             ],
           ),
-          actions: [
-            SummaryPrintButton(
-              title: 'Class summary - ${widget.className}',
-              load: () => ClassSummaryService.load(widget.classId),
-            ),
-            IconButton(
-              tooltip: 'Student activity timeline',
-              icon: const Icon(Icons.history),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ActivityTimelinePage(classId: widget.classId),
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: 'Pre-assessments and practical validation',
-              icon: const Icon(Icons.fact_check_outlined),
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AssessmentReviewPage(
-                    classId: widget.classId,
-                    className: widget.className,
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(108),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  height: 56,
+                  child: IconTheme(
+                    data: const IconThemeData(color: Colors.white),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          const Text(
+                            'CLASS TOOLS',
+                            style: TextStyle(
+                              fontSize: 11,
+                              letterSpacing: 1.2,
+                              color: Color(0xFFB8C7D6),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          SummaryPrintButton(
+                            title: 'Class summary - ${widget.className}',
+                            load: () =>
+                                ClassSummaryService.load(widget.classId),
+                          ),
+                          IconButton(
+                            tooltip: 'Student activity timeline',
+                            icon: const Icon(Icons.history),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ActivityTimelinePage(
+                                  classId: widget.classId,
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Pre-assessments and practical validation',
+                            icon: const Icon(Icons.fact_check_outlined),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => AssessmentReviewPage(
+                                  classId: widget.classId,
+                                  className: widget.className,
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Export activity progress (CSV)',
+                            icon: const Icon(Icons.download_outlined),
+                            onPressed: () async {
+                              try {
+                                final insights = await _insightsFuture;
+                                await ReportExportService.shareCsv(
+                                  'icteach-activity-progress.csv',
+                                  [
+                                    [
+                                      'Student',
+                                      'Quizzes taken',
+                                      'Quiz average (%)',
+                                      'Simulations attempted',
+                                      'Simulation average (%)',
+                                      'Simulations passed',
+                                    ],
+                                    ...insights.students.map(
+                                      (s) => [
+                                        s.name,
+                                        s.quizCount,
+                                        s.quizAverage.toStringAsFixed(1),
+                                        s.simulationCount,
+                                        s.simulationAverage.toStringAsFixed(1),
+                                        s.passedSimulations,
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              } catch (_) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Unable to export progress. Please retry.',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                          ),
+                          IconButton(
+                            tooltip: 'Refresh data',
+                            onPressed: () => setState(_refresh),
+                            icon: const Icon(Icons.refresh_rounded),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                TabBar(
+                  onTap: (index) => WorkspacePreferences.saveTab(
+                    'insights_${widget.classId}',
+                    index,
+                  ),
+                  isScrollable: true,
+                  tabAlignment: TabAlignment.start,
+                  dividerColor: Colors.transparent,
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicatorColor: Color(0xFF60E3DD),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Color(0xFFB8C7D6),
+                  tabs: const [
+                    Tab(text: 'Overview'),
+                    Tab(text: 'Students'),
+                    Tab(text: 'Simulations'),
+                    Tab(text: 'Feedback'),
+                    Tab(text: 'Grades'),
+                  ],
+                ),
+              ],
             ),
-            IconButton(
-              tooltip: 'Export grades (CSV)',
-              icon: const Icon(Icons.download_outlined),
-              onPressed: () async {
-                try {
-                  final insights = await _insightsFuture;
-                  await ReportExportService.shareCsv('icteach-grades.csv', [
-                    [
-                      'Student',
-                      'Quizzes taken',
-                      'Quiz average (%)',
-                      'Simulations attempted',
-                      'Simulation average (%)',
-                      'Simulations passed',
-                    ],
-                    ...insights.students.map(
-                      (s) => [
-                        s.name,
-                        s.quizCount,
-                        s.quizAverage.toStringAsFixed(1),
-                        s.simulationCount,
-                        s.simulationAverage.toStringAsFixed(1),
-                        s.passedSimulations,
-                      ],
-                    ),
-                  ]);
-                } catch (_) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Unable to export grades. Please retry.'),
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-            IconButton(
-              tooltip: 'Refresh data',
-              onPressed: () => setState(_refresh),
-              icon: const Icon(Icons.refresh_rounded),
-            ),
-          ],
-          bottom: TabBar(
-            onTap: (index) => WorkspacePreferences.saveTab(
-              'insights_${widget.classId}',
-              index,
-            ),
-            isScrollable: true,
-            indicatorColor: Color(0xFF60E3DD),
-            labelColor: Colors.white,
-            unselectedLabelColor: Color(0xFFB8C7D6),
-            tabs: const [
-              Tab(text: 'Overview'),
-              Tab(text: 'Students'),
-              Tab(text: 'Simulations'),
-              Tab(text: 'Feedback'),
-            ],
           ),
         ),
         body: FutureBuilder<_ClassInsights>(
@@ -293,10 +348,7 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
               return const Center(child: CircularProgressIndicator());
             }
             if (snapshot.hasError) {
-              return _ErrorState(
-                message: snapshot.error.toString(),
-                onRetry: () => setState(_refresh),
-              );
+              return _ErrorState(onRetry: () => setState(_refresh));
             }
             final insights = snapshot.data!;
             return TabBarView(
@@ -308,6 +360,14 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
                   feedback: insights.feedback,
                   questionnaireResponses: insights.questionnaireResponses,
                 ),
+                CssGradebookPage(
+                  service: widget.gradebookService,
+                  classId: widget.classId,
+                  students: {
+                    for (final student in insights.students)
+                      student.id: student.name,
+                  },
+                ),
               ],
             );
           },
@@ -317,437 +377,9 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
   }
 }
 
-class _OverviewTab extends StatelessWidget {
-  const _OverviewTab({required this.insights});
-
-  final _ClassInsights insights;
-
-  @override
-  Widget build(BuildContext context) {
-    final studentsWithActivity = insights.students
-        .where((student) => student.hasActivity)
-        .length;
-    final avg = insights.students.isEmpty
-        ? 0.0
-        : insights.students
-                  .map((student) => student.overallAverage)
-                  .reduce((a, b) => a + b) /
-              insights.students.length;
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const GradingWeightsCard(),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 14,
-          runSpacing: 14,
-          children: [
-            _MetricCard(
-              label: 'Enrolled students',
-              value: '${insights.students.length}',
-              icon: Icons.groups_rounded,
-              color: const Color(0xFF2563EB),
-            ),
-            _MetricCard(
-              label: 'Students active',
-              value: '$studentsWithActivity',
-              icon: Icons.bolt_rounded,
-              color: const Color(0xFF0F9D7A),
-            ),
-            _MetricCard(
-              label: 'Combined average',
-              value: '${avg.round()}%',
-              icon: Icons.analytics_rounded,
-              color: const Color(0xFF7C3AED),
-            ),
-            _MetricCard(
-              label: 'Student feedback',
-              value:
-                  '${insights.feedback.length + insights.questionnaireResponses.length}',
-              icon: Icons.rate_review_rounded,
-              color: const Color(0xFFEA7C16),
-            ),
-          ],
-        ),
-        const SizedBox(height: 22),
-        LeaderboardChart(
-          title: 'Class performance',
-          entries: insights.students
-              .where((s) => s.hasActivity)
-              .map(
-                (s) => <String, dynamic>{
-                  'studentName': s.name,
-                  'percentage': s.overallAverage,
-                },
-              )
-              .toList(),
-        ),
-        const SizedBox(height: 22),
-        const Text(
-          'Students needing attention',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-        ),
-        const SizedBox(height: 10),
-        ...insights.students
-            .where(
-              (student) => !student.hasActivity || student.overallAverage < 75,
-            )
-            .map(
-              (student) => Card(
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: student.hasActivity
-                        ? Colors.orange.shade100
-                        : Colors.red.shade100,
-                    child: Icon(
-                      student.hasActivity
-                          ? Icons.trending_down_rounded
-                          : Icons.hourglass_empty_rounded,
-                      color: student.hasActivity ? Colors.orange : Colors.red,
-                    ),
-                  ),
-                  title: Text(
-                    student.name,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: Text(
-                    student.hasActivity
-                        ? 'Combined result ${student.overallAverage.round()}%'
-                        : 'No quiz or simulation activity yet',
-                  ),
-                ),
-              ),
-            ),
-        if (!insights.students.any(
-          (student) => !student.hasActivity || student.overallAverage < 75,
-        ))
-          const _EmptyState(
-            icon: Icons.verified_rounded,
-            title: 'Everyone is on track',
-            subtitle: 'No inactive or below-threshold student was detected.',
-          ),
-      ],
-    );
-  }
-}
-
-class _StudentsTab extends StatelessWidget {
-  const _StudentsTab({required this.students});
-
-  final List<_StudentInsight> students;
-
-  @override
-  Widget build(BuildContext context) {
-    if (students.isEmpty) {
-      return const _EmptyState(
-        icon: Icons.group_off_rounded,
-        title: 'No enrolled students',
-        subtitle: 'Students will appear here after joining the class.',
-      );
-    }
-    return ListView.separated(
-      padding: const EdgeInsets.all(20),
-      itemCount: students.length,
-      separatorBuilder: (_, index) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        final student = students[index];
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: const Color(0xFF0B2B4A),
-                  foregroundColor: Colors.white,
-                  child: Text('${index + 1}'),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        student.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 5,
-                        children: [
-                          Text(
-                            '${student.quizCount} quizzes • ${student.quizAverage.round()}%',
-                          ),
-                          Text(
-                            '${student.simulationCount} simulations • ${student.simulationAverage.round()}%',
-                          ),
-                          Text('Last: ${_formatDate(student.lastActivity)}'),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                _ScoreBadge(value: student.overallAverage),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SimulationsTab extends StatelessWidget {
-  const _SimulationsTab({required this.records});
-
-  final List<Map<String, dynamic>> records;
-
-  @override
-  Widget build(BuildContext context) {
-    if (records.isEmpty) {
-      return const _EmptyState(
-        icon: Icons.precision_manufacturing_rounded,
-        title: 'No simulation attempts',
-        subtitle: 'Completed student simulations will appear here.',
-      );
-    }
-    final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final record in records) {
-      final title =
-          record['simulationTitle']?.toString() ??
-          record['title']?.toString() ??
-          record['simulationId']?.toString() ??
-          'Simulation';
-      grouped.putIfAbsent(title, () => []).add(record);
-    }
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: grouped.entries.map((entry) {
-        final passed = entry.value
-            .where((item) => item['passed'] == true)
-            .length;
-        final avg =
-            entry.value
-                .map((item) => (item['percentage'] as num?)?.toDouble() ?? 0)
-                .fold<double>(0, (total, value) => total + value) /
-            entry.value.length;
-        final retries = entry.value
-            .map((item) => ((item['attempts'] as num?)?.toInt() ?? 1) - 1)
-            .fold<int>(0, (total, value) => total + value.clamp(0, 999));
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: const CircleAvatar(
-              backgroundColor: Color(0xFFE0F2FE),
-              child: Icon(Icons.memory_rounded, color: Color(0xFF0369A1)),
-            ),
-            title: Text(
-              entry.key,
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            subtitle: Text(
-              '${entry.value.length} completion(s) • $passed passed • $retries retries',
-            ),
-            trailing: _ScoreBadge(value: avg),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _FeedbackTab extends StatelessWidget {
-  const _FeedbackTab({
-    required this.feedback,
-    required this.questionnaireResponses,
-  });
-
-  final List<Map<String, dynamic>> feedback;
-  final List<Map<String, dynamic>> questionnaireResponses;
-
-  @override
-  Widget build(BuildContext context) {
-    if (feedback.isEmpty && questionnaireResponses.isEmpty) {
-      return const _EmptyState(
-        icon: Icons.mark_chat_unread_outlined,
-        title: 'No feedback submitted',
-        subtitle:
-            'Simulation and teaching questionnaire responses appear here.',
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        if (questionnaireResponses.isNotEmpty) ...[
-          const Text(
-            'Teaching questionnaires',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 8),
-          ...questionnaireResponses.map(
-            (response) => Card(
-              child: ListTile(
-                leading: const Icon(Icons.fact_check_rounded),
-                title: Text(
-                  response['questionnaireTitle']?.toString() ?? 'Questionnaire',
-                ),
-                subtitle: Text(
-                  '${response['studentName'] ?? 'Student'}\n'
-                  '${response['summary'] ?? 'Response submitted'}\n'
-                  '${(Map<String, dynamic>.from(response['ratings'] as Map? ?? {}).entries.map((e) => '${(response['ratingPrompts'] as Map?)?[e.key] ?? e.key}: ${e.value}/5')).join('\n')}',
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-        ],
-        if (feedback.isNotEmpty) ...[
-          const Text(
-            'Simulation feedback',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 8),
-          ...feedback.map(
-            (item) => Card(
-              child: ListTile(
-                leading: CircleAvatar(
-                  child: Text(item['difficulty']?.toString() ?? '-'),
-                ),
-                title: Text(
-                  item['simulationTitle']?.toString() ?? 'Simulation',
-                ),
-                subtitle: Text(
-                  item['comment']?.toString().trim().isNotEmpty == true
-                      ? item['comment'].toString()
-                      : 'No written comment',
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({
-    required this.label,
-    required this.value,
-    required this.icon,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final IconData icon;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 220,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            backgroundColor: color.withValues(alpha: 0.12),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                Text(label, style: const TextStyle(color: Color(0xFF64748B))),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ScoreBadge extends StatelessWidget {
-  const _ScoreBadge({required this.value});
-
-  final double value;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = value >= 75
-        ? Colors.green
-        : value > 0
-        ? Colors.orange
-        : Colors.grey;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        '${value.round()}%',
-        style: TextStyle(color: color.shade700, fontWeight: FontWeight.w900),
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 64, color: Colors.blueGrey.shade200),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 5),
-            Text(subtitle, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _ErrorState extends StatelessWidget {
-  const _ErrorState({required this.message, required this.onRetry});
+  const _ErrorState({required this.onRetry});
 
-  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -766,7 +398,10 @@ class _ErrorState extends StatelessWidget {
             const SizedBox(height: 12),
             const Text('Unable to load class insights'),
             const SizedBox(height: 6),
-            Text(message, textAlign: TextAlign.center),
+            const Text(
+              'Check your connection and class access, then try again.',
+              textAlign: TextAlign.center,
+            ),
             const SizedBox(height: 14),
             ElevatedButton(onPressed: onRetry, child: const Text('Try again')),
           ],
@@ -777,7 +412,7 @@ class _ErrorState extends StatelessWidget {
 }
 
 String _formatDate(DateTime? value) {
-  if (value == null) return 'No activity';
+  if (value == null) return 'Date not recorded';
   final date = value.toLocal();
   return '${date.month}/${date.day}/${date.year}';
 }

@@ -150,11 +150,56 @@ service cloud.firestore {
     match /students/{uid}/{subcollection}/{document=**} {
       allow read, write: if request.auth != null;
     }
+    // CSS gradebooks are scoped to the authenticated teacher, never client-
+    // supplied ownership. Profiles are immutable once configured. Records store
+    // component totals; computed grades are derived using the versioned policy.
+    function gradebookOwner(teacherId) {
+      return request.auth != null && request.auth.uid == teacherId && isActiveTeacher();
+    }
+    function validGradeScore(score) {
+      return score is map && score.keys().hasAll(['raw', 'maximum'])
+        && score.keys().hasOnly(['raw', 'maximum'])
+        && score.raw is number && score.maximum is number
+        && score.maximum > 0 && score.maximum <= 1000000
+        && score.raw >= 0 && score.raw <= score.maximum;
+    }
+    function validGradeScores(scores) {
+      return scores is map && scores.keys().hasOnly(['ww', 'pt', 'st1', 'st2', 'te'])
+        && (!('ww' in scores) || validGradeScore(scores.ww))
+        && (!('pt' in scores) || validGradeScore(scores.pt))
+        && (!('st1' in scores) || validGradeScore(scores.st1))
+        && (!('st2' in scores) || validGradeScore(scores.st2))
+        && (!('te' in scores) || validGradeScore(scores.te));
+    }
+    match /css_gradebooks/{teacherId}/classes/{classId} {
+      allow read: if gradebookOwner(teacherId);
+      allow create: if gradebookOwner(teacherId) && ownsClass(classId)
+        && request.resource.data.keys().hasOnly(['profile', 'year', 'updatedAt'])
+        && request.resource.data.profile == 'techPro'
+        && request.resource.data.year is int
+        && request.resource.data.year >= 2026 && request.resource.data.year <= 2100
+        && request.resource.data.updatedAt == request.time;
+      allow update, delete: if false;
+      match /records/{recordId} {
+        allow read: if gradebookOwner(teacherId);
+        allow create, update: if gradebookOwner(teacherId) && ownsClass(classId)
+          && exists(/databases/$(database)/documents/css_gradebooks/$(teacherId)/classes/$(classId))
+          && request.resource.data.keys().hasOnly(['studentId', 'term', 'scores', 'updatedAt'])
+          && request.resource.data.studentId is string
+          && request.resource.data.studentId.size() > 0 && request.resource.data.studentId.size() <= 128
+          && request.resource.data.studentId in get(/databases/$(database)/documents/classes/$(classId)).data.enrolledStudentIds
+          && request.resource.data.term is int && request.resource.data.term in [1, 2, 3]
+          && recordId == request.resource.data.studentId + '_' + string(request.resource.data.term)
+          && validGradeScores(request.resource.data.scores)
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if false;
+      }
+    }
     // Existing policies for unrelated collections remain unchanged. Exclude the
     // LRN namespace here so a broad match cannot bypass its admin restrictions.
     match /{collection}/{document=**} {
       allow read, write: if request.auth != null
-        && !(collection in ['lrn_master_list', 'lrn_folders', 'users', 'students']);
+        && !(collection in ['lrn_master_list', 'lrn_folders', 'users', 'students', 'css_gradebooks']);
     }
   }
 }
