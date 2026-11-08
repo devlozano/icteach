@@ -2,14 +2,13 @@
 
 Updated 6 September 2026. These are application integrations, not a claim of production acceptance or TESDA certification.
 
-## Advanced simulation restoration
+## Simulation scope
 
-The active catalog again includes OS installation, software configuration,
-network topology, connectivity diagnostics, maintenance and repair, alongside
-the six retained practicals. Maintenance and repair display COC4 while preserving
-historical record IDs. Ten evidence-based service decisions block incorrect
-actions and feed the existing mistake feedback. See [defense readiness](DEFENSE_READINESS.md)
-for module alignment, demonstration steps, scope limits and the stabilization plan.
+The active catalog contains 10 COC1–COC2 activities, including OS installation,
+software configuration, network topology and connectivity diagnostics. Standalone
+preventive maintenance and hardware repair have been removed to match the project's
+approved scope. Six evidence-based decisions feed the existing mistake feedback.
+See [defense readiness](DEFENSE_READINESS.md) for module alignment and demonstrations.
 
 ## Teacher/trainer setup (required before student testing)
 
@@ -25,7 +24,7 @@ Unconfigured activities intentionally show a setup message instead of allowing s
 
 | Panel item | Integrated behavior / location |
 | --- | --- |
-| 1. Advanced learning | Existing OS installation, software configuration, maintenance, hardware repair and network-diagnostic scenarios now support explicit lesson/quiz links. These are interactive virtual procedural exercises, not a real operating-system installer or packet emulator. |
+| 1. Advanced learning | Existing OS installation, software configuration and network-configuration testing scenarios now support explicit lesson/quiz links. These are interactive virtual procedural exercises, not a real operating-system installer or packet emulator. |
 | 2. Clear user roles | Help icon in student home and class detail describes administrator, teacher/adviser, trainer and student responsibilities. |
 | 3. Trainer and teaching difficulty | Existing trainer dashboard/CMS plus built-in Teaching & learning check-in under Questionnaires & Evaluations. Ratings explicitly distinguish clarity from difficulty; responses identify the student and class teacher. |
 | 4. Knowledge before activity | The linked published module must be marked complete before practice or assessment. Existing diagnostic gate remains on module entry. This records study completion, not proof of comprehension. |

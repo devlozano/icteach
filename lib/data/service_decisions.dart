@@ -53,46 +53,6 @@ class ServiceDecision {
       1,
       'Keep protection enabled and permit only the documented traffic. Test the application after the narrow rule is applied.',
     ),
-    'power_isolation': ServiceDecision(
-      'The PC is shut down, but the AC cord remains connected. You are about to open the case for cleaning.',
-      [
-        'Disconnect power, follow discharge procedure, use ESD protection',
-        'Open the case because shutdown is enough',
-        'Clean while the PC is running',
-      ],
-      0,
-      'Shutdown does not isolate standby power. Disconnect power and follow the manufacturer procedure before servicing internal parts.',
-    ),
-    'cleaning_stage': ServiceDecision(
-      'Dust blocks the heatsink and fan. The system is isolated and the ESD work area is ready.',
-      [
-        'Spin the fan rapidly with compressed air',
-        'Wash the installed motherboard with water',
-        'Hold the fan still and use controlled compressed air',
-      ],
-      2,
-      'Prevent fan overspeed and remove dust in controlled bursts. Liquids and uncontrolled fan spinning can damage components.',
-    ),
-    'check_cooling': ServiceDecision(
-      'The PC starts but loses display after a recent RAM upgrade. Power and display cables have already been checked.',
-      [
-        'Replace the motherboard immediately',
-        'Isolate power and test compatible RAM one change at a time',
-        'Change RAM, GPU, and PSU simultaneously',
-      ],
-      1,
-      'Test the recent change with compatible, correctly seated RAM before replacing unrelated parts. One variable at a time preserves diagnostic evidence.',
-    ),
-    'check_resources': ServiceDecision(
-      'A known-good compatible RAM module restores reliable boot. The original module reproduces the fault in the same verified slot.',
-      [
-        'Replace the confirmed faulty RAM and retest',
-        'Reinstall the operating system first',
-        'Replace all components',
-      ],
-      0,
-      'The controlled comparison identifies the RAM as the fault. Replace only the confirmed defective component and verify full operation.',
-    ),
     'address_layer': ServiceDecision(
       'Link is up. The network plan is 192.168.1.0/24, gateway 192.168.1.254. This client is incorrectly set to 192.168.2.10/24; 192.168.1.10 is reserved for it.',
       [

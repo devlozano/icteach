@@ -2,6 +2,12 @@ import '../models/simulation_model.dart';
 import 'motherboard_parts.dart';
 
 class SimulationData {
+  // Retired from this project's COC1–COC2 scope. Historical results are retained.
+  static const retiredSimulationIds = {
+    'sim_coc1_maintenance',
+    'sim_coc1_repair',
+  };
+
   static DraggableItem _item({
     required String id,
     required String name,
@@ -798,87 +804,6 @@ class SimulationData {
     ],
   );
 
-  static Simulation getPreventiveMaintenance() => _procedureSimulation(
-    id: 'sim_coc1_maintenance',
-    title: 'Preventive Maintenance - COC4',
-    description:
-        'Protect client data, service hardware and software safely, and verify normal operation.',
-    competency: 'COC4',
-    outcome: 'Maintain computer systems and networks',
-    prerequisite: 'sim_coc1_software_config',
-    visual: 'assets/simulations/steps.svg',
-    steps: const [
-      (
-        'Back Up Client Data',
-        'backup_stage',
-        'Confirm the backup destination, copy critical client files, and verify that the backup opens.',
-      ),
-      (
-        'Shut Down and Unplug',
-        'power_isolation',
-        'Shut down correctly, disconnect power and peripherals, discharge residual power, and use ESD protection.',
-      ),
-      (
-        'Clean Components',
-        'cleaning_stage',
-        'Hold fan blades stationary and remove dust using controlled compressed air; never use a household vacuum.',
-      ),
-      (
-        'Inspect Cables and Parts',
-        'inspection_stage',
-        'Check connectors, capacitors, fans, ports, and cable insulation for looseness, heat damage, or wear.',
-      ),
-      (
-        'Update and Scan',
-        'software_service',
-        'Apply approved updates, scan for malware, inspect storage health, and remove unnecessary startup items.',
-      ),
-      (
-        'Document and Test',
-        'verification_stage',
-        'Reconnect equipment, run functional tests, record observations, and obtain client confirmation.',
-      ),
-    ],
-  );
-
-  static Simulation getComputerTroubleshooting() => _procedureSimulation(
-    id: 'sim_coc1_repair',
-    title: 'Computer Troubleshooting and Repair - COC4',
-    description:
-        'Follow a safe evidence-based diagnostic sequence before replacing components.',
-    competency: 'COC4',
-    outcome: 'Diagnose faults; rectify defects; inspect and test systems',
-    prerequisite: 'sim_coc1_maintenance',
-    visual: 'assets/simulations/support.svg',
-    steps: const [
-      (
-        'Identify the Symptom',
-        'check_psu',
-        'Interview the user, reproduce the fault safely, and record exact symptoms and error messages.',
-      ),
-      (
-        'Establish a Theory',
-        'check_display',
-        'Start with simple likely causes such as power, cables, seating, settings, or recent changes.',
-      ),
-      (
-        'Test the Theory',
-        'check_cooling',
-        'Use observation and approved diagnostic tools; change only one variable at a time.',
-      ),
-      (
-        'Apply the Repair',
-        'check_resources',
-        'Repair or replace only the confirmed cause while protecting client data and observing ESD safety.',
-      ),
-      (
-        'Verify and Document',
-        'check_boot',
-        'Test full system operation, confirm the original symptom is gone, and document the resolution.',
-      ),
-    ],
-  );
-
   static Simulation getConnectivityDiagnostics() => _procedureSimulation(
     id: 'sim_coc2_diagnostics',
     title: 'Network Connectivity Diagnostics - COC2',
@@ -987,8 +912,6 @@ class SimulationData {
     getRj45Crimping(),
     getIpConfiguration(),
     getConnectivityDiagnostics(),
-    getPreventiveMaintenance(),
-    getComputerTroubleshooting(),
   ];
 
   static Simulation getMotherboardIdentification() => _simulation(

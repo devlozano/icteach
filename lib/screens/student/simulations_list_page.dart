@@ -76,7 +76,6 @@ class _SimulationsListPageState extends State<SimulationsListPage> {
               children: [
                 _buildTabButton('COC1', 'COC1'),
                 _buildTabButton('COC2', 'COC2'),
-                _buildTabButton('COC4', 'COC4'),
               ],
             ),
           ),

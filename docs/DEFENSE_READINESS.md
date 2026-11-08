@@ -1,8 +1,8 @@
 # Final-defense readiness
 
-## Restored scope
+## COC1 and COC2 scope
 
-The catalog now contains 12 practical activities. Existing IDs remain stable so
+The catalog now contains 10 practical activities. Existing IDs remain stable so
 historical records and lesson links still refer to the same activities.
 
 | Panel requirement 1 | Demonstration | Competency grouping |
@@ -11,16 +11,16 @@ historical records and lesson links still refer to the same activities.
 | Configure software | Accounts, protection, applications, peripherals, recovery | COC1 |
 | Set up networks | Topology, RJ45, IP configuration | COC2 |
 | Test network connectivity | Physical link, addressing, gateway, DNS, service checks | COC2 |
-| Maintain and repair | Preventive maintenance, controlled diagnosis, confirmed repair, retesting | COC4 |
 
-Motherboard identification and disassembly remain available. Maintenance and
-repair retain their legacy `sim_coc1_*` record IDs but display COC4. These IDs
-are storage identifiers, not curriculum claims.
+Motherboard identification and disassembly remain available. Standalone preventive
+maintenance and hardware repair are outside the approved COC1–COC2 project scope
+and have been removed from the active catalog and lesson-link choices. Old activity
+links cannot start them; historical results have not been deleted.
 
 Curriculum reference: [DepEd CSS NC II curriculum guide](https://www.deped.gov.ph/wp-content/uploads/2019/01/Computer-Systems-Servicing-NC-II-CG.pdf).
-The guide includes a separate server competency (COC3). This release does not
-implement server administration and must not be described as complete NC II
-coverage or a replacement for physical practical assessment.
+COC3 server administration and COC4 maintenance/repair are excluded. Connectivity
+troubleshooting is limited to testing and correcting the configured network.
+This is not complete NC II coverage or a replacement for physical assessment.
 
 ## Before the demonstration
 
@@ -28,7 +28,7 @@ coverage or a replacement for physical practical assessment.
    student accounts. Do not use real student records for public screenshots.
 2. Publish the actual instructional modules and nonempty theory quizzes.
 3. In Modules > Lesson & assessment links, link every demonstrated simulation
-   to its relevant published module and theory quiz. Check COC1, COC2 and COC4.
+   to its relevant published module and theory quiz. Check COC1 and COC2.
    A teacher must confirm the lesson actually teaches the simulated procedure.
 4. Confirm content is unlocked, the class is active, and the student is enrolled.
    Complete prerequisite simulations normally; do not fabricate passes.
@@ -47,15 +47,15 @@ coverage or a replacement for physical practical assessment.
 
 - OS installation: select the authorized system disk while preserving the data
   drive; explain why an unverified disk selection is rejected.
-- Hardware repair: use controlled RAM testing, select the confirmed repair,
-  inspect the result, and rework a failing check before accepting completion.
+- Software configuration: select appropriate account permissions and a narrow
+  firewall rule, then verify the resulting configuration.
 - Networking: show RJ45 or IP configuration, then diagnose a DNS failure using
   working IP connectivity as evidence.
 - Teacher monitoring: show the student's completed assessment and error history.
 
 These are interactive virtual procedural exercises. They do not install a real
 OS, execute system commands, emulate a full network, or measure physical wiring.
-Ten service-decision checkpoints supplement existing sequencing, resources,
+Six service-decision checkpoints supplement existing sequencing, resources,
 placement, IP input and result-verification controls. Incorrect decisions enter
 the existing mistake/feedback pipeline; cancellation awards no operation credit.
 
@@ -72,10 +72,8 @@ the existing mistake/feedback pipeline; cancellation awards no operation credit.
 
 ## Verification boundaries
 
-Restoration checks: 414 Flutter tests passed with one existing skipped test;
-project analysis passed with informational lints and no errors or warnings.
-The focused 130-test suite covers all restored workbench layouts and assets,
-service-decision rejection/correction, cancellation and result verification.
+397 Flutter tests passed with one existing skip. Scope-correction checks cover both catalogs, blocked historical links, retained
+prerequisites, service decisions, layouts and existing learning flows.
 
 Automated tests and a successful upload do not establish live-account acceptance.
 Real lesson/quiz alignment, role access, production save/reload and the final

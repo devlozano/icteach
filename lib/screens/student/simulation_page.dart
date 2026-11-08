@@ -14,6 +14,7 @@ import '../../services/learning_path_service.dart';
 class SimulationPage extends StatelessWidget {
   final String classId;
   final String simulationId;
+
   /// Opens simulations directly for local testing. The default follows
   /// Flutter's build mode, so release builds always enforce normal access.
   final bool testingBypass;
@@ -29,6 +30,21 @@ class SimulationPage extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
+    if (SimulationData.retiredSimulationIds.contains(simulationId)) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Simulation unavailable')),
+        body: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text(
+              'This activity is outside the project’s COC1–COC2 scope. '
+              'Return to Simulations to choose an available activity.',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ),
+      );
+    }
     if (testingBypass) {
       return _SimulationSession(
         practice: true,
@@ -40,22 +56,22 @@ class SimulationPage extends StatelessWidget {
     }
 
     return ContentAccessGate(
-    classId: classId,
-    contentType: 'simulation',
-    contentId: simulationId,
-    builder: (_) => ActivityPreparationGate(
       classId: classId,
-      type: 'simulation',
+      contentType: 'simulation',
       contentId: simulationId,
-      title: title,
-      sessionBuilder: (practice) => _SimulationSession(
-        practice: practice,
+      builder: (_) => ActivityPreparationGate(
         classId: classId,
-        simulationId: simulationId,
+        type: 'simulation',
+        contentId: simulationId,
         title: title,
-        className: className,
+        sessionBuilder: (practice) => _SimulationSession(
+          practice: practice,
+          classId: classId,
+          simulationId: simulationId,
+          title: title,
+          className: className,
+        ),
       ),
-    ),
     );
   }
 }
@@ -783,11 +799,11 @@ class _SimulationPageState extends State<_SimulationSession> {
     if (user == null) return false;
     try {
       final db = FirebaseFirestore.instance;
-    // Debug tester sessions can show the complete flow without creating
-    // progress that would satisfy a student's real learning path.
-    if (widget.testingBypass) return true;
+      // Debug tester sessions can show the complete flow without creating
+      // progress that would satisfy a student's real learning path.
+      if (widget.testingBypass) return true;
 
-    await LearningPathService.requirePrepared(
+      await LearningPathService.requirePrepared(
         widget.classId,
         'simulation',
         widget.simulationId,
