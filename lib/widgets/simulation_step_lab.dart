@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Simulation;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../data/simulation_step_detail.dart';
+import '../data/service_decisions.dart';
 import '../models/simulation_model.dart';
 
 /// A stateful operation at the selected target, completed before awarding credit.
@@ -31,6 +32,9 @@ class _SimulationStepLabState extends State<SimulationStepLab>
   final _address = TextEditingController();
   final _mask = TextEditingController();
   int _action = 0;
+  int? _decisionChoice;
+  ServiceDecision? get _decision =>
+      ServiceDecision.bySlot[widget.item.correctSlot];
   double _alignment = .15;
   bool get _alignsHardware =>
       (widget.simulation.type == 'assembly' ||
@@ -58,6 +62,17 @@ class _SimulationStepLabState extends State<SimulationStepLab>
 
   Future<void> _perform() async {
     if (_busy || _finished) return;
+    final decision = _decision;
+    if (_action == 0 &&
+        decision != null &&
+        _decisionChoice != decision.correctIndex) {
+      _mistake(
+        _decisionChoice == null
+            ? 'Choose a service action from the evidence before proceeding.'
+            : 'Service action rejected. ${decision.explanation}',
+      );
+      return;
+    }
     if (_alignsHardware && _action == 2 && (_alignment - .5).abs() > .05) {
       _mistake(
         'The keys are not aligned. Adjust the part to the center marker before seating it; never force the connector.',
@@ -181,6 +196,39 @@ class _SimulationStepLabState extends State<SimulationStepLab>
                         ? 'Acceptance criterion: ${_detail.expected}'
                         : _detail.actions[_action],
                   ),
+                  if (_action == 0 && _decision != null) ...[
+                    const SizedBox(height: 16),
+                    Text(
+                      'Service evidence',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(_decision!.evidence),
+                    const SizedBox(height: 8),
+                    for (
+                      var index = 0;
+                      index < _decision!.options.length;
+                      index++
+                    )
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: OutlinedButton.icon(
+                          key: ValueKey('service-choice-$index'),
+                          onPressed: _busy
+                              ? null
+                              : () => setState(() => _decisionChoice = index),
+                          icon: Icon(
+                            _decisionChoice == index
+                                ? Icons.radio_button_checked
+                                : Icons.radio_button_unchecked,
+                          ),
+                          label: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(_decision!.options[index]),
+                          ),
+                        ),
+                      ),
+                  ],
                   if (_alignsHardware && _action == 2) ...[
                     const SizedBox(height: 12),
                     const Text(

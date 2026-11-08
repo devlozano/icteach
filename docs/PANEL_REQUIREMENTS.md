@@ -2,6 +2,15 @@
 
 Updated 6 September 2026. These are application integrations, not a claim of production acceptance or TESDA certification.
 
+## Advanced simulation restoration
+
+The active catalog again includes OS installation, software configuration,
+network topology, connectivity diagnostics, maintenance and repair, alongside
+the six retained practicals. Maintenance and repair display COC4 while preserving
+historical record IDs. Ten evidence-based service decisions block incorrect
+actions and feed the existing mistake feedback. See [defense readiness](DEFENSE_READINESS.md)
+for module alignment, demonstration steps, scope limits and the stabilization plan.
+
 ## Teacher/trainer setup (required before student testing)
 
 1. Publish the actual lessons and nonempty terminology/theory quizzes using the existing module/quiz CMS.
@@ -20,7 +29,7 @@ Unconfigured activities intentionally show a setup message instead of allowing s
 | 2. Clear user roles | Help icon in student home and class detail describes administrator, teacher/adviser, trainer and student responsibilities. |
 | 3. Trainer and teaching difficulty | Existing trainer dashboard/CMS plus built-in Teaching & learning check-in under Questionnaires & Evaluations. Ratings explicitly distinguish clarity from difficulty; responses identify the student and class teacher. |
 | 4. Knowledge before activity | The linked published module must be marked complete before practice or assessment. Existing diagnostic gate remains on module entry. This records study completion, not proof of comprehension. |
-| 5. Two-part assessment and practice | Separate ungraded quiz/simulation practice; linked theory quiz before scored simulation; practice never writes quiz_results, simulation_progress or completed_content. Theory completion, not a passing grade, opens the simulation stage. Quiz retakes remain prohibited. |
+| 5. Two-part assessment and practice | Ungraded simulation practice; linked theory quiz before scored simulation; practice never writes quiz_results, simulation_progress or completed_content. Theory completion, not a passing grade, opens the simulation stage. Quizzes are single scored attempts with no separate quiz practice. |
 | 5c. Informative feedback | Simulation feedback retains corrected resource, sequence and compatibility mistakes. RJ45 results include possible open/short/miswire/split-pair causes and distinguish physical wiring from IP/VLAN issues. These are educational possibilities, not diagnoses of physical equipment. |
 | 6. Quiz CMS | Existing teacher/trainer Create/Edit/Publish/Delete quiz pages remain the authoring source. The learning-path manager references these quizzes without exposing simulation editing. |
 | 7. Monitoring | Class Insights → history icon shows newly recorded lesson opening/completion, practice completion and scored quiz/simulation completion; simulation mistakes are expandable. Existing grades/progress/feedback reports remain available. No keystroke or background surveillance. |
@@ -33,7 +42,7 @@ Automated verification: 22 tests passed; static analysis has no errors/warnings 
 
 - Use separate admin, teacher, trainer and student test accounts in an authorized test class.
 - Verify unmapped activity, missing lesson, missing practice and missing theory each block the appropriate next stage.
-- Complete diagnostic and linked lesson. Complete quiz practice and inspect answer explanations. Confirm no grade exists yet.
+- Complete diagnostic and linked lesson. Complete simulation practice and inspect feedback. Confirm no simulation grade exists yet.
 - Complete the scored theory quiz once. Confirm duplicate submission cannot overwrite it.
 - Complete simulation practice, then simulation assessment. Verify only assessment affects grades/progress; check the timeline and corrected-error history.
 - Make deliberate RJ45 resource/sequence/placement mistakes and inspect feedback on a small screen.

@@ -202,7 +202,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
               style: TextStyle(color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 12),
-            for (final competency in ['COC1', 'COC2']) ...[
+            for (final competency in ['COC1', 'COC2', 'COC4']) ...[
               _PathSection(
                 title: '$competency simulations',
                 icon: Icons.precision_manufacturing_outlined,

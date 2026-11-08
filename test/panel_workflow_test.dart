@@ -15,6 +15,11 @@ void main() {
       'cabling',
       'crimping',
       'ipconfig',
+      'os_install',
+      'software_config',
+      'maintenance',
+      'repair',
+      'diagnostics',
     ]) {
       expect(ids.any((id) => id.contains(keyword)), isTrue, reason: keyword);
     }

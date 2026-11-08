@@ -6,6 +6,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/data/simulation_data.dart';
+import 'package:icteach/data/service_decisions.dart';
 import 'package:icteach/utils/app_theme.dart';
 import 'package:icteach/widgets/drag_drop_simulation.dart';
 import 'package:icteach/widgets/draggable_item_widget.dart';
@@ -396,6 +397,17 @@ void main() {
           await tester.pumpAndSettle();
         }
         Future<void> labAction(String key) async {
+          final decision = ServiceDecision.bySlot[item.correctSlot];
+          if (key == 'perform-operation' && decision != null) {
+            final choice = find.byKey(
+              ValueKey('service-choice-${decision.correctIndex}'),
+            );
+            if (choice.evaluate().isNotEmpty) {
+              await tester.ensureVisible(choice);
+              await tester.tap(choice);
+              await tester.pump();
+            }
+          }
           final button = find.byKey(ValueKey(key));
           await tester.ensureVisible(button);
           await tester.tap(button);

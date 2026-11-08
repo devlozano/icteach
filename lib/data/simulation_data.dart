@@ -690,7 +690,7 @@ class SimulationData {
     description:
         'Complete a professional clean installation from readiness checks and UEFI setup through drivers, updates, activation, and final validation.',
     competency: 'COC1',
-    outcome: 'LO2 - Install operating system and device drivers',
+    outcome: 'Prepare installer; install operating system and device drivers',
     prerequisite: 'sim_coc1_cabling',
     visual: 'assets/simulations/laptop.svg',
     steps: const [
@@ -753,7 +753,7 @@ class SimulationData {
     description:
         'Configure accounts, protection, approved applications, peripherals, and recovery controls.',
     competency: 'COC1',
-    outcome: 'LO3 - Install and configure application software',
+    outcome: 'Install application software; conduct testing and documentation',
     prerequisite: 'sim_coc1_os_install',
     visual: 'assets/simulations/software-config-requirements-matched.png',
     stepVisuals: const [
@@ -800,11 +800,11 @@ class SimulationData {
 
   static Simulation getPreventiveMaintenance() => _procedureSimulation(
     id: 'sim_coc1_maintenance',
-    title: 'Preventive Maintenance - COC1',
+    title: 'Preventive Maintenance - COC4',
     description:
         'Protect client data, service hardware and software safely, and verify normal operation.',
-    competency: 'COC1',
-    outcome: 'LO4 - Maintain computer hardware and software',
+    competency: 'COC4',
+    outcome: 'Maintain computer systems and networks',
     prerequisite: 'sim_coc1_software_config',
     visual: 'assets/simulations/steps.svg',
     steps: const [
@@ -843,11 +843,11 @@ class SimulationData {
 
   static Simulation getComputerTroubleshooting() => _procedureSimulation(
     id: 'sim_coc1_repair',
-    title: 'Computer Troubleshooting and Repair - COC1',
+    title: 'Computer Troubleshooting and Repair - COC4',
     description:
         'Follow a safe evidence-based diagnostic sequence before replacing components.',
-    competency: 'COC1',
-    outcome: 'LO5 - Diagnose and repair computer systems',
+    competency: 'COC4',
+    outcome: 'Diagnose faults; rectify defects; inspect and test systems',
     prerequisite: 'sim_coc1_maintenance',
     visual: 'assets/simulations/support.svg',
     steps: const [
@@ -981,8 +981,14 @@ class SimulationData {
     getPcAssembly(),
     getPcDisassembly(),
     getCableManagement(),
+    getOperatingSystemInstallation(),
+    getSoftwareConfiguration(),
+    getNetworkTopology(),
     getRj45Crimping(),
     getIpConfiguration(),
+    getConnectivityDiagnostics(),
+    getPreventiveMaintenance(),
+    getComputerTroubleshooting(),
   ];
 
   static Simulation getMotherboardIdentification() => _simulation(

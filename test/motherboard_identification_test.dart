@@ -9,7 +9,7 @@ void main() {
     final catalog = SimulationData.getAllSimulations();
     final ids = catalog.map((s) => s.id).toSet();
     expect(ids, contains('sim_coc1_motherboard'));
-    expect(ids, isNot(contains('sim_coc2_topology')));
+    expect(ids, contains('sim_coc2_topology'));
     for (final simulation in catalog) {
       if (simulation.requiredSimulationId != null) {
         expect(ids, contains(simulation.requiredSimulationId));
