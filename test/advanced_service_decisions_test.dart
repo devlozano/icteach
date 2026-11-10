@@ -14,9 +14,12 @@ void main() {
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
-        final simulation = SimulationData.getAllSimulations().singleWhere(
-          (s) => s.items.any((i) => i.correctSlot == slot),
-        );
+        // Keep legacy decision coverage alongside the newer guided setup tests.
+        final simulation = [
+          ...SimulationData.getAllSimulations(),
+          SimulationData.getLegacyOperatingSystemInstallation(),
+          SimulationData.getLegacySoftwareConfiguration(),
+        ].singleWhere((s) => s.items.any((i) => i.correctSlot == slot));
         final item = simulation.items.singleWhere((i) => i.correctSlot == slot);
         final decision = ServiceDecision.bySlot[slot]!;
         final mistakes = <String>[];
