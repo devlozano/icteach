@@ -467,7 +467,6 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
 
   Widget _buildModuleDetailView(ModuleModel module, int totalModules) {
     final hasVideo = module.videoUrl != null && module.videoUrl!.isNotEmpty;
-    final progress = _progress[module.id] == true ? 1.0 : 0.0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -604,59 +603,6 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Progress Section
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Your Progress',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF0F172A),
-                              ),
-                            ),
-                            Text(
-                              '${(progress * 100).toInt()}%',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF4F46E5),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 10,
-                            color: const Color(0xFF4F46E5),
-                            backgroundColor: Colors.indigo.shade50,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
                   // Overview Section
                   const Text(
                     'Overview',
@@ -1174,7 +1120,7 @@ class _YouTubePlayerPageState extends State<YouTubePlayerPage> {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('✅ URL copied'),
+                    content: const Text('Ã¢Å“â€¦ URL copied'),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

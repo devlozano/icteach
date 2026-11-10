@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/module_model.dart';
 import '../services/module_access_service.dart';
+import '../services/module_resource_link.dart';
 
 class ModuleResourceActions extends StatefulWidget {
   final String classId;
@@ -31,17 +32,32 @@ class _ModuleResourceActionsState extends State<ModuleResourceActions> {
           ).showSnackBar(SnackBar(content: Text(message)));
       } else {
         final opened = await launchUrl(
-          Uri.parse(widget.module.attachmentUrl!),
+          ModuleResourceLink.parse(widget.module.attachmentUrl),
           mode: LaunchMode.externalApplication,
         );
         if (!opened) throw StateError('Unable to open resource.');
-        await ModuleAccessService.resourceOpened(widget.classId, widget.module);
+        try {
+          await ModuleAccessService.resourceOpened(
+            widget.classId,
+            widget.module,
+          ).timeout(const Duration(seconds: 10));
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Resource opened, but activity tracking could not be updated.',
+                ),
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted)
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Resource action failed: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ModuleResourceLink.errorMessage(e))),
+        );
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -71,7 +87,7 @@ class _ModuleResourceActionsState extends State<ModuleResourceActions> {
               FilledButton.icon(
                 onPressed: busy ? null : () => _run(true),
                 icon: const Icon(Icons.download_outlined),
-                label: Text(busy ? 'Please wait…' : 'Download module'),
+                label: Text(busy ? 'Please wait...' : 'Download module'),
               ),
             ],
           ),
