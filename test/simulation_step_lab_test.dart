@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/data/simulation_data.dart';
+import 'package:icteach/data/guided_setup_data.dart';
 import 'package:icteach/data/simulation_step_detail.dart';
 import 'package:icteach/widgets/simulation_step_lab.dart';
 
@@ -11,7 +12,7 @@ void main() {
       final catalog = SimulationData.getAllSimulations();
       final ids = catalog.map((s) => s.id).toSet();
       expect(ids.length, catalog.length);
-      expect(ids, hasLength(10));
+      expect(ids, hasLength(11));
       expect(ids, isNot(contains('sim_coc1_identification')));
       expect(
         SimulationData.getSimulationById('sim_coc1_identification'),
@@ -22,7 +23,9 @@ void main() {
           expect(ids, contains(simulation.requiredSimulationId));
         }
         // Motherboard inspection uses direct image taps, not the step lab.
-        if (simulation.id == 'sim_coc1_motherboard') continue;
+        if (simulation.id == 'sim_coc1_motherboard' ||
+            GuidedSetupData.kindForId(simulation.id) != null)
+          continue;
         for (final item in simulation.items.where((i) => i.isRequired)) {
           final detail = SimulationStepDetail.forItem(simulation, item);
           expect(
@@ -43,6 +46,7 @@ void main() {
     const Size(1280, 800),
   ]) {
     for (final simulation in SimulationData.getAllSimulations()) {
+      if (GuidedSetupData.kindForId(simulation.id) != null) continue;
       testWidgets(
         '${simulation.id} operation fits $size and can be cancelled',
         (tester) async {

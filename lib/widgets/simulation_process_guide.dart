@@ -2,6 +2,8 @@ import 'package:flutter/material.dart' hide Simulation;
 import '../data/simulation_step_detail.dart';
 import '../models/simulation_model.dart';
 import 'simulation_step_lab.dart';
+import 'guided_setup_workbench.dart';
+import '../data/guided_setup_data.dart';
 
 /// Replayable reference; reviewed checkpoints never award assessment credit.
 class SimulationProcessGuide extends StatefulWidget {
@@ -28,6 +30,34 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
 
   @override
   Widget build(BuildContext context) {
+    final kind = GuidedSetupData.kindForId(widget.simulation.id);
+    if (kind != null) {
+      return Dialog(
+        insetPadding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text('Guided practice • no assessment credit'),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close walkthrough',
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            Expanded(
+              child: GuidedSetupWorkbench(kind: kind, onComplete: (_, _, _) {}),
+            ),
+          ],
+        ),
+      );
+    }
     final tasks =
         widget.simulation.items.where((item) => item.isRequired).toList()
           ..sort((a, b) => a.step.compareTo(b.step));

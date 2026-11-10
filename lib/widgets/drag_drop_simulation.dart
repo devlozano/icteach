@@ -1,4 +1,6 @@
 import 'simulation_step_lab.dart';
+import 'guided_setup_workbench.dart';
+import '../data/guided_setup_data.dart';
 import 'motherboard_identification.dart';
 import 'pc_disassembly_workbench.dart';
 import 'pc_build_workbench.dart';
@@ -35,6 +37,12 @@ class DragDropSimulation extends StatefulWidget {
 }
 
 class _DragDropSimulationState extends State<DragDropSimulation> {
+  SetupLabKind? get _setupKind => switch (widget.simulation.id) {
+    'sim_coc1_os_install' => SetupLabKind.operatingSystem,
+    'sim_coc1_software_config' => SetupLabKind.software,
+    'sim_coc2_network_setup' => SetupLabKind.network,
+    _ => null,
+  };
   late Map<String, String> _placements;
   late List<String> _availableItems;
   late List<String> _availableSlots;
@@ -66,7 +74,9 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   void initState() {
     super.initState();
     _resetSimulation(notify: false);
-    if (widget.simulation.id == 'sim_coc2_crimping') return;
+    if (widget.simulation.id == 'sim_coc2_crimping' || _setupKind != null) {
+      return;
+    }
     _configureVoice();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _speak(
@@ -135,6 +145,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   }
 
   void _startTimer() {
+    if (_setupKind != null) return;
     if (widget.simulation.id == 'sim_coc2_crimping') return;
     _missionTimer?.cancel();
     _missionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -735,6 +746,13 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
 
   @override
   Widget build(BuildContext context) {
+    if (_setupKind != null) {
+      return GuidedSetupWorkbench(
+        kind: _setupKind!,
+        onComplete: widget.onComplete,
+        onFeedback: widget.onFeedback,
+      );
+    }
     if (widget.simulation.id == 'sim_coc1_motherboard') {
       return MotherboardIdentification(onComplete: widget.onComplete);
     }

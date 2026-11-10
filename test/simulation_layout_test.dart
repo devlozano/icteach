@@ -6,6 +6,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/data/simulation_data.dart';
+import 'package:icteach/data/guided_setup_data.dart';
+import 'package:icteach/widgets/guided_setup_workbench.dart';
 import 'package:icteach/data/service_decisions.dart';
 import 'package:icteach/utils/app_theme.dart';
 import 'package:icteach/widgets/drag_drop_simulation.dart';
@@ -86,7 +88,8 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
-        if (find.byType(CheckboxListTile).evaluate().isNotEmpty) {
+        if (GuidedSetupData.kindForId(simulation.id) == null &&
+            find.byType(CheckboxListTile).evaluate().isNotEmpty) {
           if (find.byType(CheckboxListTile).evaluate().length == 1) {
             for (var i = 0; i < 3; i++) {
               await tester.tap(find.byType(CheckboxListTile));
@@ -112,6 +115,13 @@ void main() {
         expect(tester.takeException(), isNull);
         expect(find.text('Place on target'), findsNothing);
         expect(find.text('Drop Here'), findsNothing);
+        if (GuidedSetupData.kindForId(simulation.id) != null) {
+          expect(find.byType(GuidedSetupWorkbench), findsOneWidget);
+          expect(find.textContaining('Step 1 of'), findsOneWidget);
+          expect(find.byType(DropTargetWidget), findsNothing);
+          expect(tester.takeException(), isNull);
+          return;
+        }
         if (simulation.id == 'sim_coc1_motherboard') {
           expect(
             find.byKey(const ValueKey('motherboard-image')),
@@ -308,7 +318,7 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       // Keep the generic tray regression using its original fixture, which is
       // no longer offered in the active student catalog.
-      final simulation = SimulationData.getSoftwareConfiguration();
+      final simulation = SimulationData.getNetworkTopology();
       await tester.pumpWidget(
         MaterialApp(
           theme: AppTheme.light,
@@ -376,7 +386,7 @@ void main() {
         }
         await tester.tap(find.byType(DropdownButtonFormField<String>));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('Manufacturer manual + job checklist').last);
+        await tester.tap(find.text('Network diagram + cable tester').last);
         await tester.pumpAndSettle();
         await tester.dragFrom(
           tester.getCenter(part()),

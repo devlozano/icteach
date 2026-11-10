@@ -162,7 +162,9 @@ class _SimulationPageState extends State<_SimulationSession> {
     if (widget.simulationId == 'sim_coc1_assembly' ||
         widget.simulationId == 'sim_coc1_cabling' ||
         widget.simulationId == 'sim_coc1_identification' ||
-        widget.simulationId == 'sim_coc1_os_install') {
+        widget.simulationId == 'sim_coc1_os_install' ||
+        widget.simulationId == 'sim_coc1_software_config' ||
+        widget.simulationId == 'sim_coc2_network_setup') {
       // These practical labs rely on local compatibility metadata and
       // distractor parts that may not exist in older Firestore documents.
       simulation = bundledSimulation ?? simulation;

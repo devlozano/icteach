@@ -1,5 +1,6 @@
 import '../models/simulation_model.dart';
 import 'motherboard_parts.dart';
+import 'guided_setup_data.dart';
 
 class SimulationData {
   // Retired from this project's COC1–COC2 scope. Historical results are retained.
@@ -690,7 +691,70 @@ class SimulationData {
     ],
   );
 
-  static Simulation getOperatingSystemInstallation() => _procedureSimulation(
+  static Simulation getOperatingSystemInstallation() => _guidedSetup(
+    'sim_coc1_os_install',
+    'Operating System Installation - COC1',
+    SetupLabKind.operatingSystem,
+    'COC1',
+    'sim_coc1_cabling',
+  );
+
+  static Simulation getSoftwareConfiguration() => _guidedSetup(
+    'sim_coc1_software_config',
+    'Software Configuration - COC1',
+    SetupLabKind.software,
+    'COC1',
+    'sim_coc1_os_install',
+  );
+
+  static Simulation getNetworkConfiguration() => _guidedSetup(
+    'sim_coc2_network_setup',
+    'Computer Network Setup - COC2',
+    SetupLabKind.network,
+    'COC2',
+    null,
+  );
+
+  static Simulation _guidedSetup(
+    String id,
+    String title,
+    SetupLabKind kind,
+    String competency,
+    String? prerequisite,
+  ) => _simulation(
+    id: id,
+    title: title,
+    description: kind == SetupLabKind.network
+        ? 'Configure router LAN/DHCP, connect server and clients, verify ping, discovery services, firewall and sharing in an isolated worksheet lab.'
+        : kind == SetupLabKind.operatingSystem
+        ? 'Prepare USB in Rufus, configure firmware, partition the training disk, install Windows and verify its first boot.'
+        : 'Install drivers and applications, configure protection and remote access, print a test page and document results.',
+    type: 'configuration',
+    competency: competency,
+    learningOutcome: kind == SetupLabKind.network
+        ? 'LO2 - Configure network; LO3 - Test connectivity'
+        : 'LO3 - Install and configure operating systems and software',
+    timeLimit: kind == SetupLabKind.network ? 120 : 60,
+    requiredSimulationId: prerequisite,
+    items: [
+      for (var i = 0; i < GuidedSetupData.steps(kind).length; i++)
+        _item(
+          id: '${id}_step_${i + 1}',
+          name: GuidedSetupData.steps(kind)[i].$1,
+          description: GuidedSetupData.steps(kind)[i].$2,
+          tooltip: GuidedSetupData.steps(kind)[i].$2,
+          imageUrl: kind == SetupLabKind.network
+              ? 'assets/simulations/coc2-router-matched.png'
+              : 'assets/simulations/laptop.svg',
+          correctSlot: '${id}_target_${i + 1}',
+          category: 'procedure',
+          step: i + 1,
+        ),
+    ],
+  );
+
+  static Simulation
+  getLegacyOperatingSystemInstallation() => _procedureSimulation(
     id: 'sim_coc1_os_install',
     title: 'Operating System Installation - COC1',
     description:
@@ -753,7 +817,7 @@ class SimulationData {
     ],
   );
 
-  static Simulation getSoftwareConfiguration() => _procedureSimulation(
+  static Simulation getLegacySoftwareConfiguration() => _procedureSimulation(
     id: 'sim_coc1_software_config',
     title: 'Software Configuration - COC1',
     description:
@@ -908,6 +972,7 @@ class SimulationData {
     getCableManagement(),
     getOperatingSystemInstallation(),
     getSoftwareConfiguration(),
+    getNetworkConfiguration(),
     getNetworkTopology(),
     getRj45Crimping(),
     getIpConfiguration(),

@@ -176,6 +176,18 @@ void main() {
       ),
     );
     expect(find.byKey(const ValueKey('system-unit-open-side')), findsOneWidget);
+    final viewer = tester.widget<InteractiveViewer>(
+      find.byType(InteractiveViewer),
+    );
+    await tester.tap(find.byKey(const ValueKey('workbench-zoom-in')));
+    await tester.pump();
+    expect(
+      viewer.transformationController!.value.getMaxScaleOnAxis(),
+      greaterThan(1),
+    );
+    await tester.tap(find.byKey(const ValueKey('workbench-zoom-out')));
+    await tester.pump();
+    expect(viewer.transformationController!.value.getMaxScaleOnAxis(), 1);
     await tester.tap(find.byKey(const ValueKey('rotate-system-unit')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('system-unit-rear')), findsOneWidget);

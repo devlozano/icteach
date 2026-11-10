@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/data/simulation_data.dart';
+import 'package:icteach/data/guided_setup_data.dart';
+import 'package:icteach/widgets/guided_setup_workbench.dart';
 import 'package:icteach/widgets/simulation_process_guide.dart';
 
 void main() {
@@ -19,6 +21,14 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      if (GuidedSetupData.kindForId(simulation.id) != null) {
+        expect(find.byType(GuidedSetupWorkbench), findsOneWidget);
+        expect(
+          find.text('Guided practice • no assessment credit'),
+          findsOneWidget,
+        );
+        return;
+      }
       await tester.scrollUntilVisible(find.text('Replay demonstration'), 80);
       expect(find.text('Replay demonstration'), findsOneWidget);
       expect(

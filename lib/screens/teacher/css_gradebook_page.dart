@@ -4,6 +4,7 @@ import '../../services/css_gradebook_service.dart';
 import '../../services/report_export_service.dart';
 import '../../utils/deped_grading.dart';
 import '../../widgets/insights_ui.dart';
+import '../../utils/score_input_formatter.dart';
 
 class CssGradebookPage extends StatefulWidget {
   const CssGradebookPage({
@@ -92,6 +93,9 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
             TextField(
               controller: year,
               keyboardType: TextInputType.number,
+              inputFormatters: [
+                ScoreInputFormatter(decimal: false, maximum: 2100),
+              ],
               decoration: const InputDecoration(
                 labelText: 'School year starting year',
                 helperText: '2026 means SY 2026–2027',
@@ -224,8 +228,77 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                     ),
                   OutlinedButton.icon(
                     icon: const Icon(Icons.download),
-                    label: const Text('Export grades'),
+                    label: const Text('Preview & export report'),
                     onPressed: () async {
+                      final rows = <List<Object?>>[
+                        [
+                          'Student',
+                          'Term 1',
+                          'Term 2',
+                          'Term 3',
+                          'Final grade',
+                        ],
+                        for (final student in widget.students.entries)
+                          [
+                            student.value,
+                            for (var t = 1; t <= 3; t++)
+                              result(student.key, t)?.grade ?? 'Incomplete',
+                            DepEdGrading.finalGrade([
+                                  for (var t = 1; t <= 3; t++)
+                                    result(student.key, t)?.grade,
+                                ]) ??
+                                'Incomplete',
+                          ],
+                      ];
+                      final export = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: Text(
+                            'Grade report • SY $schoolYear–${schoolYear + 1}',
+                          ),
+                          content: SizedBox(
+                            width: 760,
+                            height: 420,
+                            child: SingleChildScrollView(
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: DataTable(
+                                  headingRowColor: const WidgetStatePropertyAll(
+                                    Color(0xFFE8F0F8),
+                                  ),
+                                  columns: [
+                                    for (final label in rows.first)
+                                      DataColumn(label: Text('$label')),
+                                  ],
+                                  rows: [
+                                    for (final row in rows.skip(1))
+                                      DataRow(
+                                        cells: [
+                                          for (final cell in row)
+                                            DataCell(Text('$cell')),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton.icon(
+                              onPressed: rows.length == 1
+                                  ? null
+                                  : () => Navigator.pop(context, true),
+                              icon: const Icon(Icons.download),
+                              label: const Text('Export CSV for Excel'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (export != true) return;
                       try {
                         await ReportExportService.shareCsv(
                           'css-grades-$schoolYear.csv',
@@ -503,67 +576,119 @@ class _TermEditorState extends State<_TermEditor> {
                   style: TextStyle(color: insightsMuted, height: 1.5),
                 ),
               ),
-              for (var i = 0; i < 5; i++)
-                InsightsPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: 650,
+                  child: Table(
+                    border: TableBorder.all(color: const Color(0xFFCAD6E2)),
+                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                    columnWidths: const {
+                      0: FlexColumnWidth(1.4),
+                      1: FlexColumnWidth(),
+                      2: FlexColumnWidth(),
+                    },
                     children: [
-                      Text(
-                        DepEdGrading.labels[i],
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 14),
-                      InsightsFieldPair(
+                      const TableRow(
+                        decoration: BoxDecoration(color: Color(0xFFE8F0F8)),
                         children: [
-                          for (var side = 0; side < 2; side++)
-                            SizedBox(
-                              child: Padding(
-                                padding: EdgeInsets.zero,
-                                child: TextFormField(
-                                  controller: side == 0 ? raw[i] : maximum[i],
-                                  enabled: !busy,
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: const Color(0xFFF5F8FA),
-                                    border: const OutlineInputBorder(),
-                                    labelText: side == 0
-                                        ? 'Earned points'
-                                        : 'Possible points',
-                                  ),
-                                  onChanged: (_) =>
-                                      setState(() => dirty = true),
-                                  validator: (_) {
-                                    final a = raw[i].text.trim(),
-                                        b = maximum[i].text.trim();
-                                    if (a.isEmpty && b.isEmpty) return null;
-                                    final r = double.tryParse(a),
-                                        m = double.tryParse(b);
-                                    if (r == null ||
-                                        m == null ||
-                                        !r.isFinite ||
-                                        !m.isFinite ||
-                                        m <= 0 ||
-                                        m > 1000000 ||
-                                        r < 0 ||
-                                        r > m) {
-                                      return side == 0
-                                          ? 'Enter 0 to maximum'
-                                          : 'Enter positive maximum';
-                                    }
-                                    return null;
-                                  },
+                          Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Text(
+                              'Component',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Text(
+                              'Earned points',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(12),
+                            child: Text(
+                              'Possible points',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      for (var i = 0; i < 5; i++)
+                        TableRow(
+                          decoration: BoxDecoration(
+                            color: i.isEven
+                                ? Colors.white
+                                : const Color(0xFFF5F8FA),
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                DepEdGrading.labels[i],
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                        ],
-                      ),
+                            for (var side = 0; side < 2; side++)
+                              SizedBox(
+                                child: Padding(
+                                  padding: EdgeInsets.zero,
+                                  child: TextFormField(
+                                    controller: side == 0 ? raw[i] : maximum[i],
+                                    enabled: !busy,
+                                    inputFormatters: [ScoreInputFormatter()],
+                                    textAlign: TextAlign.right,
+                                    textInputAction: TextInputAction.next,
+                                    onFieldSubmitted: (_) =>
+                                        FocusScope.of(context).nextFocus(),
+                                    autovalidateMode:
+                                        AutovalidateMode.onUserInteraction,
+                                    keyboardType:
+                                        const TextInputType.numberWithOptions(
+                                          decimal: true,
+                                        ),
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      fillColor: const Color(0xFFF5F8FA),
+                                      border: const OutlineInputBorder(),
+                                      labelText: side == 0
+                                          ? 'Earned points'
+                                          : 'Possible points',
+                                    ),
+                                    onChanged: (_) =>
+                                        setState(() => dirty = true),
+                                    validator: (_) {
+                                      final a = raw[i].text.trim(),
+                                          b = maximum[i].text.trim();
+                                      if (a.isEmpty && b.isEmpty) return null;
+                                      final r = double.tryParse(a),
+                                          m = double.tryParse(b);
+                                      if (r == null ||
+                                          m == null ||
+                                          !r.isFinite ||
+                                          !m.isFinite ||
+                                          m <= 0 ||
+                                          m > 1000000 ||
+                                          r < 0 ||
+                                          r > m) {
+                                        return side == 0
+                                            ? 'Enter 0 to maximum'
+                                            : 'Enter positive maximum';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                     ],
                   ),
                 ),
+              ),
               if (result != null)
                 Card(
                   child: Padding(

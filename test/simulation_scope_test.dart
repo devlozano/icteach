@@ -7,7 +7,7 @@ import 'package:icteach/screens/teacher/learning_path_manager.dart';
 void main() {
   test('student and teacher catalogs stay within COC1 and COC2', () {
     final catalog = SimulationData.getAllSimulations();
-    expect(catalog, hasLength(10));
+    expect(catalog, hasLength(11));
     expect(catalog.map((s) => s.competency).toSet(), {'COC1', 'COC2'});
     final ids = catalog.map((s) => s.id).toSet();
     expect(

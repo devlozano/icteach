@@ -312,6 +312,8 @@ class _SimulationCard extends StatelessWidget {
 
   String _backgroundAsset(String simulationId) {
     return switch (simulationId) {
+      'sim_coc2_network_setup' =>
+        'assets/simulations/setup-network-workstation-v1.png',
       'sim_coc1_assembly' => 'assets/simulations/background-pc-assembly.png',
       'sim_coc1_disassembly' =>
         'assets/simulations/background-pc-disassembly.png',
@@ -319,10 +321,9 @@ class _SimulationCard extends StatelessWidget {
         'assets/simulations/background-cable-management.png',
       'sim_coc1_identification' =>
         'assets/simulations/background-hardware-identification.png',
-      'sim_coc1_os_install' =>
-        'assets/simulations/background-os-installation.png',
+      'sim_coc1_os_install' => 'assets/simulations/setup-os-workstation-v1.png',
       'sim_coc1_software_config' =>
-        'assets/simulations/background-software-configuration.png',
+        'assets/simulations/setup-software-workstation-v1.png',
       'sim_coc1_maintenance' =>
         'assets/simulations/background-preventive-maintenance.png',
       'sim_coc1_repair' => 'assets/simulations/background-troubleshooting.png',

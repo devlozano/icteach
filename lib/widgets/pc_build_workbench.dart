@@ -35,6 +35,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
   final _record = TextEditingController();
   final _zoom = TransformationController();
   final _seated = <String>{};
+  final _openedLocks = <String>{};
   final _connections = <String>{};
   final _history = <String>[];
   int _operation = 0, _turns = 1;
@@ -73,6 +74,18 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     final item = _current;
     final step = _step;
     if (_busy || widget.locked || item == null || step == null) return;
+    final requiredLocks = switch (item.id) {
+      'ram' => {'ram_upper', 'ram_lower'},
+      'cpu' => {'cpu_lever', 'cpu_plate'},
+      'gpu' => {'gpu_latch'},
+      _ => <String>{},
+    };
+    if (step.place && !_openedLocks.containsAll(requiredLocks)) {
+      _mistake(
+        'Insertion blocked. Open the retaining clips or socket lock before moving the component into place.',
+      );
+      return;
+    }
     if (_tool != step.tool) {
       _mistake('Use ${step.tool} for this operation.');
       return;
@@ -148,6 +161,15 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       }
       if (step.dropToken != null) _connections.add(step.dropToken!);
       _history.add(step.result.isEmpty ? step.label : step.result);
+      if (item.id == 'ram' && _operation == 0) _openedLocks.add('ram_upper');
+      if (item.id == 'ram' && _operation == 1) _openedLocks.add('ram_lower');
+      if (item.id == 'cpu' && _operation == 0) _openedLocks.add('cpu_lever');
+      if (item.id == 'cpu' && _operation == 1) _openedLocks.add('cpu_plate');
+      if (item.id == 'gpu' &&
+          step.label.toLowerCase().contains('latch') &&
+          !step.place) {
+        _openedLocks.add('gpu_latch');
+      }
       if (step.result.isNotEmpty) {
         _history.add(
           'POST: CPU and memory detected; CPU fan running; SATA SSD detected; display and keyboard responding; POWER SW, RESET SW, HDD LED and POWER LED circuits passed.',
@@ -234,6 +256,51 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
               style: TextStyle(fontSize: 11),
             ),
             if (item != null && step != null) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEAF2F8),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFFCADCEB)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.description,
+                      style: const TextStyle(
+                        color: Color(0xFF16324A),
+                        fontSize: 13,
+                        height: 1.45,
+                      ),
+                    ),
+                    if (item.id == 'ram' ||
+                        item.id == 'cpu' ||
+                        item.id == 'gpu') ...[
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Hold by the edges. Keep contacts untouched. Open the lock, align the key, and lower the part evenly without forcing it.',
+                        style: TextStyle(
+                          color: Color(0xFF274B63),
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                      Text(
+                        step.place
+                            ? 'Retention locks open • ready to align'
+                            : 'Complete the highlighted handling step before insertion.',
+                        style: const TextStyle(
+                          color: Color(0xFF115E59),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
               const SizedBox(height: 12),
               LinearProgressIndicator(value: _operation / _steps.length),
               const SizedBox(height: 8),
@@ -667,6 +734,17 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     ),
   );
 
+  void _changeZoom(double factor) {
+    final current = _zoom.value.getMaxScaleOnAxis();
+    final next = (current * factor).clamp(1.0, 3.0);
+    if (next == 1) {
+      _zoom.value = Matrix4.identity();
+    } else {
+      _zoom.value = _zoom.value.clone()
+        ..scaleByDouble(next / current, next / current, 1, 1);
+    }
+  }
+
   Widget _scene() => ClipRRect(
     borderRadius: BorderRadius.circular(12),
     child: ColoredBox(
@@ -717,6 +795,18 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                     color: Colors.white70,
                     size: 20,
                   ),
+                ),
+                IconButton(
+                  key: const ValueKey('workbench-zoom-out'),
+                  tooltip: 'Zoom out',
+                  onPressed: () => _changeZoom(1 / 1.25),
+                  icon: const Icon(Icons.zoom_out, color: Colors.white),
+                ),
+                IconButton(
+                  key: const ValueKey('workbench-zoom-in'),
+                  tooltip: 'Zoom in',
+                  onPressed: () => _changeZoom(1.25),
+                  icon: const Icon(Icons.zoom_in, color: Colors.white),
                 ),
               ],
             ),
@@ -817,9 +907,8 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
         if (installing)
           Opacity(
             opacity: 1 - progress,
-            child: Transform.scale(
-              scaleX: id == 'ram' ? 3.8 - 2.8 * progress : 1,
-              scaleY: id == 'gpu' ? 2.2 - 1.2 * progress : 1,
+            child: Transform.translate(
+              offset: Offset(0, -24 * (1 - progress)),
               child: RotatedBox(
                 quarterTurns: id == 'ram' ? 1 : 0,
                 child: Image.asset(asset, fit: BoxFit.fill),
@@ -1259,10 +1348,14 @@ class _BuildMechanicsPainter extends CustomPainter {
       // anchor. Drawing another generic circle here created a doubled screw.
     }
 
-    void latch(Offset center, bool open, {bool vertical = false}) {
-      final delta = vertical
-          ? Offset(open ? 7 : 0, 0)
-          : Offset(0, open ? -7 : 0);
+    void latch(
+      Offset center,
+      bool open, {
+      bool vertical = false,
+      double? opening,
+    }) {
+      final amount = opening ?? (open ? 1.0 : 0.0);
+      final delta = vertical ? Offset(7 * amount, 0) : Offset(0, -7 * amount);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
           Rect.fromCenter(
@@ -1559,9 +1652,22 @@ class _BuildMechanicsPainter extends CustomPainter {
         Paint()..color = Colors.grey.shade300,
       );
     }
-    if (current == 'ram' && operation > 0 && operation < 3) {
-      latch(p(.456, .211), true);
-      latch(p(.456, .474), operation > 1);
+    if (current == 'ram' && operation < 3) {
+      final seating = operation == 2 && busy ? 1 - motion : 1.0;
+      latch(
+        p(.456, .211),
+        operation > 0,
+        opening: operation == 0 ? (busy ? motion : 0) : seating,
+      );
+      latch(
+        p(.456, .474),
+        operation > 1,
+        opening: operation == 1
+            ? (busy ? motion : 0)
+            : operation > 1
+            ? seating
+            : 0,
+      );
     }
     if ((current == 'gpu' && operation >= 2) || installed.contains('gpu')) {
       final seated = installed.contains('gpu') || operation >= 3;

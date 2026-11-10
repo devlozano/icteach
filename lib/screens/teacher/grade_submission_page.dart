@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/score_input_formatter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/assignment_model.dart';
 import '../../services/assignment_service.dart';
@@ -148,10 +149,7 @@ class _GradeSubmissionPageState extends State<GradeSubmissionPage> {
                 children: [
                   const Text(
                     'Student Information',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -193,7 +191,9 @@ class _GradeSubmissionPageState extends State<GradeSubmissionPage> {
                       if (widget.submission.isGraded)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 4),
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.green.shade100,
                             borderRadius: BorderRadius.circular(12),
@@ -233,10 +233,7 @@ class _GradeSubmissionPageState extends State<GradeSubmissionPage> {
                 children: [
                   const Text(
                     'Student Submission',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
                   Container(
@@ -250,10 +247,7 @@ class _GradeSubmissionPageState extends State<GradeSubmissionPage> {
                       widget.submission.content.isNotEmpty
                           ? widget.submission.content
                           : 'No content provided',
-                      style: const TextStyle(
-                        height: 1.6,
-                        fontSize: 14,
-                      ),
+                      style: const TextStyle(height: 1.6, fontSize: 14),
                     ),
                   ),
                   if (widget.submission.attachmentUrl != null) ...[
@@ -261,14 +255,17 @@ class _GradeSubmissionPageState extends State<GradeSubmissionPage> {
                     InkWell(
                       onTap: () async {
                         try {
-                          final uri =
-                              Uri.parse(widget.submission.attachmentUrl!);
+                          final uri = Uri.parse(
+                            widget.submission.attachmentUrl!,
+                          );
                           if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri,
-                                mode: LaunchMode.externalApplication);
+                            await launchUrl(
+                              uri,
+                              mode: LaunchMode.externalApplication,
+                            );
                           }
                         } catch (e) {
-                          if (mounted) {
+                          if (mounted && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Error opening file: $e'),
@@ -297,8 +294,11 @@ class _GradeSubmissionPageState extends State<GradeSubmissionPage> {
                               ),
                             ),
                             const Spacer(),
-                            const Icon(Icons.open_in_new,
-                                color: Colors.blue, size: 16),
+                            const Icon(
+                              Icons.open_in_new,
+                              color: Colors.blue,
+                              size: 16,
+                            ),
                           ],
                         ),
                       ),
@@ -328,15 +328,15 @@ class _GradeSubmissionPageState extends State<GradeSubmissionPage> {
                 children: [
                   const Text(
                     'Grading',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
                   // Score Input
                   TextFormField(
                     controller: _scoreController,
+                    inputFormatters: [
+                      ScoreInputFormatter(decimal: false, maximum: 100),
+                    ],
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
                       labelText: 'Score (out of 100)',
@@ -536,10 +536,7 @@ class _GradeSubmissionPageState extends State<GradeSubmissionPage> {
                 ),
                 Text(
                   'Score: $score/100',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: color, fontSize: 12),
                 ),
               ],
             ),
@@ -567,23 +564,15 @@ class _QuickFeedbackChip extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
 
-  const _QuickFeedbackChip({
-    required this.label,
-    required this.onTap,
-  });
+  const _QuickFeedbackChip({required this.label, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return ActionChip(
-      label: Text(
-        label,
-        style: const TextStyle(fontSize: 11),
-      ),
+      label: Text(label, style: const TextStyle(fontSize: 11)),
       onPressed: onTap,
       backgroundColor: Colors.grey.shade100,
-      shape: StadiumBorder(
-        side: BorderSide(color: Colors.grey.shade300),
-      ),
+      shape: StadiumBorder(side: BorderSide(color: Colors.grey.shade300)),
     );
   }
 }
