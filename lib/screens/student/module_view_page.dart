@@ -1,3 +1,4 @@
+import 'learning_continuation_page.dart';
 import '../../services/module_access_service.dart';
 import '../../widgets/module_resource_actions.dart';
 import 'package:flutter/material.dart';
@@ -670,27 +671,14 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
                                   !mounted) {
                                 return;
                               }
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: const Row(
-                                    children: [
-                                      Icon(
-                                        Icons.check_circle_rounded,
-                                        color: Colors.white,
-                                      ),
-                                      SizedBox(width: 12),
-                                      Text('Module marked as completed!'),
-                                    ],
+                              await Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => LearningContinuationPage(
+                                    classId: widget.classId,
+                                    moduleId: module.id,
                                   ),
-                                  backgroundColor: Colors.green.shade600,
-                                  behavior: SnackBarBehavior.floating,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  margin: const EdgeInsets.all(16),
                                 ),
                               );
-                              _backToModules();
                             },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF4F46E5),
@@ -702,8 +690,13 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'Mark as Done',
+                      child: Text(
+                        _savingProgress
+                            ? 'Saving progress...'
+                            : _progress[module.id] == true
+                            ? 'Continue to Quiz'
+                            : 'Mark as Done & Continue to Quiz',
+                        textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
@@ -1120,7 +1113,9 @@ class _YouTubePlayerPageState extends State<YouTubePlayerPage> {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('Ã¢Å“â€¦ URL copied'),
+                    content: const Text(
+                      'ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â¦ URL copied',
+                    ),
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),

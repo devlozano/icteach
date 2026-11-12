@@ -1,3 +1,4 @@
+import 'simulation_description.dart';
 import 'rj45_connector_detail.dart';
 import 'rj45_art.dart';
 import 'dart:async';
@@ -71,8 +72,10 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
     builder: (_) => AlertDialog(
       title: const Text('Wiring reference'),
       content: const SingleChildScrollView(
-        child: Text(
-          'Use a compatible unshielded Cat6 cable with spline and a closed-end 8P8C plug approved for its conductor size. Follow the plug manufacturer strip and trim lengths.\n\nPin view: gold contacts facing you, latch away, cable entering from below. Pins 1–8 run left to right.\n\nT568B: white/orange, orange, white/green, blue, white/blue, green, white/brown, brown.\n\nT568A: white/green, green, white/orange, blue, white/blue, orange, white/brown, brown.\n\nStraight-through: A/A or B/B.\nCrossover (10/100BASE-TX): A/B or B/A. This is not the four-pair gigabit crossover exercise.\n\nMaintain pair twists as close to the termination as possible. Do not strip individual conductor insulation. A basic LED tester shows continuity; it cannot certify Cat6 performance or reliably detect split pairs. The final training inspection also checks standard pair assignments.',
+        child: SimulationDescriptionSection(
+          title: 'Cable and connector guidance',
+          text:
+              'Use a compatible unshielded Cat6 cable with spline and a closed-end 8P8C plug approved for its conductor size. Follow the plug manufacturer strip and trim lengths.\n\nPin view: gold contacts facing you, latch away, cable entering from below. Pins 1–8 run left to right.\n\nT568B: white/orange, orange, white/green, blue, white/blue, green, white/brown, brown.\n\nT568A: white/green, green, white/orange, blue, white/blue, orange, white/brown, brown.\n\nStraight-through: A/A or B/B.\nCrossover (10/100BASE-TX): A/B or B/A. This is not the four-pair gigabit crossover exercise.\n\nMaintain pair twists as close to the termination as possible. Do not strip individual conductor insulation. A basic LED tester shows continuity; it cannot certify Cat6 performance or reliably detect split pairs. The final training inspection also checks standard pair assignments.',
         ),
       ),
       actions: [

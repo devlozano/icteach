@@ -15,18 +15,25 @@ class ContentAccessService {
             (type == 'quiz' && lock['contentType'] == 'practice')) &&
         (lock['contentId'] == contentId || lock['contentId'] == '*'),
   );
-  static Future<bool> isClassStaff(String classId) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  static Future<bool> isClassStaff(
+    String classId, {
+    FirebaseFirestore? firestore,
+    String? userId,
+  }) async {
+    final uid = userId ?? FirebaseAuth.instance.currentUser?.uid;
     if (uid == null)
       throw StateError('Please sign in to access class content.');
-    final db = FirebaseFirestore.instance;
+    final db = firestore ?? FirebaseFirestore.instance;
     final profile = (await db.collection('users').doc(uid).get()).data();
+    if (profile?['isActive'] == false) return false;
     final role = profile?['role'];
     if (role == 'admin') return true;
     if (role != 'teacher' && role != 'trainer') return false;
     final classroom = (await db.collection('classes').doc(classId).get())
         .data();
     return classroom?['teacherId'] == uid ||
+        (role == 'trainer' &&
+            ((classroom?['trainerIds'] as List?) ?? []).contains(uid)) ||
         ((classroom?['enrolledStudentIds'] as List?) ?? []).contains(uid);
   }
 

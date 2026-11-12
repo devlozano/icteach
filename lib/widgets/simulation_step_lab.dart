@@ -1,3 +1,4 @@
+import 'simulation_description.dart';
 import 'package:flutter/material.dart' hide Simulation;
 import 'package:flutter_svg/flutter_svg.dart';
 import '../data/simulation_step_detail.dart';
@@ -191,8 +192,9 @@ class _SimulationStepLabState extends State<SimulationStepLab>
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    _finished
+                  SimulationDescriptionSection(
+                    title: _finished ? 'Verification' : 'What to do',
+                    text: _finished
                         ? 'Acceptance criterion: ${_detail.expected}'
                         : _detail.actions[_action],
                   ),

@@ -1,3 +1,4 @@
+import 'simulation_description.dart';
 import 'pc_installed_cable.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -268,13 +269,9 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.description,
-                      style: const TextStyle(
-                        color: Color(0xFF16324A),
-                        fontSize: 13,
-                        height: 1.45,
-                      ),
+                    SimulationDescriptionSection(
+                      title: 'Description',
+                      text: item.description,
                     ),
                     if (item.id == 'ram' ||
                         item.id == 'cpu' ||

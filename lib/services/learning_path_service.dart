@@ -161,7 +161,8 @@ class LearningPathService {
         'Your teacher has not assigned a module to this quiz yet.',
       );
     }
-    final module = (await root.collection('modules').doc(moduleId).get()).data();
+    final module = (await root.collection('modules').doc(moduleId).get())
+        .data();
     if (module?['isPublished'] != true) {
       throw StateError('The module assigned to this quiz is not published.');
     }
@@ -212,7 +213,9 @@ class LearningPathService {
         !(data['enrolledStudentIds'] as List? ?? []).contains(uid)) {
       final role = (await db.collection('users').doc(uid).get())
           .data()?['role'];
-      if (role != 'admin') {
+      if (role != 'admin' &&
+          !(role == 'trainer' &&
+              (data['trainerIds'] as List? ?? []).contains(uid))) {
         throw StateError('Join this class before accessing its activities.');
       }
     }

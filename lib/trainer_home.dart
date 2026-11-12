@@ -20,7 +20,6 @@ import 'login.dart';
 import 'admin_login.dart';
 import 'widgets/staff_sidebar.dart';
 import 'services/workspace_preferences.dart';
-import 'join_class.dart';
 import 'package:icteach/screens/notification_page.dart';
 import 'package:icteach/widgets/notification_badge.dart';
 import 'package:icteach/screens/student/forums_page.dart';
@@ -193,14 +192,6 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               stats: _buildStatsRow(primaryColor),
               content: const StaffManagementPage(trainer: true, embedded: true),
               actions: [
-                (
-                  Icons.add,
-                  'Join Class',
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const JoinClassPage()),
-                  ),
-                ),
                 (
                   Icons.menu_book_outlined,
                   'Training Modules',
@@ -868,7 +859,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      'No classes joined',
+                      'No assigned classes',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -876,26 +867,10 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Join a class first to manage content',
+                      'The principal will assign you to a teacher and class.',
                       style: TextStyle(color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        navigator.pop();
-                        navigator.push(
-                          MaterialPageRoute(
-                            builder: (_) => const JoinClassPage(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('Join a Class'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2F80ED),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
                   ],
                 ),
               );

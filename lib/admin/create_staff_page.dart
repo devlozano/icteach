@@ -1,14 +1,17 @@
+import '../services/principal_assignments.dart';
+import 'staff_assignment_fields.dart';
 import 'package:firebase_core/firebase_core.dart';
 import '../utils/staff_password.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:icteach/emailjs_service.dart';
+import '../widgets/principal_workspace_shell.dart';
 
 class CreateStaffPage extends StatefulWidget {
-  final String selectedRole;
+  final String? selectedRole;
 
-  const CreateStaffPage({super.key, required this.selectedRole});
+  const CreateStaffPage({super.key, this.selectedRole});
 
   @override
   State<CreateStaffPage> createState() => _CreateStaffPageState();
@@ -25,14 +28,21 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
 
   late String _selectedRole;
   bool _isLoading = false;
+  StaffAssignmentDraft _assignments = StaffAssignmentDraft();
+  String? _createdStaffId, _pendingPassword;
+  bool _assignmentsSaved = false;
+  int _formRevision = 0;
 
-  String get _accountLabel =>
-      _selectedRole == 'trainer' ? 'Trainer Account' : 'Teacher Account';
+  String get _accountLabel => _selectedRole == 'trainer'
+      ? 'Trainer Account'
+      : _selectedRole == 'teacher'
+      ? 'Teacher Account'
+      : 'User';
 
   @override
   void initState() {
     super.initState();
-    _selectedRole = widget.selectedRole;
+    _selectedRole = widget.selectedRole ?? '';
   }
 
   @override
@@ -69,8 +79,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
     required String password,
   }) async {
     final app = await Firebase.initializeApp(
-      name:
-          'staff-creation-' + DateTime.now().microsecondsSinceEpoch.toString(),
+      name: 'staff-creation-${DateTime.now().microsecondsSinceEpoch}',
       options: Firebase.app().options,
     );
     final auth = FirebaseAuth.instanceFor(app: app);
@@ -90,6 +99,11 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
 
   // ✅ NEW: Reset form method
   void _resetForm() {
+    _createdStaffId = null;
+    _pendingPassword = null;
+    _assignmentsSaved = false;
+    _assignments = StaffAssignmentDraft();
+    _formRevision++;
     _formKey.currentState?.reset();
     _firstNameController.clear();
     _middleNameController.clear();
@@ -97,7 +111,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
     _extensionController.clear();
     _emailController.clear();
     setState(() {
-      _selectedRole = widget.selectedRole;
+      _selectedRole = widget.selectedRole ?? '';
     });
   }
 
@@ -107,7 +121,8 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
     setState(() => _isLoading = true);
 
     try {
-      final tempPassword = generatePassword();
+      await PrincipalAssignments().requirePrincipal();
+      final tempPassword = _pendingPassword ??= generatePassword();
 
       if (tempPassword.length < 6) {
         throw Exception("Password too short for Firebase");
@@ -132,13 +147,14 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
         ext,
       ].where((e) => e.isNotEmpty).join(' ');
 
-      final credential = await createStaffAccount(
-        email: email,
-        password: tempPassword,
-      );
-
-      final uid = credential.user!.uid;
-
+      if (_createdStaffId == null) {
+        final credential = await createStaffAccount(
+          email: email,
+          password: tempPassword,
+        );
+        _createdStaffId = credential.user!.uid;
+      }
+      final uid = _createdStaffId!;
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'uid': uid,
         'firstName': first,
@@ -154,6 +170,11 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
+
+      if (!_assignmentsSaved) {
+        await PrincipalAssignments().save(uid, _selectedRole, _assignments);
+        _assignmentsSaved = true;
+      }
 
       await EmailJSService.sendStaffCredentials(
         email: email,
@@ -266,42 +287,68 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xffF8FAFC),
-      appBar: AppBar(
-        title: Text('Create $_accountLabel'),
-        backgroundColor: const Color(0xFF0B2B4A),
-        foregroundColor: Colors.white,
+    return PrincipalDetailScaffold(
+      title: 'Add user',
+      subtitle: 'Create a teacher or trainer account and assign their work.',
+      icon: Icons.person_add_alt_1_rounded,
+      maxWidth: 860,
+      child: Card(
         elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Card(
-          elevation: 3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  Text(
-                    'Add New ${_selectedRole == 'trainer' ? 'Trainer' : 'Teacher'}',
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(color: Color(0xFFDCE4EC)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Account information',
                     style: TextStyle(
-                      fontSize: 22,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF0B2B4A),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Fill in the details to create a new ${_selectedRole == 'trainer' ? 'trainer' : 'teacher'} account',
+                ),
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Start by choosing a role. The required assignment fields will appear below.',
                     style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                   ),
-                  const SizedBox(height: 24),
+                ),
+                const SizedBox(height: 24),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedRole.isEmpty ? null : _selectedRole,
+                  validator: (v) =>
+                      v == null ? 'Choose Teacher or Trainer.' : null,
+                  decoration: fieldDecoration(hint: 'Role', icon: Icons.badge),
+                  items: const [
+                    DropdownMenuItem(value: 'teacher', child: Text('Teacher')),
+                    DropdownMenuItem(value: 'trainer', child: Text('Trainer')),
+                  ],
+                  onChanged: _isLoading || _createdStaffId != null
+                      ? null
+                      : (v) {
+                          if (v != null) {
+                            setState(() {
+                              _selectedRole = v;
+                              _assignments = StaffAssignmentDraft();
+                              _formRevision++;
+                            });
+                          }
+                        },
+                ),
+                const SizedBox(height: 16),
+                if (_selectedRole.isNotEmpty) ...[
                   TextFormField(
+                    enabled: !_isLoading && _createdStaffId == null,
                     controller: _firstNameController,
                     decoration: fieldDecoration(
                       hint: 'First Name',
@@ -312,6 +359,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    enabled: !_isLoading && _createdStaffId == null,
                     controller: _middleNameController,
                     decoration: fieldDecoration(
                       hint: 'Middle Name',
@@ -320,6 +368,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    enabled: !_isLoading && _createdStaffId == null,
                     controller: _lastNameController,
                     decoration: fieldDecoration(
                       hint: 'Last Name',
@@ -330,6 +379,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    enabled: !_isLoading && _createdStaffId == null,
                     controller: _extensionController,
                     decoration: fieldDecoration(
                       hint: 'Extension (Jr., Sr., III)',
@@ -338,6 +388,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
+                    enabled: !_isLoading && _createdStaffId == null,
                     controller: _emailController,
                     decoration: fieldDecoration(
                       hint: 'Email Address',
@@ -347,26 +398,14 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                         v == null || v.trim().isEmpty ? 'Required' : null,
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: _selectedRole,
-                    decoration: fieldDecoration(
-                      hint: 'Role',
-                      icon: Icons.badge,
+                  const SizedBox(height: 20),
+                  if (_selectedRole.isNotEmpty)
+                    StaffAssignmentFields(
+                      key: ValueKey('$_selectedRole-$_formRevision'),
+                      role: _selectedRole,
+                      draft: _assignments,
+                      enabled: !_isLoading && !_assignmentsSaved,
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'teacher',
-                        child: Text('Teacher'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'trainer',
-                        child: Text('Trainer'),
-                      ),
-                    ],
-                    onChanged: (v) {
-                      if (v != null) setState(() => _selectedRole = v);
-                    },
-                  ),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
@@ -399,7 +438,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                     ),
                   ),
                 ],
-              ),
+              ],
             ),
           ),
         ),

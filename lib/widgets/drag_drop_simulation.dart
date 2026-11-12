@@ -1,3 +1,4 @@
+import 'simulation_description.dart';
 import 'simulation_step_lab.dart';
 import 'guided_setup_workbench.dart';
 import '../data/guided_setup_data.dart';
@@ -1079,19 +1080,10 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     setState(() => _focusedItemId = item.id);
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(item.name),
-        content: SingleChildScrollView(
-          child: Text(
-            '${item.tooltip}\n\n${item.specification}\n\nResource: ${_resourceProfile(item).$1}\nControl: ${_resourceProfile(item).$2}',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
+      builder: (context) => SimulationItemDescriptionDialog(
+        item: item,
+        resource: _resourceProfile(item).$1,
+        control: _resourceProfile(item).$2,
       ),
     );
   }
@@ -1771,7 +1763,12 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Inspect specimen'),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Inspect specimen',
+          style: TextStyle(color: Color(0xFF0F172A)),
+        ),
         scrollable: true,
         content: SizedBox(
           width: 480,
@@ -1789,10 +1786,16 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                 ),
               ),
               const SizedBox(height: 12),
-              Text(specimen.tooltip),
+              SimulationDescriptionSection(
+                title: 'Inspection guidance',
+                text: specimen.tooltip,
+              ),
               if (specimen.specification.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text(specimen.specification),
+                SimulationDescriptionSection(
+                  title: 'Specifications',
+                  text: specimen.specification,
+                ),
               ],
               const SizedBox(height: 8),
               const Text(

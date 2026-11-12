@@ -149,6 +149,14 @@ class _JoinClassPageState extends State<JoinClassPage> {
     setState(() => _isLoading = true);
 
     try {
+      final account = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+      if (account.data()?['role'] == 'trainer') {
+        _showMessage('Your classes are assigned by the principal.');
+        return;
+      }
       // Find class with the given code
       final query = await FirebaseFirestore.instance
           .collection('classes')

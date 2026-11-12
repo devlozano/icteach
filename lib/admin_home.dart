@@ -1,11 +1,12 @@
+import 'admin/principal_users_panel.dart';
 import 'services/workspace_data.dart';
 import 'widgets/staff_workspace_header.dart';
-import 'admin/manage_teachers_page.dart';
+
 import 'widgets/performance_pie_chart.dart';
 import 'widgets/summary_print_button.dart';
 import 'services/personal_summary_service.dart';
 import 'widgets/persistent_workspace.dart';
-import 'widgets/staff_sidebar.dart';
+import 'widgets/principal_workspace_shell.dart';
 import 'screens/staff_outcomes.dart';
 import 'admin/school_profile.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,13 +16,13 @@ import 'admin/content_overview_page.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'admin/create_staff_page.dart';
-import 'admin/manage_trainers_page.dart';
+
 import 'admin/evaluation_reports_page.dart';
 import 'package:icteach/services/quiz_service.dart';
 import 'admin_login.dart';
 import 'services/workspace_preferences.dart';
 
-// ─── Color constants ──────────────────────────────────────────────────────────
+// â”€â”€â”€ Color constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const _kNavColor = Color(0xFF0F172A);
 const _kAccentBlue = Color(0xFF0891B2);
 const _kCardBorder = Color(0xFFDCE4EC);
@@ -47,9 +48,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
       (WorkspacePreferences.selection('admin_panel') ?? 'Dashboard')
           .replaceFirst('LRN Registry', 'Dashboard')
           .replaceFirst('LRN Registration', 'Dashboard');
-  String? _staffDirectory;
+
   void _selectPanel(String label) {
-    _staffDirectory = null;
     setState(() => _currentSelectedLabel = label);
     WorkspacePreferences.saveSelection('admin_panel', label);
   }
@@ -66,43 +66,15 @@ class _AdminHomePageState extends State<AdminHomePage> {
       builder: (context, snapshot) {
         final profile = snapshot.data?.data();
         final name = _adminName(profile, user);
-        const labels = [
-          'Dashboard',
-          'Manage Users',
-          'Manage Classes',
-          'Content Overview',
-          'Performance',
-          'Reports',
-          'Feedback',
-          'School Profile',
-          'Settings',
-        ];
+        PrincipalWorkspaceNavigation.register(_selectPanel);
         PersistentWorkspace.register(
           context,
-          StaffSidebar(
-            role: 'Admin',
-            name: 'School administration',
-            selectedIndex: labels.indexOf(_currentSelectedLabel),
-            items: const [
-              (Icons.dashboard_outlined, 'Dashboard'),
-              (Icons.people_outline, 'Manage Users'),
-              (Icons.school_outlined, 'Manage Classes'),
-              (Icons.menu_book_outlined, 'Content Overview'),
-              (Icons.insights_outlined, 'Performance'),
-              (Icons.assessment_outlined, 'Reports'),
-              (Icons.rate_review_outlined, 'Feedback'),
-              (Icons.school_outlined, 'School Profile'),
-              (Icons.settings_outlined, 'Settings'),
-            ],
-            onSelected: (index) => PersistentWorkspace.returnHome(
+          PrincipalSidebar(
+            currentSelection: _currentSelectedLabel,
+            onSelected: (label) => PersistentWorkspace.returnHome(
               context,
-              () => _selectPanel(labels[index]),
+              () => _selectPanel(label),
             ),
-            onLogout: () async {
-              await FirebaseAuth.instance.signOut();
-              PersistentWorkspace.clear();
-              if (context.mounted) _openWebLogin(context);
-            },
           ),
         );
 
@@ -115,9 +87,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
               drawer: isWide
                   ? null
                   : Drawer(
-                      child: _SideNav(
+                      child: PrincipalSidebar(
                         currentSelection: _currentSelectedLabel,
-                        adminName: name,
                         onSelected: (label) {
                           _selectPanel(label);
                           Navigator.of(context).pop();
@@ -128,9 +99,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 child: Row(
                   children: [
                     if (isWide)
-                      _SideNav(
+                      PrincipalSidebar(
                         currentSelection: _currentSelectedLabel,
-                        adminName: name,
                         onSelected: (label) {
                           _selectPanel(label);
                         },
@@ -262,474 +232,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
     }
   }
 
-  // ── Manage Users ────────────────────────────────────────────────────────────
-  Widget _ManageUsersContent() {
-    if (_staffDirectory != null) {
-      final teacher = _staffDirectory == 'teacher';
-      return _buildCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 16,
-              runSpacing: 12,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                TextButton.icon(
-                  onPressed: () => setState(() => _staffDirectory = null),
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Back to Manage Users'),
-                ),
-                Text(
-                  teacher ? 'Manage Teachers' : 'Manage Trainers',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                FilledButton.icon(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          CreateStaffPage(selectedRole: _staffDirectory!),
-                    ),
-                  ),
-                  icon: const Icon(Icons.add),
-                  label: Text(teacher ? 'Add Teacher' : 'Add Trainer'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            teacher
-                ? const ManageTeachersPage(embedded: true)
-                : const ManageTrainersPage(embedded: true),
-          ],
-        ),
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Teacher Section
-        _buildCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 10,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2F80ED).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.school_rounded,
-                          color: Color(0xFF2F80ED),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Teachers',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              CreateStaffPage(selectedRole: 'teacher'),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add Teacher'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _kNavColor,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              StreamBuilder<QuerySnapshot>(
-                stream: WorkspaceData.watch(
-                  'adminUsers/teacher',
-                  () => FirebaseFirestore.instance
-                      .collection('users')
-                      .where('role', isEqualTo: 'teacher')
-                      .snapshots(),
-                ),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const _LoadingShimmer(height: 150);
-                  }
-                  if (snapshot.hasError) {
-                    return _ErrorCard(message: '${snapshot.error}');
-                  }
-                  final teachers = snapshot.data?.docs ?? [];
-                  if (teachers.isEmpty) {
-                    return const _EmptyState(
-                      icon: Icons.school_outlined,
-                      message: 'No teachers found',
-                      subtitle: 'Add teachers to start managing classes',
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: teachers.length > 5 ? 5 : teachers.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final doc = teachers[index];
-                          final data =
-                              doc.data() as Map<String, dynamic>? ?? {};
-                          final name = data['name']?.toString() ?? 'Unknown';
-                          final email = data['email']?.toString() ?? '';
-                          final isActive = data['isActive'] ?? true;
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: const Color(
-                                0xFF2F80ED,
-                              ).withOpacity(0.1),
-                              child: Text(
-                                name.isNotEmpty ? name[0].toUpperCase() : 'T',
-                                style: const TextStyle(
-                                  color: Color(0xFF2F80ED),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            subtitle: Text(
-                              email,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                _StatusBadge(isActive: isActive),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.chevron_right,
-                                  color: _kSubtextColor,
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                      if (teachers.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: TextButton.icon(
-                            onPressed: () =>
-                                setState(() => _staffDirectory = 'teacher'),
-                            icon: const Icon(Icons.arrow_forward, size: 16),
-                            label: Text('View all ${teachers.length} teachers'),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // Trainer Section
-        _buildCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                alignment: WrapAlignment.spaceBetween,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 12,
-                runSpacing: 10,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.purple.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.verified_user_rounded,
-                          color: Colors.purple,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'Trainers',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              CreateStaffPage(selectedRole: 'trainer'),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add Trainer'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => setState(() => _staffDirectory = 'trainer'),
-                  icon: const Icon(Icons.verified_user, color: Colors.purple),
-                  label: const Text('View & Manage All Trainers'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.purple,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    side: const BorderSide(color: Colors.purple),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Manage trainer accounts, assign to classes, and track their performance.',
-                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Students overview
-        _buildCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF28C76F).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.people_alt_rounded,
-                      color: Color(0xFF28C76F),
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Students',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('users')
-                    .where('role', isEqualTo: 'student')
-                    .snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const _LoadingShimmer(height: 80);
-                  }
-                  final students = snapshot.data?.docs ?? [];
-                  if (students.isEmpty) {
-                    return const _EmptyState(
-                      icon: Icons.people_outline,
-                      message: 'No students registered',
-                      subtitle:
-                          'Students appear after their teachers invite them',
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              const Color(0xFF28C76F).withOpacity(0.05),
-                              const Color(0xFF28C76F).withOpacity(0.02),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: const Color(0xFF28C76F).withOpacity(0.2),
-                          ),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.people_alt,
-                              color: Color(0xFF28C76F),
-                              size: 32,
-                            ),
-                            const SizedBox(width: 16),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  '${students.length}',
-                                  style: const TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color(0xFF28C76F),
-                                  ),
-                                ),
-                                Text(
-                                  'Total registered students',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: students.length > 5 ? 5 : students.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final data =
-                              students[index].data() as Map<String, dynamic>? ??
-                              {};
-                          final name =
-                              data['name']?.toString() ?? 'Unknown Student';
-                          final email = data['email']?.toString() ?? '';
-                          return ListTile(
-                            dense: true,
-                            leading: CircleAvatar(
-                              radius: 16,
-                              backgroundColor: const Color(
-                                0xFF28C76F,
-                              ).withOpacity(0.1),
-                              child: Text(
-                                name.isNotEmpty ? name[0].toUpperCase() : 'S',
-                                style: const TextStyle(
-                                  color: Color(0xFF28C76F),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            subtitle: Text(
-                              email,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          );
-                        },
-                      ),
-                      if (students.length > 5)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            '+ ${students.length - 5} more students',
-                            style: TextStyle(
-                              color: Colors.grey.shade500,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCard({required Widget child}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _kCardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
-
+  // â”€â”€ Manage Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  Widget _ManageUsersContent() => const PrincipalUsersPanel();
   String _adminName(Map<String, dynamic>? profile, User user) {
     final firstName = (profile?['firstName'] as String?)?.trim() ?? '';
     final middleName = (profile?['middleName'] as String?)?.trim() ?? '';
@@ -757,291 +261,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SIDE NAVIGATION
-// ═══════════════════════════════════════════════════════════════════════════════
-class _SideNav extends StatelessWidget {
-  const _SideNav({
-    required this.currentSelection,
-    required this.onSelected,
-    required this.adminName,
-  });
-
-  final String currentSelection;
-  final ValueChanged<String> onSelected;
-  final String adminName;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 260,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF0F172A), Color(0xFF162A3D)],
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              const SizedBox(width: 10),
-              Container(
-                width: 42,
-                height: 42,
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Image.asset('assets/ict_logo.png', fit: BoxFit.contain),
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'ICTeach',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.only(left: 14),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _kAccentBlue.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'Admin Panel',
-                  style: TextStyle(
-                    color: _kAccentBlue,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _NavTile(
-                  icon: Icons.dashboard_rounded,
-                  label: 'Dashboard',
-                  selected: currentSelection == 'Dashboard',
-                  onTap: () => onSelected('Dashboard'),
-                ),
-                _NavTile(
-                  icon: Icons.people_alt_rounded,
-                  label: 'Manage Users',
-                  selected: currentSelection == 'Manage Users',
-                  onTap: () => onSelected('Manage Users'),
-                ),
-                _NavTile(
-                  icon: Icons.class_rounded,
-                  label: 'Manage Classes',
-                  selected: currentSelection == 'Manage Classes',
-                  onTap: () => onSelected('Manage Classes'),
-                ),
-                _NavTile(
-                  icon: Icons.bar_chart_rounded,
-                  label: 'Content Overview',
-                  selected: currentSelection == 'Content Overview',
-                  onTap: () => onSelected('Content Overview'),
-                ),
-                _NavTile(
-                  icon: Icons.bar_chart_rounded,
-                  label: 'Performance',
-                  selected: currentSelection == 'Performance',
-                  onTap: () => onSelected('Performance'),
-                ),
-                _NavTile(
-                  icon: Icons.assessment_rounded,
-                  label: 'Reports',
-                  selected: currentSelection == 'Reports',
-                  onTap: () => onSelected('Reports'),
-                ),
-                _NavTile(
-                  icon: Icons.rate_review_outlined,
-                  label: 'Feedback',
-                  selected: currentSelection == 'Feedback',
-                  onTap: () => onSelected('Feedback'),
-                ),
-                _NavTile(
-                  icon: Icons.school_outlined,
-                  label: 'School Profile',
-                  selected: currentSelection == 'School Profile',
-                  onTap: () => onSelected('School Profile'),
-                ),
-              ],
-            ),
-          ),
-          const Divider(color: Colors.white24, height: 20),
-          _NavTile(
-            icon: Icons.settings_rounded,
-            label: 'Settings',
-            selected: currentSelection == 'Settings',
-            onTap: () => onSelected('Settings'),
-          ),
-          const SizedBox(height: 12),
-          // Admin info & logout
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(
-                  width: 165,
-                  child: DefaultTextStyle(
-                    style: TextStyle(color: Colors.white),
-                    child: SchoolIdentity(compact: true),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                const SizedBox.shrink(),
-                InkWell(
-                  onTap: () async {
-                    final confirm = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        title: const Text('Sign Out'),
-                        content: const Text(
-                          'Are you sure you want to sign out?',
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(ctx, true),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                            ),
-                            child: const Text('Sign Out'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirm == true) {
-                      await FirebaseAuth.instance.signOut();
-                      PersistentWorkspace.clear();
-                      if (context.mounted) {
-                        _openWebLogin(context);
-                      }
-                    }
-                  },
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
-                    child: Icon(
-                      Icons.logout_rounded,
-                      color: Colors.white54,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavTile extends StatelessWidget {
-  const _NavTile({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.selected = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final activeColor = selected ? _kAccentBlue : Colors.white70;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Material(
-        color: selected ? Colors.white.withOpacity(0.08) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          hoverColor: Colors.white.withOpacity(0.04),
-          splashColor: Colors.white.withOpacity(0.1),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            child: Row(
-              children: [
-                Container(
-                  width: 32,
-                  alignment: Alignment.center,
-                  child: Icon(icon, color: activeColor, size: 20),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: activeColor,
-                      fontSize: 14,
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                    ),
-                  ),
-                ),
-                if (selected)
-                  Container(
-                    width: 4,
-                    height: 20,
-                    decoration: BoxDecoration(
-                      color: _kAccentBlue,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// TOP BAR (FIXED: removed duplicate notification icon, fixed hardcoded avatar)
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
@@ -1081,7 +303,7 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-// ── Summary Row ───────────────────────────────────────────────────────────────
+// â”€â”€ Summary Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _SummaryRow extends StatefulWidget {
   const _SummaryRow();
 
@@ -1295,7 +517,7 @@ class _SmallStat extends StatelessWidget {
   }
 }
 
-// ── Recent Classes ────────────────────────────────────────────────────────────
+// â”€â”€ Recent Classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _RecentClassesGrid extends StatelessWidget {
   const _RecentClassesGrid();
 
@@ -1377,7 +599,7 @@ class _RecentClassesGrid extends StatelessWidget {
 
                   return _ClassCard(
                     title: name,
-                    subtitle: '$section • $teacherName',
+                    subtitle: '$section â€¢ $teacherName',
                     studentsCount: students,
                     color: color,
                   );
@@ -1481,7 +703,7 @@ class _ClassCard extends StatelessWidget {
   }
 }
 
-// ── Recent Activity ───────────────────────────────────────────────────────────
+// â”€â”€ Recent Activity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _RecentActivityCard extends StatelessWidget {
   const _RecentActivityCard();
 
@@ -1641,7 +863,7 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-// ── Quick Actions ─────────────────────────────────────────────────────────────
+// â”€â”€ Quick Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _QuickActionsCard extends StatelessWidget {
   const _QuickActionsCard();
 
@@ -1773,9 +995,9 @@ class _ActionItem {
   });
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MANAGE CLASSES CONTENT (NEW)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _ManageClassesContent extends StatefulWidget {
   const _ManageClassesContent();
 
@@ -2429,9 +1651,9 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // PERFORMANCE CONTENT
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _PerformanceContent extends StatefulWidget {
   const _PerformanceContent();
 
@@ -2481,9 +1703,9 @@ class _PerformanceContentState extends State<_PerformanceContent> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // REPORTS CONTENT (NEW)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _ReportsContent extends StatefulWidget {
   const _ReportsContent();
 
@@ -2916,9 +2138,9 @@ class _CountBadge extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SETTINGS CONTENT (NEW)
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _SettingsContent extends StatefulWidget {
   const _SettingsContent();
 
@@ -3483,9 +2705,9 @@ class _SettingRow extends StatelessWidget {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SHARED WIDGETS
-// ═══════════════════════════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.isActive});
   final bool isActive;

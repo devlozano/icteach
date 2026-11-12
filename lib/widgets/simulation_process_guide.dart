@@ -1,3 +1,4 @@
+import 'simulation_description.dart';
 import 'package:flutter/material.dart' hide Simulation;
 import '../data/simulation_step_detail.dart';
 import '../models/simulation_model.dart';
@@ -207,15 +208,6 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
     );
   }
 
-  Widget _section(String title, String text) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(text),
-      ],
-    ),
-  );
+  Widget _section(String title, String text) =>
+      SimulationDescriptionSection(title: title, text: text);
 }

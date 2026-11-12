@@ -46,6 +46,7 @@ class DraggableItemWidget extends StatelessWidget {
               Text(
                 item.name,
                 style: const TextStyle(
+                  color: Color(0xFF0F172A),
                   fontWeight: FontWeight.bold,
                   fontSize: 11,
                 ),
@@ -114,6 +115,7 @@ class DraggableItemWidget extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11,
+                      color: Color(0xFF0F172A),
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -163,7 +165,11 @@ class DraggableItemWidget extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             item.name,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+            style: const TextStyle(
+              color: Color(0xFF0F172A),
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
             textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
           ),

@@ -36,6 +36,12 @@ void main() {
         isNull,
       );
       await tester.scrollUntilVisible(find.byType(CheckboxListTile), 100);
+      await tester.pumpAndSettle();
+      await Scrollable.ensureVisible(
+        tester.element(find.byType(CheckboxListTile)),
+        alignment: 0.5,
+      );
+      await tester.pumpAndSettle();
       await tester.tap(find.byType(CheckboxListTile));
       await tester.pumpAndSettle();
       expect(

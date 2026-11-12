@@ -1,3 +1,4 @@
+import 'learning_continuation_page.dart';
 import 'package:flutter/material.dart';
 import '../../models/quiz_model.dart';
 
@@ -127,13 +128,30 @@ class QuizResultsPage extends StatelessWidget {
             ),
             const SizedBox(height: 20),
 
+            if (result.classId.isNotEmpty) ...[
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => LearningContinuationPage(
+                        classId: result.classId,
+                        quizId: result.quizId,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.arrow_forward),
+                  label: const Text('Continue to Simulation'),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             // Close Button
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.pop(context);
-                  Navigator.pop(context);
+                  Navigator.maybePop(context);
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF0B2B4A),

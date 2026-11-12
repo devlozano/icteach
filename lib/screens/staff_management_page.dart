@@ -1,4 +1,3 @@
-import '../join_class.dart';
 import '../services/workspace_data.dart';
 import '../widgets/staff_collection_ui.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -74,20 +73,13 @@ class _StaffManagementPageState extends State<StaffManagementPage> {
               onChanged: (v) => setState(() => _query = v.trim().toLowerCase()),
             ),
             const SizedBox(height: 16),
-            if (widget.trainer) ...[
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const JoinClassPage()),
-                  ),
-                  icon: const Icon(Icons.add),
-                  label: const Text('Join class'),
-                  style: FilledButton.styleFrom(backgroundColor: staffNavy),
+            if (widget.trainer)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: Text(
+                  'Your teacher and classes are assigned by the principal.',
                 ),
               ),
-              const SizedBox(height: 16),
-            ],
             if (visible.isEmpty)
               CollectionEmpty(
                 title: classes.isEmpty
@@ -95,8 +87,8 @@ class _StaffManagementPageState extends State<StaffManagementPage> {
                     : 'No matching classes',
                 message: classes.isEmpty
                     ? (widget.trainer
-                          ? 'Join a class to get started.'
-                          : 'Create a class from your dashboard to get started.')
+                          ? 'Ask the principal to assign a class to get started.'
+                          : 'Ask the principal to assign your sections.')
                     : 'Try another class name.',
                 icon: Icons.class_outlined,
               ),

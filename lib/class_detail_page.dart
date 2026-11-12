@@ -78,11 +78,12 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
           ),
           actions: [
             const UserRolesButton(),
-            IconButton(
-              icon: const Icon(Icons.exit_to_app_rounded),
-              onPressed: () => _showLeaveClassDialog(context),
-              tooltip: 'Leave Class',
-            ),
+            if (_userRole == 'student')
+              IconButton(
+                icon: const Icon(Icons.exit_to_app_rounded),
+                onPressed: () => _showLeaveClassDialog(context),
+                tooltip: 'Leave Class',
+              ),
           ],
         ),
         body: StreamBuilder<DocumentSnapshot>(
@@ -368,22 +369,23 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
                   const SizedBox(height: 20),
 
                   // Leave Class Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showLeaveClassDialog(context),
-                      icon: const Icon(Icons.exit_to_app_rounded),
-                      label: const Text('Leave Class'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red.shade700,
-                        side: BorderSide(color: Colors.red.shade300),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                  if (_userRole == 'student')
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showLeaveClassDialog(context),
+                        icon: const Icon(Icons.exit_to_app_rounded),
+                        label: const Text('Leave Class'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red.shade700,
+                          side: BorderSide(color: Colors.red.shade300),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
-                  ),
                 ],
               ),
             );
@@ -559,7 +561,7 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
 
   Future<void> _leaveClass() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null || _userRole != 'student') return;
 
     try {
       await FirebaseFirestore.instance

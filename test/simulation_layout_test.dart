@@ -251,7 +251,7 @@ void main() {
         expect(tester.takeException(), isNull);
         await tester.tap(find.byType(DraggableItemWidget).first);
         await tester.pumpAndSettle();
-        expect(find.textContaining('Resource:'), findsOneWidget);
+        expect(find.text('Required resource'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.tap(find.text('Close'));
         await tester.pumpAndSettle();

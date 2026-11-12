@@ -15,8 +15,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:icteach/create_class.dart';
-import 'package:icteach/utils/app_navigation.dart';
+
 import 'package:icteach/screens/teacher/manage_modules_page.dart';
 import 'package:icteach/screens/teacher/manage_quizzes_page.dart';
 import 'package:icteach/screens/teacher/manage_assignments_page.dart';
@@ -413,12 +412,6 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   content: buildClassesTab(),
                   actions: [
                     (
-                      Icons.add,
-                      'Create Class',
-                      () =>
-                          AppNavigation.push(context, const CreateClassPage()),
-                    ),
-                    (
                       Icons.groups_outlined,
                       'Manage Students',
                       () => _selectTab(6),
@@ -456,13 +449,12 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 1 => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FilledButton.icon(
-                      onPressed: () =>
-                          AppNavigation.push(context, const CreateClassPage()),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Create Class'),
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Text(
+                        'Classes and sections are assigned by the principal.',
+                      ),
                     ),
-                    const SizedBox(height: 16),
                     buildClassesTab(),
                   ],
                 ),
@@ -619,25 +611,6 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                           _selectTab(index);
                         },
                       ),
-                floatingActionButton:
-                    _currentTabIndex == 0 || _currentTabIndex == 1
-                    ? FloatingActionButton(
-                        heroTag: "createClass",
-                        backgroundColor: const Color(0xFF2F80ED),
-                        foregroundColor: Colors.white,
-                        child: const Icon(Icons.add),
-                        onPressed: () async {
-                          final result = await AppNavigation.push(
-                            context,
-                            const CreateClassPage(),
-                          );
-
-                          if (result == true && mounted) {
-                            setState(() {});
-                          }
-                        },
-                      )
-                    : null,
               ),
             );
           },
@@ -726,7 +699,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Create a class to start discussions',
+                  'The principal will assign your classes before discussions begin.',
                   style: TextStyle(color: Colors.grey.shade600),
                 ),
               ],
@@ -1417,7 +1390,7 @@ class _ModuleClassSelectorState extends State<_ModuleClassSelector> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Create a class first to manage $title',
+                    'Ask the principal to assign a class before managing $title',
                     style: TextStyle(color: Colors.grey.shade600),
                   ),
                   const SizedBox(height: 16),

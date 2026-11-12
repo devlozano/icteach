@@ -1,3 +1,4 @@
+import 'simulation_description.dart';
 import 'package:flutter/material.dart';
 import '../data/guided_setup_data.dart';
 
@@ -190,19 +191,8 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
             value! ? _flags.add(key) : _flags.remove(key);
           }),
   );
-  Widget _note(String text) => Container(
-    width: double.infinity,
-    margin: const EdgeInsets.symmetric(vertical: 8),
-    padding: const EdgeInsets.all(12),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE8F2FA),
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Text(
-      text,
-      style: const TextStyle(color: Color(0xFF183C59), height: 1.45),
-    ),
-  );
+  Widget _note(String text) =>
+      SimulationDescriptionSection(title: 'Guidance', text: text);
   Widget _console() => Container(
     width: double.infinity,
     padding: const EdgeInsets.all(16),
@@ -832,11 +822,11 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         return [
           _deviceSelector(),
           for (final service in _services) ...[
-            _select('startup_${_device}_$service', '$service • Startup type', [
-              'Manual',
-              'Automatic',
-              'Disabled',
-            ]),
+            _select(
+              'startup_${_device}_$service',
+              '$service • Startup type',
+              ['Manual', 'Automatic', 'Disabled'],
+            ),
             _button('Start $service', () {
               if (_check(
                 _choice('startup_${_device}_$service') == 'Automatic',

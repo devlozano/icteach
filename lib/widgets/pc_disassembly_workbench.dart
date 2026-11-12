@@ -1,3 +1,4 @@
+import 'simulation_description.dart';
 import '../data/simulation_step_detail.dart';
 import '../data/pc_build_procedure.dart';
 import 'pc_disassembly_mechanics.dart';
@@ -567,6 +568,10 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
                   style: const TextStyle(fontSize: 12),
                 ),
               ),
+            ),
+            SimulationDescriptionSection(
+              title: 'Description',
+              text: item.description,
             ),
             if (SimulationStepDetail.forSlot(item.correctSlot)
                 case final detail?)
