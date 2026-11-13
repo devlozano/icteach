@@ -126,12 +126,15 @@ class _SimulationPageState extends State<_SimulationSession> {
 
   Future<void> _setGameplayOrientation(bool active) async {
     if (kIsWeb) return;
+    final motherboardQuiz = widget.simulationId == 'sim_coc1_motherboard';
     await SystemChrome.setPreferredOrientations(
       active
-          ? const [
-              DeviceOrientation.landscapeLeft,
-              DeviceOrientation.landscapeRight,
-            ]
+          ? motherboardQuiz
+                ? const [DeviceOrientation.portraitUp]
+                : const [
+                    DeviceOrientation.landscapeLeft,
+                    DeviceOrientation.landscapeRight,
+                  ]
           : const [
               DeviceOrientation.portraitUp,
               DeviceOrientation.portraitDown,

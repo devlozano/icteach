@@ -177,7 +177,11 @@ class StaffTopBar extends StatelessWidget {
                 vertical: 7,
               ),
               child: SizedBox(
-                width: width < 400 ? 150 : 210,
+                width: width < 400
+                    ? 150
+                    : role == 'Administration'
+                    ? (width >= 800 ? 300 : 230)
+                    : 210,
                 child: role == 'Administration'
                     ? const SchoolIdentity(compact: true)
                     : Text(

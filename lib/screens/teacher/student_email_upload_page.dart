@@ -178,7 +178,7 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
                     const SizedBox(height: 12),
                     if (batch == null)
                       const Text(
-                        'CSV UTF-8 • Maximum 1 MB / 100 students. Required column: Gmail (Email also works). First Name and Last Name are optional.',
+                        'CSV UTF-8 | Maximum 1 MB / 100 students. Required column: Gmail (Email also works). First Name and Last Name are optional.',
                       ),
                     const SizedBox(height: 8),
                     Text(
@@ -190,7 +190,7 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
                     if (batch != null) ...[
                       const SizedBox(height: 16),
                       Text(
-                        '$_fileName • ${batch.rows.length} unique students',
+                        '$_fileName | ${batch.rows.length} unique students',
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       if (_duplicates > 0)
@@ -201,7 +201,7 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
                       Semantics(
                         liveRegion: true,
                         child: Text(
-                          '${batch.count(InvitationStatus.sent)} sent • ${batch.count(InvitationStatus.skipped)} already invited • $failed not sent/confirmed • $pending pending',
+                          '${batch.count(InvitationStatus.sent)} sent | ${batch.count(InvitationStatus.skipped)} already invited | $failed not sent/confirmed | $pending pending',
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -269,7 +269,7 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
                         [
                           if (row.student.displayName.isNotEmpty)
                             row.student.displayName,
-                          'CSV row ${row.student.row} • $label',
+                          'CSV row ${row.student.row} | $label',
                           if (row.message != null) row.message!,
                         ].join('\n'),
                       ),

@@ -966,7 +966,6 @@ class SimulationData {
   static Simulation getNetworkSetup() => getNetworkTopology();
 
   static List<Simulation> getAllSimulations() => [
-    getMotherboardIdentification(),
     getPcAssembly(),
     getPcDisassembly(),
     getCableManagement(),
@@ -1009,6 +1008,7 @@ class SimulationData {
 
   static Simulation? getSimulationById(String id) {
     // Historical links remain readable; the redundant activity is retired from the catalog.
+    if (id == 'sim_coc1_motherboard') return getMotherboardIdentification();
     if (id == 'sim_coc1_identification') return getHardwareIdentification();
     for (final simulation in getAllSimulations()) {
       if (simulation.id == id) return simulation;

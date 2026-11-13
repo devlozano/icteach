@@ -259,9 +259,9 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Text(instruction()),
+                    SimulationDescriptionSection(
+                      title: 'What to do',
+                      text: instruction(),
                     ),
                     AnimatedSwitcher(
                       duration: MediaQuery.disableAnimationsOf(context)

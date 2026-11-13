@@ -66,6 +66,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   double _cableZoom = 1;
   int _identificationConfidence = 2;
   bool _osPreflightComplete = false;
+  bool _showProcedure = false;
   final Set<int> _osReadinessChecks = <int>{};
   String? _selectedResource;
   final FlutterTts _tts = FlutterTts();
@@ -616,7 +617,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       );
     } else {
       SystemSound.play(SystemSoundType.alert);
-      _speak('Mission incomplete. Review the hints and try again.');
+      _speak('Mission incomplete. Review the operation record and try again.');
     }
     _showResultDialog(percentage, passed, scoredCorrect, total);
 
@@ -747,20 +748,33 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
 
   @override
   Widget build(BuildContext context) {
+    if (_showProcedure) {
+      return SimulationProcessGuide(
+        simulation: widget.simulation,
+        embedded: true,
+        onClose: () => setState(() => _showProcedure = false),
+      );
+    }
     if (_setupKind != null) {
-      return GuidedSetupWorkbench(
-        kind: _setupKind!,
-        onComplete: widget.onComplete,
-        onFeedback: widget.onFeedback,
+      return _specializedWorkbench(
+        GuidedSetupWorkbench(
+          kind: _setupKind!,
+          onComplete: widget.onComplete,
+          onFeedback: widget.onFeedback,
+        ),
       );
     }
     if (widget.simulation.id == 'sim_coc1_motherboard') {
-      return MotherboardIdentification(onComplete: widget.onComplete);
+      return _specializedWorkbench(
+        MotherboardIdentification(onComplete: widget.onComplete),
+      );
     }
     if (widget.simulation.id == 'sim_coc2_crimping') {
-      return Rj45Workbench(
-        onComplete: widget.onComplete,
-        onFeedback: widget.onFeedback,
+      return _specializedWorkbench(
+        Rj45Workbench(
+          onComplete: widget.onComplete,
+          onFeedback: widget.onFeedback,
+        ),
       );
     }
     if (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height &&
@@ -902,6 +916,49 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
 
   int _trayPage = 0;
   int _readinessIndex = 0;
+
+  Widget _specializedWorkbench(Widget child) => Column(
+    children: [
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF102D49), Color(0xFF164665)],
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.animation_rounded,
+              color: Color(0xFF67E8F9),
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Observe the proper procedure before performing the task.',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.tonalIcon(
+              onPressed: () => setState(() => _showProcedure = true),
+              icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
+              label: const Text('Animated procedure'),
+            ),
+          ],
+        ),
+      ),
+      Expanded(child: child),
+    ],
+  );
 
   Widget _compactReadiness(bool assembly) {
     final checks = assembly
@@ -1467,12 +1524,8 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                 ),
               ),
               IconButton(
-                tooltip: 'Guided process',
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  builder: (_) =>
-                      SimulationProcessGuide(simulation: widget.simulation),
-                ),
+                tooltip: 'Observe proper procedure',
+                onPressed: () => setState(() => _showProcedure = true),
                 icon: const Icon(Icons.play_circle_outline, size: 20),
               ),
               IconButton(

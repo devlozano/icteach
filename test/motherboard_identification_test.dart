@@ -3,12 +3,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/data/motherboard_parts.dart';
 import 'package:icteach/data/simulation_data.dart';
 import 'package:icteach/widgets/motherboard_identification.dart';
+import 'package:icteach/screens/student/student_quizzes_page.dart';
 
 void main() {
   test('active practicals have no retired prerequisite', () {
     final catalog = SimulationData.getAllSimulations();
     final ids = catalog.map((s) => s.id).toSet();
-    expect(ids, contains('sim_coc1_motherboard'));
+    expect(ids, isNot(contains('sim_coc1_motherboard')));
+    expect(SimulationData.getSimulationById('sim_coc1_motherboard'), isNotNull);
     expect(ids, contains('sim_coc2_topology'));
     for (final simulation in catalog) {
       if (simulation.requiredSimulationId != null) {
@@ -56,5 +58,21 @@ void main() {
       await tester.pump();
     }
     expect(result, MotherboardParts.entries.length - 1);
+  });
+
+  testWidgets('motherboard identification quiz is portrait and fits a phone', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      const MaterialApp(home: MotherboardIdentificationQuizPage()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Motherboard Identification Quiz'), findsOneWidget);
+    expect(find.byKey(const ValueKey('motherboard-image')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

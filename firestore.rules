@@ -240,6 +240,14 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true
           && request.auth.uid in classroom.get('trainerIds', [])));
     }
+    function classContentStaff(classId) {
+      let classroom = get(/databases/$(database)/documents/classes/$(classId)).data;
+      return request.auth != null && (
+        (isActiveTeacher() && classroom.teacherId == request.auth.uid)
+        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'trainer'
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true
+          && request.auth.uid in classroom.get('trainerIds', [])));
+    }
     function studentJoinsSelf() {
       let before = resource.data.get('enrolledStudentIds', []);
       let after = request.resource.data.enrolledStudentIds;
@@ -273,7 +281,13 @@ service cloud.firestore {
       }
       match /{subcollection}/{document=**} {
         allow read: if classParticipant(classId);
-        allow write: if classStaff(classId);
+        allow write: if (
+          subcollection in ['modules', 'quizzes', 'assignments']
+          && classContentStaff(classId)
+        ) || (
+          !(subcollection in ['modules', 'quizzes', 'assignments'])
+          && classStaff(classId)
+        );
       }
     }
     // Existing policies for unrelated collections remain unchanged. Exclude the

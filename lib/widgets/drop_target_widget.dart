@@ -43,13 +43,10 @@ class DropTargetWidget extends StatelessWidget {
         onDrop(details.data, slotId);
       },
       builder: (context, candidateData, rejectedData) {
-        final candidateCompatible =
-            candidateData.isNotEmpty &&
-            (canAccept?.call(candidateData.first!) ?? true);
-        final hasCandidate = candidateData.isNotEmpty && candidateCompatible;
-        final hasRejected =
-            rejectedData.isNotEmpty ||
-            (candidateData.isNotEmpty && !candidateCompatible);
+        // Hover feedback must not reveal whether this is the correct target.
+        // Compatibility is evaluated only after the student releases the item.
+        final hasCandidate = candidateData.isNotEmpty;
+        final hasRejected = rejectedData.isNotEmpty;
         return SimulationPlacementMotion(
           identity: (slotId, placedItem?.id, isComplete),
           child: AnimatedContainer(
@@ -68,7 +65,7 @@ class DropTargetWidget extends StatelessWidget {
                       placedItem!.category,
                     ).withValues(alpha: 0.1)
                   : (hasCandidate
-                        ? Colors.green.withValues(alpha: 0.25)
+                        ? const Color(0xFF2563EB).withValues(alpha: 0.22)
                         : hasRejected
                         ? Colors.red.withValues(alpha: 0.25)
                         : immersive
@@ -83,7 +80,7 @@ class DropTargetWidget extends StatelessWidget {
                     : isFilled
                     ? _getColorForCategory(placedItem!.category)
                     : (hasCandidate
-                          ? Colors.greenAccent
+                          ? const Color(0xFF60A5FA)
                           : hasRejected
                           ? Colors.redAccent
                           : immersive
@@ -94,7 +91,7 @@ class DropTargetWidget extends StatelessWidget {
               boxShadow: [
                 if (hasCandidate || hasRejected)
                   BoxShadow(
-                    color: (hasCandidate ? Colors.green : Colors.red)
+                    color: (hasCandidate ? const Color(0xFF2563EB) : Colors.red)
                         .withValues(alpha: 0.35),
                     blurRadius: 14,
                   ),

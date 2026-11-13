@@ -254,7 +254,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                         context: context,
                         builder: (context) => AlertDialog(
                           title: Text(
-                            'Grade report • SY $schoolYear–${schoolYear + 1}',
+                            'Grade report | SY $schoolYear–${schoolYear + 1}',
                           ),
                           content: SizedBox(
                             width: 760,
@@ -558,7 +558,7 @@ class _TermEditorState extends State<_TermEditor> {
         appBar: AppBar(
           backgroundColor: insightsNavy,
           foregroundColor: Colors.white,
-          title: Text('Term ${widget.term} • ${widget.studentName}'),
+          title: Text('Term ${widget.term} | ${widget.studentName}'),
         ),
         body: Form(
           key: form,
@@ -698,7 +698,7 @@ class _TermEditorState extends State<_TermEditor> {
                       'Performance weighted score: ${result.performance.toStringAsFixed(2)}\n'
                       'Exam weighted score: ${result.exams.toStringAsFixed(2)}\n'
                       'Initial grade: ${result.initial.toStringAsFixed(2)}\n'
-                      'Term grade: ${result.grade} • ${DepEdGrading.descriptor(result.grade)}',
+                      'Term grade: ${result.grade} | ${DepEdGrading.descriptor(result.grade)}',
                     ),
                   ),
                 )

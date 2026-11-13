@@ -722,7 +722,7 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
                   color: ready
                       ? Colors.cyanAccent
                       : _selected
-                      ? Colors.greenAccent
+                      ? const Color(0xFF60A5FA)
                       : Colors.amberAccent,
                   width: 2,
                 )

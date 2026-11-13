@@ -823,8 +823,8 @@ class _HomePageState extends State<HomePage> {
             icon: Icons.video_library_rounded,
             title: 'Videos',
             subtitle: 'Video Lessons',
-            color: const Color(0xFFD97847),
-            bgColor: const Color(0xFFFFCFB1),
+            color: const Color(0xFFD9468B),
+            bgColor: const Color(0xFFFFC7E1),
             onTap: () {
               _navigateToInstructionalVideos(context);
             },
@@ -858,17 +858,19 @@ class _HomePageState extends State<HomePage> {
           ),
         ];
 
-        return GridView.builder(
-          itemCount: items.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 1.15,
-            crossAxisSpacing: 14,
-            mainAxisSpacing: 14,
+        return LayoutBuilder(
+          builder: (context, constraints) => GridView.builder(
+            itemCount: items.length,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: constraints.maxWidth >= 900 ? 3 : 2,
+              childAspectRatio: constraints.maxWidth < 430 ? 1.48 : 2.05,
+              crossAxisSpacing: 14,
+              mainAxisSpacing: 14,
+            ),
+            itemBuilder: (context, index) => items[index],
           ),
-          itemBuilder: (context, index) => items[index],
         );
       },
     );
@@ -1972,56 +1974,166 @@ class _QuickAccessItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(12),
+    return Semantics(
+      button: true,
+      label: '$title, $subtitle',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Ink(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.lerp(bgColor, Colors.white, .18)!,
+                  Color.lerp(bgColor, Colors.white, .62)!,
+                  Color.lerp(bgColor, color, .12)!,
+                ],
+                stops: const [0, .58, 1],
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: color.withValues(alpha: .28),
+                width: 1.2,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              boxShadow: [
+                BoxShadow(
+                  color: color.withValues(alpha: .14),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-            const SizedBox(height: 2),
-            Text(
-              subtitle,
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey.shade600,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final compact = constraints.maxWidth < 190;
+                return Stack(
+                  children: [
+                    Positioned(
+                      right: -30,
+                      top: -18,
+                      child: Transform.rotate(
+                        angle: -.32,
+                        child: Container(
+                          width: 104,
+                          height: 42,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: .22),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      right: compact ? -36 : -24,
+                      bottom: -28,
+                      child: Transform.rotate(
+                        angle: -.32,
+                        child: Container(
+                          width: compact ? 100 : 132,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: .09),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: Padding(
+                        padding: EdgeInsets.all(compact ? 11 : 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: compact ? 42 : 50,
+                              height: compact ? 42 : 50,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    Color.lerp(color, Colors.white, .18)!,
+                                    color,
+                                  ],
+                                ),
+                                borderRadius: BorderRadius.circular(15),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: color.withValues(alpha: .25),
+                                    blurRadius: 9,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                icon,
+                                color: Colors.white,
+                                size: compact ? 24 : 28,
+                              ),
+                            ),
+                            SizedBox(width: compact ? 9 : 12),
+                            Expanded(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    title,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: const Color(0xFF172033),
+                                      fontSize: compact ? 13 : 15,
+                                      height: 1.08,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    subtitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: color.withValues(alpha: .92),
+                                      fontSize: compact ? 10.5 : 11.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (!compact) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: .72),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: color.withValues(alpha: .2),
+                                  ),
+                                ),
+                                child: Icon(
+                                  Icons.arrow_forward_rounded,
+                                  color: color,
+                                  size: 18,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-          ],
+          ),
         ),
       ),
     );

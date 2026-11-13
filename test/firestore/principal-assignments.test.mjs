@@ -36,10 +36,14 @@ test('teacher roster and invited student memberships continue working',async()=>
 test('unauthorized class participant access is blocked',async()=>{
  await assertFails(setDoc(doc(user('outsider'),'classes/class/modules/new'),{title:'Unassigned'}));
  await assertFails(setDoc(doc(user('student'),'classes/class/modules/new'),{title:'Student edit'}));
+ await assertFails(setDoc(doc(user('principal'),'classes/class/modules/principal-module'),{title:'Principal module'}));
+ await assertFails(setDoc(doc(user('principal'),'classes/class/quizzes/principal-quiz'),{title:'Principal quiz'}));
+ await assertFails(setDoc(doc(user('principal'),'classes/class/assignments/principal-assignment'),{title:'Principal assignment'}));
  await assertSucceeds(setDoc(doc(user('teacher'),'classes/class/modules/new'),{title:'Lesson'}));
  await assertFails(getDoc(doc(user('trainer'),'classes/class/modules/new')));
  await assertSucceeds(updateDoc(doc(user('principal'),'classes/class'),{trainerIds:['trainer']}));
  await assertSucceeds(getDoc(doc(user('trainer'),'classes/class/modules/new')));
+ await assertSucceeds(setDoc(doc(user('trainer'),'classes/class/modules/trainer-module'),{title:'Trainer lesson'}));
 });
 test('students can only write their own module access record',async()=>{
  await assertSucceeds(setDoc(doc(user('student'),'classes/class/module_access/module_student'),{studentId:'student',moduleId:'module'}));

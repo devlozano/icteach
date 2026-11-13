@@ -16,6 +16,10 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       await tester.pumpWidget(
         MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
+          ),
           home: Scaffold(body: SimulationProcessGuide(simulation: simulation)),
         ),
       );
@@ -55,4 +59,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('embedded procedure stays inside the workbench', (tester) async {
+    var closed = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SimulationProcessGuide(
+            simulation: SimulationData.getPcAssembly(),
+            embedded: true,
+            onClose: () => closed = true,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.byType(Dialog), findsNothing);
+    await tester.tap(find.byTooltip('Close walkthrough'));
+    expect(closed, isTrue);
+  });
 }

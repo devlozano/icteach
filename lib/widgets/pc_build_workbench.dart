@@ -290,7 +290,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                             ? 'Retention locks open • ready to align'
                             : 'Complete the highlighted handling step before insertion.',
                         style: const TextStyle(
-                          color: Color(0xFF115E59),
+                          color: Color(0xFF475569),
                           fontWeight: FontWeight.w600,
                         ),
                       ),

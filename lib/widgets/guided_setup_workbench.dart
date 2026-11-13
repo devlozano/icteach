@@ -461,12 +461,12 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
           _field(
             'windows_size',
             'Windows partition size (MiB)',
-            hint: '40% of 102400',
+            hint: 'Enter the primary partition size in MB',
           ),
           _field(
             'data_size',
             'Data partition size (MiB)',
-            hint: '60% of 102400',
+            hint: 'Enter the remaining partition size in MB',
           ),
           _button('Apply partition layout', () {
             if (_check(
@@ -579,7 +579,11 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
     switch (_step) {
       case 0:
         return [
-          _field('station', 'Assigned station number (1–254)', hint: '9'),
+          _field(
+            'station',
+            'Assigned station number (1–254)',
+            hint: 'Enter the assigned station number',
+          ),
           _connection('ethernet_server', 'Ethernet end • server', [
             'Server NIC',
             'USB',
@@ -644,7 +648,11 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         ];
       case 4:
         return [
-          _field('browser', 'Browser address', hint: 'Gateway from ipconfig'),
+          _field(
+            'browser',
+            'Browser address',
+            hint: 'Enter the gateway reported by ipconfig',
+          ),
           _note(
             'Training router label: username admin • password admin. These are fixture credentials, not universal router defaults.',
           ),
@@ -669,10 +677,18 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
           _note(
             'Router administration • station $_station\nReserve Server .1, Desktop .2 and Laptop .3. Router address .10 is outside the DHCP pool.',
           ),
-          _field('lan', 'LAN address', hint: '$_subnet.10'),
-          _field('mask', 'Subnet mask', hint: '255.255.255.0'),
-          _field('dhcp_start', 'DHCP start address', hint: '$_subnet.1'),
-          _field('dhcp_end', 'DHCP end address', hint: '$_subnet.3'),
+          _field('lan', 'LAN address', hint: 'Enter the planned LAN address'),
+          _field('mask', 'Subnet mask', hint: 'Enter the required subnet mask'),
+          _field(
+            'dhcp_start',
+            'DHCP start address',
+            hint: 'Enter the planned starting address',
+          ),
+          _field(
+            'dhcp_end',
+            'DHCP end address',
+            hint: 'Enter the planned ending address',
+          ),
           _field('ssid', 'Wireless SSID'),
           _field(
             'wifi_password',
@@ -734,9 +750,13 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
           _field(
             'ip_$_device',
             '$_device static IPv4 address',
-            hint: _ip(_device),
+            hint: 'Enter the assigned address for $_device',
           ),
-          _field('group_$_device', '$_device workgroup', hint: 'CSSLAB'),
+          _field(
+            'group_$_device',
+            '$_device workgroup',
+            hint: 'Enter the shared workgroup name',
+          ),
           _note(
             'All devices use mask 255.255.255.0 and gateway $_subnet.10. Static addresses are reserved in DHCP to avoid duplicates.',
           ),
@@ -776,7 +796,7 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
           _note(
             '$_device • ${_ip(_device)} • peers: ${_devices.where((d) => d != _device).map(_ip).join(', ')}',
           ),
-          _field('ping', 'Command Prompt', hint: 'ping destination-address'),
+          _field('ping', 'Command Prompt', hint: 'ping <destination IP>'),
           _button('Run ping', () {
             final command = _text(
               'ping',
@@ -822,11 +842,11 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         return [
           _deviceSelector(),
           for (final service in _services) ...[
-            _select(
-              'startup_${_device}_$service',
-              '$service • Startup type',
-              ['Manual', 'Automatic', 'Disabled'],
-            ),
+            _select('startup_${_device}_$service', '$service • Startup type', [
+              'Manual',
+              'Automatic',
+              'Disabled',
+            ]),
             _button('Start $service', () {
               if (_check(
                 _choice('startup_${_device}_$service') == 'Automatic',
@@ -1045,7 +1065,7 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
           _field(
             'rdp_user',
             'Authorized remote-access account',
-            hint: 'LabTechnician',
+            hint: 'Enter the authorized local account',
           ),
           _button('Apply protection settings', () {
             if (_check(
@@ -1059,7 +1079,11 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         ];
       case 4:
         return [
-          _field('printer_ip', 'Printer TCP/IP address', hint: '192.168.9.20'),
+          _field(
+            'printer_ip',
+            'Printer TCP/IP address',
+            hint: 'Enter the assigned printer address',
+          ),
           _select('printer_driver', 'Printer driver', [
             'Approved lab printer driver',
             'Unrelated driver',

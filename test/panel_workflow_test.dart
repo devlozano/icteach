@@ -10,7 +10,6 @@ void main() {
   test('active practical labs are available for lesson linking', () {
     final ids = SimulationData.getAllSimulations().map((s) => s.id).toSet();
     for (final keyword in [
-      'motherboard',
       'assembly',
       'cabling',
       'crimping',
@@ -21,6 +20,11 @@ void main() {
     ]) {
       expect(ids.any((id) => id.contains(keyword)), isTrue, reason: keyword);
     }
+    expect(
+      ids.any((id) => id.contains('motherboard')),
+      isFalse,
+      reason: 'Motherboard identification belongs in quizzes, not simulations',
+    );
   });
   test('teacher can link PC disassembly to a lesson and assessment', () {
     final simulations = LearningPathManager.availableSimulations();

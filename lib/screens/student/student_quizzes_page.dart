@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../models/quiz_model.dart';
 import '../../services/quiz_service.dart';
 import 'take_quiz_page.dart';
 import 'quiz_results_page.dart';
+import '../../widgets/motherboard_identification.dart';
 
 class StudentQuizzesPage extends StatefulWidget {
   final String classId;
@@ -179,36 +182,21 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
 
           final quizzes = snapshot.data ?? [];
 
-          if (quizzes.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.quiz_outlined,
-                    size: 64,
-                    color: Colors.grey.shade300,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'No quizzes available',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Check back later for quizzes',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-            );
-          }
-
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: quizzes.length,
+            itemCount: quizzes.length + 1,
             itemBuilder: (context, index) {
-              final quiz = quizzes[index];
+              if (index == 0) {
+                return _MotherboardQuizCard(
+                  onOpen: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MotherboardIdentificationQuizPage(),
+                    ),
+                  ),
+                );
+              }
+              final quiz = quizzes[index - 1];
               return _QuizCard(
                 key: ValueKey(quiz.id),
                 quiz: quiz,
@@ -222,6 +210,146 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
       ),
     );
   }
+}
+
+class _MotherboardQuizCard extends StatelessWidget {
+  const _MotherboardQuizCard({required this.onOpen});
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(16),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: const Color(0xFFBFDBFE)),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x0A0F172A),
+          blurRadius: 8,
+          offset: Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Color(0xFFDBEAFE),
+              child: Icon(Icons.memory_rounded, color: Color(0xFF1D4ED8)),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Motherboard Parts Identification',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    'Built-in visual quiz • Portrait orientation',
+                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        const Text(
+          'Locate sockets, slots, power connectors, ports, and the chipset on an actual motherboard image.',
+          style: TextStyle(color: Color(0xFF475569), height: 1.4),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: onOpen,
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: const Text('Take identification quiz'),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class MotherboardIdentificationQuizPage extends StatefulWidget {
+  const MotherboardIdentificationQuizPage({super.key});
+
+  @override
+  State<MotherboardIdentificationQuizPage> createState() =>
+      _MotherboardIdentificationQuizPageState();
+}
+
+class _MotherboardIdentificationQuizPageState
+    extends State<MotherboardIdentificationQuizPage> {
+  String? _result;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!kIsWeb) {
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+      ]);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (!kIsWeb) {
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.portraitDown,
+      ]);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: const Color(0xFFF8FAFC),
+    appBar: AppBar(
+      title: const Text('Motherboard Identification Quiz'),
+      backgroundColor: const Color(0xFF0B2B4A),
+      foregroundColor: Colors.white,
+    ),
+    body: SafeArea(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 620),
+          child: Column(
+            children: [
+              if (_result != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(10),
+                  color: const Color(0xFFE0F2FE),
+                  child: Text(
+                    _result!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              Expanded(
+                child: MotherboardIdentification(
+                  onComplete: (score, total, passed) => setState(() {
+                    _result =
+                        'Quiz complete: $score/$total • ${passed ? "Passed" : "Review and try again"}';
+                  }),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 // ✅ Enhanced Quiz Card with Status Badge

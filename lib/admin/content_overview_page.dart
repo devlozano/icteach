@@ -1,9 +1,6 @@
 import '../services/workspace_data.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import '../screens/teacher/manage_modules_page.dart';
-import '../screens/teacher/manage_quizzes_page.dart';
-import '../screens/teacher/manage_assignments_page.dart';
 import '../screens/teacher/content_lock_manager.dart';
 
 class ContentOverviewPage extends StatelessWidget {
@@ -54,43 +51,33 @@ class ContentOverviewPage extends StatelessWidget {
                         'classContent/' + classroom.id + '/' + kind,
                         () => classroom.reference.collection(kind).snapshots(),
                       ),
-                      builder: (context, content) => ListTile(
-                        title: Text(kind[0].toUpperCase() + kind.substring(1)),
-                        subtitle: Text(
-                          content.hasError
-                              ? 'Unable to load counts'
-                              : !content.hasData
-                              ? 'Loading...'
-                              : '${content.data!.docs.length} total / ${content.data!.docs.where((d) => d.data()['isPublished'] == true).length} published',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          final name =
-                              (classroom.data()['className'] ??
-                                      classroom.data()['name'] ??
-                                      'Class')
-                                  .toString();
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => switch (kind) {
-                                'modules' => ManageModulesPage(
-                                  classId: classroom.id,
-                                  className: name,
-                                ),
-                                'quizzes' => ManageQuizzesPage(
-                                  classId: classroom.id,
-                                  className: name,
-                                ),
-                                _ => ManageAssignmentsPage(
-                                  classId: classroom.id,
-                                  className: name,
-                                ),
-                              },
+                      builder: (context, content) {
+                        final label = kind[0].toUpperCase() + kind.substring(1);
+                        final icon = switch (kind) {
+                          'modules' => Icons.menu_book_outlined,
+                          'quizzes' => Icons.quiz_outlined,
+                          _ => Icons.assignment_outlined,
+                        };
+                        return ListTile(
+                          leading: Icon(icon, color: const Color(0xFF0891B2)),
+                          title: Text(label),
+                          subtitle: Text(
+                            content.hasError
+                                ? 'Unable to load counts'
+                                : !content.hasData
+                                ? 'Loading...'
+                                : '${content.data!.docs.length} total / ${content.data!.docs.where((d) => d.data()['isPublished'] == true).length} published',
+                          ),
+                          trailing: const Text(
+                            'View only',
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
                     ),
                   ListTile(
                     title: const Text('Content access'),

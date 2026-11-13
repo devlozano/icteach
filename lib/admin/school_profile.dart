@@ -53,7 +53,7 @@ class _SchoolIdentityState extends State<SchoolIdentity> {
                       )
                     : Text(
                         schoolName ?? 'School name not set',
-                        maxLines: 2,
+                        maxLines: widget.compact ? 1 : 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.w700),
                       ),

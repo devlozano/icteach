@@ -222,7 +222,7 @@ class ManageQuestionnairesPage extends StatelessWidget {
                     ),
                     subtitle: Text(
                       '${data['summary'] ?? 'No written response'}\n'
-                      '${ratings.entries.map((e) => '${e.key}: ${e.value}/5').join(' • ')}\n'
+                      '${ratings.entries.map((e) => '${e.key}: ${e.value}/5').join(' | ')}\n'
                       'Interpret clarity and difficulty separately; high difficulty is not high teaching quality.',
                     ),
                   );
@@ -315,7 +315,7 @@ class ManageQuestionnairesPage extends StatelessWidget {
                   ),
                   subtitle: Text(
                     '${data['type']?.toString().replaceAll('_', ' ') ?? 'evaluation'} '
-                    '• ${published ? 'Published' : 'Draft'}',
+                    '- ${published ? 'Published' : 'Draft'}',
                   ),
                   onTap: () => _showResponses(
                     context,

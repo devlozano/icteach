@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../data/motherboard_parts.dart';
+import 'simulation_description.dart';
 
 class MotherboardIdentification extends StatefulWidget {
   const MotherboardIdentification({super.key, required this.onComplete});
@@ -52,7 +53,26 @@ class _MotherboardIdentificationState extends State<MotherboardIdentification> {
                 'Part ${_index + 1} of ${parts.length} • Pinch to zoom, drag to pan, tap the actual part.',
               ),
               if (_feedback != null)
-                Text(_feedback!, textAlign: TextAlign.center),
+                _located
+                    ? SimulationDescriptionSection(
+                        title: 'Part description',
+                        text: _feedback!,
+                      )
+                    : Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFE8E5),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFF2B8B5)),
+                        ),
+                        child: Text(
+                          _feedback!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: Color(0xFF8C2020)),
+                        ),
+                      ),
             ],
           ),
         ),

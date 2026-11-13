@@ -693,7 +693,7 @@ class _CreateModulePageState extends State<CreateModulePage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '${_selectedFile!.name} • ${(_selectedFile!.size / (1024 * 1024)).toStringAsFixed(2)} MB',
+                              '${_selectedFile!.name} | ${(_selectedFile!.size / (1024 * 1024)).toStringAsFixed(2)} MB',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

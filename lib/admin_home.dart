@@ -303,7 +303,6 @@ class _DashboardContent extends StatelessWidget {
   }
 }
 
-// â”€â”€ Summary Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _SummaryRow extends StatefulWidget {
   const _SummaryRow();
 
@@ -517,7 +516,6 @@ class _SmallStat extends StatelessWidget {
   }
 }
 
-// â”€â”€ Recent Classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _RecentClassesGrid extends StatelessWidget {
   const _RecentClassesGrid();
 
@@ -538,7 +536,7 @@ class _RecentClassesGrid extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2F80ED).withOpacity(0.1),
+                  color: const Color(0xFF2F80ED).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -583,27 +581,51 @@ class _RecentClassesGrid extends StatelessWidget {
                 const Color(0xFFE94560),
               ];
 
-              return Wrap(
-                runSpacing: 12,
-                spacing: 12,
-                children: List.generate(docs.length, (index) {
-                  final data = docs[index].data() as Map<String, dynamic>;
-                  final name = data['name'] as String? ?? 'Untitled Class';
-                  final section =
-                      data['sectionCode'] as String? ?? 'No section';
-                  final students =
-                      (data['enrolledStudentIds'] as List?)?.length ?? 0;
-                  final teacherName =
-                      data['teacherName'] as String? ?? 'Unknown';
-                  final color = colors[index % colors.length];
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  const spacing = 10.0;
+                  final columnCount = constraints.maxWidth >= 960
+                      ? 4
+                      : constraints.maxWidth >= 680
+                      ? 3
+                      : constraints.maxWidth >= 440
+                      ? 2
+                      : 1;
+                  final cardWidth =
+                      (constraints.maxWidth - spacing * (columnCount - 1)) /
+                      columnCount;
 
-                  return _ClassCard(
-                    title: name,
-                    subtitle: '$section â€¢ $teacherName',
-                    studentsCount: students,
-                    color: color,
+                  return Wrap(
+                    runSpacing: spacing,
+                    spacing: spacing,
+                    children: List.generate(docs.length, (index) {
+                      final data = docs[index].data() as Map<String, dynamic>;
+                      final name = data['name'] as String? ?? 'Untitled Class';
+                      final sectionValue =
+                          (data['sectionCode'] as String?)?.trim() ?? '';
+                      final section = sectionValue.isEmpty
+                          ? 'Section not assigned'
+                          : sectionValue;
+                      final students =
+                          (data['enrolledStudentIds'] as List?)?.length ?? 0;
+                      final teacherValue =
+                          (data['teacherName'] as String?)?.trim() ?? '';
+                      final teacherName = teacherValue.isEmpty
+                          ? 'Teacher not assigned'
+                          : teacherValue;
+                      final color = colors[index % colors.length];
+
+                      return _ClassCard(
+                        width: cardWidth,
+                        title: name,
+                        section: section,
+                        teacherName: teacherName,
+                        studentsCount: students,
+                        color: color,
+                      );
+                    }),
                   );
-                }),
+                },
               );
             },
           ),
@@ -615,86 +637,187 @@ class _RecentClassesGrid extends StatelessWidget {
 
 class _ClassCard extends StatelessWidget {
   const _ClassCard({
+    required this.width,
     required this.title,
-    required this.subtitle,
+    required this.section,
+    required this.teacherName,
     required this.studentsCount,
     required this.color,
   });
 
+  final double width;
   final String title;
-  final String subtitle;
+  final String section;
+  final String teacherName;
   final int studentsCount;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 260,
+      width: width,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFEEEEEE)),
+          borderRadius: BorderRadius.circular(13),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: color.withValues(alpha: 0.09),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                  ),
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    color.withValues(alpha: 0.14),
+                    color.withValues(alpha: 0.04),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: const Icon(
+                      Icons.class_outlined,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        color: Color(0xFF20242C),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        height: 1.15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Color(0xFF666666), fontSize: 12),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.people_alt_outlined, size: 14, color: color),
-                const SizedBox(width: 4),
-                Text(
-                  '$studentsCount students',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: color,
-                    fontWeight: FontWeight.w600,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 9, 12, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F7FA),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.meeting_room_outlined,
+                          size: 14,
+                          color: color,
+                        ),
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            section,
+                            style: const TextStyle(
+                              color: Color(0xFF4B5563),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const Spacer(),
-                Icon(
-                  Icons.arrow_forward_ios,
-                  size: 14,
-                  color: Colors.grey.shade400,
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 14,
+                        backgroundColor: color.withValues(alpha: 0.12),
+                        child: Icon(
+                          Icons.person_outline_rounded,
+                          color: color,
+                          size: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'TEACHER',
+                              style: TextStyle(
+                                color: Color(0xFF8A94A3),
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              teacherName,
+                              style: const TextStyle(
+                                color: Color(0xFF303640),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.only(top: 8),
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: Color(0xFFEEF0F3))),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.people_alt_outlined, size: 16, color: color),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$studentsCount ${studentsCount == 1 ? 'student' : 'students'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: color,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

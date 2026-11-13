@@ -83,8 +83,11 @@ class _ManageQuizzesPageState extends State<ManageQuizzesPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.quiz_outlined,
-                      size: 64, color: Colors.grey.shade300),
+                  Icon(
+                    Icons.quiz_outlined,
+                    size: 64,
+                    color: Colors.grey.shade300,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'No quizzes yet',
@@ -254,10 +257,7 @@ class _ManageQuizzesPageState extends State<ManageQuizzesPage> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
       );
     }
   }
@@ -294,8 +294,9 @@ class _QuizCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final questionsWithExplanation =
-        quiz.questions.where((q) => q.explanation.isNotEmpty).length;
+    final questionsWithExplanation = quiz.questions
+        .where((q) => q.explanation.isNotEmpty)
+        .length;
     final hasTimeLimit = quiz.timeLimit > 0;
 
     // ✅ Safe passing rate calculation
@@ -368,7 +369,9 @@ class _QuizCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: quiz.isPublished
                                 ? Colors.green.shade100
@@ -401,7 +404,7 @@ class _QuizCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '• ${quiz.totalPoints} pts',
+                          '- ${quiz.totalPoints} pts',
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 12,
@@ -410,7 +413,9 @@ class _QuizCard extends StatelessWidget {
                         if (passingRate != null)
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 1),
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.blue.shade50,
                               borderRadius: BorderRadius.circular(4),
@@ -443,10 +448,7 @@ class _QuizCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               quiz.description,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -464,7 +466,9 @@ class _QuizCard extends StatelessWidget {
                   if (questionsWithExplanation > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green.shade50,
                         borderRadius: BorderRadius.circular(10),
