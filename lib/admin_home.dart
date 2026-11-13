@@ -2275,6 +2275,8 @@ class _SettingsContentState extends State<_SettingsContent> {
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _startYearController = TextEditingController();
+  final _endYearController = TextEditingController();
   bool _isChangingPassword = false;
   bool _obscureCurrent = true;
   bool _obscureNew = true;
@@ -2282,14 +2284,6 @@ class _SettingsContentState extends State<_SettingsContent> {
   bool _isLoadingAcademicYear = true;
   bool _isSavingAcademicYear = false;
   late String _selectedAcademicYear;
-
-  List<String> get _academicYearOptions {
-    final currentYear = DateTime.now().year;
-    return List.generate(7, (index) {
-      final start = currentYear - 3 + index;
-      return '$start-${start + 1}';
-    });
-  }
 
   String _automaticAcademicYear() {
     final now = DateTime.now();
@@ -2301,7 +2295,43 @@ class _SettingsContentState extends State<_SettingsContent> {
   void initState() {
     super.initState();
     _selectedAcademicYear = _automaticAcademicYear();
+    _applyAcademicYear(_selectedAcademicYear);
     _loadAcademicYear();
+  }
+
+  void _applyAcademicYear(String schoolYear) {
+    final parts = schoolYear.split('-');
+    final start = parts.isNotEmpty ? int.tryParse(parts.first.trim()) : null;
+    final resolvedStart = start ?? DateTime.now().year;
+    _startYearController.text = resolvedStart.toString();
+    _endYearController.text = (resolvedStart + 1).toString();
+    _selectedAcademicYear = '$resolvedStart-${resolvedStart + 1}';
+  }
+
+  void _updateEndYear(String value) {
+    final start = int.tryParse(value);
+    final end = start == null ? '' : (start + 1).toString();
+    _endYearController.text = end;
+    if (value.length == 4 && start != null) {
+      _selectedAcademicYear = '$start-${start + 1}';
+    }
+    setState(() {});
+  }
+
+  String? _validatedAcademicYear() {
+    final start = int.tryParse(_startYearController.text.trim());
+    if (start == null || _startYearController.text.trim().length != 4) {
+      _showSnack('Enter a valid four-digit start year.', Colors.red);
+      return null;
+    }
+    if (start < 1900 || start >= 9999) {
+      _showSnack('Start year must be between 1900 and 9998.', Colors.red);
+      return null;
+    }
+    final schoolYear = '$start-${start + 1}';
+    _endYearController.text = (start + 1).toString();
+    _selectedAcademicYear = schoolYear;
+    return schoolYear;
   }
 
   Future<void> _loadAcademicYear() async {
@@ -2312,7 +2342,7 @@ class _SettingsContentState extends State<_SettingsContent> {
           .get();
       final saved = snapshot.data()?['activeSchoolYear']?.toString();
       if (mounted && saved != null && saved.isNotEmpty) {
-        setState(() => _selectedAcademicYear = saved);
+        setState(() => _applyAcademicYear(saved));
       }
     } finally {
       if (mounted) setState(() => _isLoadingAcademicYear = false);
@@ -2320,11 +2350,13 @@ class _SettingsContentState extends State<_SettingsContent> {
   }
 
   Future<void> _saveAcademicYear({required bool archivePrevious}) async {
+    final academicYear = _validatedAcademicYear();
+    if (academicYear == null) return;
     setState(() => _isSavingAcademicYear = true);
     try {
       final db = FirebaseFirestore.instance;
       await db.collection('system_settings').doc('academic_year').set({
-        'activeSchoolYear': _selectedAcademicYear,
+        'activeSchoolYear': academicYear,
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': FirebaseAuth.instance.currentUser?.uid,
       }, SetOptions(merge: true));
@@ -2338,12 +2370,11 @@ class _SettingsContentState extends State<_SettingsContent> {
           final data = classDoc.data();
           final year = data['schoolYear']?.toString();
           final status = data['status']?.toString();
-          if (year != _selectedAcademicYear && status != 'archived') {
+          if (year != academicYear && status != 'archived') {
             batch.update(classDoc.reference, {
               'status': 'archived',
               'archivedAt': FieldValue.serverTimestamp(),
-              'archiveReason':
-                  'Academic year changed to $_selectedAcademicYear',
+              'archiveReason': 'Academic year changed to $academicYear',
             });
             archivedCount++;
             pendingWrites++;
@@ -2371,12 +2402,14 @@ class _SettingsContentState extends State<_SettingsContent> {
   }
 
   Future<void> _confirmAcademicYearRollover() async {
+    final academicYear = _validatedAcademicYear();
+    if (academicYear == null) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Start academic year rollover?'),
         content: Text(
-          'This sets $_selectedAcademicYear as active and archives every class '
+          'This sets $academicYear as active and archives every class '
           'from another school year. Archived classes remain available in the '
           'Classes archive and their records are not deleted.',
         ),
@@ -2402,6 +2435,8 @@ class _SettingsContentState extends State<_SettingsContent> {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _startYearController.dispose();
+    _endYearController.dispose();
     super.dispose();
   }
 
@@ -2502,52 +2537,149 @@ class _SettingsContentState extends State<_SettingsContent> {
               if (_isLoadingAcademicYear)
                 const LinearProgressIndicator()
               else
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 220,
-                      child: DropdownButtonFormField<String>(
-                        initialValue:
-                            _academicYearOptions.contains(_selectedAcademicYear)
-                            ? _selectedAcademicYear
-                            : null,
-                        decoration: const InputDecoration(
-                          labelText: 'Active school year',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: {..._academicYearOptions, _selectedAcademicYear}
-                            .map(
-                              (year) => DropdownMenuItem(
-                                value: year,
-                                child: Text(year),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final stackFields = constraints.maxWidth < 420;
+
+                          final startYearField = TextFormField(
+                            controller: _startYearController,
+                            enabled: !_isSavingAcademicYear,
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                              LengthLimitingTextInputFormatter(4),
+                            ],
+                            decoration: const InputDecoration(
+                              labelText: 'START YEAR',
+                              hintText: '2026',
+                              filled: true,
+                              fillColor: Colors.white,
+                              border: OutlineInputBorder(),
+                            ),
+                            onChanged: _updateEndYear,
+                          );
+
+                          final endYearField = TextFormField(
+                            controller: _endYearController,
+                            readOnly: true,
+                            decoration: const InputDecoration(
+                              labelText: 'END YEAR',
+                              filled: true,
+                              fillColor: Color(0xFFF1F5F9),
+                              suffixIcon: Icon(
+                                Icons.lock_outline_rounded,
+                                size: 18,
                               ),
-                            )
-                            .toList(),
-                        onChanged: _isSavingAcademicYear
-                            ? null
-                            : (value) {
-                                if (value != null) {
-                                  setState(() => _selectedAcademicYear = value);
-                                }
-                              },
+                              border: OutlineInputBorder(),
+                            ),
+                          );
+
+                          final connector = Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: _kAccentBlue.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              stackFields
+                                  ? Icons.arrow_downward_rounded
+                                  : Icons.arrow_forward_rounded,
+                              color: _kAccentBlue,
+                              size: 18,
+                            ),
+                          );
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (stackFields) ...[
+                                startYearField,
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  child: Center(child: connector),
+                                ),
+                                endYearField,
+                              ] else
+                                Row(
+                                  children: [
+                                    Expanded(child: startYearField),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                      ),
+                                      child: connector,
+                                    ),
+                                    Expanded(child: endYearField),
+                                  ],
+                                ),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.auto_awesome_rounded,
+                                    size: 15,
+                                    color: _kAccentBlue,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      _endYearController.text.isEmpty
+                                          ? 'Enter a start year to calculate the end year.'
+                                          : 'School year: ${_startYearController.text}-${_endYearController.text}. The end year is filled automatically.',
+                                      style: const TextStyle(
+                                        color: _kSubtextColor,
+                                        fontSize: 12,
+                                        height: 1.35,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                    ElevatedButton.icon(
-                      onPressed: _isSavingAcademicYear
-                          ? null
-                          : () => _saveAcademicYear(archivePrevious: false),
-                      icon: const Icon(Icons.save_rounded),
-                      label: const Text('Save active year'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: _isSavingAcademicYear
-                          ? null
-                          : _confirmAcademicYearRollover,
-                      icon: const Icon(Icons.archive_rounded),
-                      label: const Text('Save and archive previous years'),
+                    const SizedBox(height: 14),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _isSavingAcademicYear
+                              ? null
+                              : () => _saveAcademicYear(archivePrevious: false),
+                          icon: const Icon(Icons.save_rounded, size: 18),
+                          label: const Text('Save active year'),
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(170, 46),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: _isSavingAcademicYear
+                              ? null
+                              : _confirmAcademicYearRollover,
+                          icon: const Icon(Icons.archive_rounded, size: 18),
+                          label: const Text('Save and archive previous years'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(250, 46),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
