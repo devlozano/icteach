@@ -290,11 +290,17 @@ service cloud.firestore {
         );
       }
     }
+    // School-year indexes are written only by the scheduled Admin SDK
+    // function. Principals may inspect them, but no client can alter history.
+    match /school_year_archives/{document=**} {
+      allow read: if canAdmin();
+      allow write: if false;
+    }
     // Existing policies for unrelated collections remain unchanged. Exclude the
     // LRN namespace here so a broad match cannot bypass its admin restrictions.
     match /{collection}/{document=**} {
       allow read, write: if request.auth != null
-        && !(collection in ['lrn_master_list', 'lrn_folders', 'users', 'students', 'css_gradebooks', 'classes']);
+        && !(collection in ['lrn_master_list', 'lrn_folders', 'users', 'students', 'css_gradebooks', 'classes', 'school_year_archives']);
     }
   }
 }

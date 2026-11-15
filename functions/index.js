@@ -1,16 +1,32 @@
 'use strict';
 const {onRequest} = require('firebase-functions/v2/https');
+const {onSchedule} = require('firebase-functions/v2/scheduler');
 const {defineSecret} = require('firebase-functions/params');
 const {initializeApp} = require('firebase-admin/app');
 const {getAuth} = require('firebase-admin/auth');
 const {getFirestore, FieldValue} = require('firebase-admin/firestore');
 const {makeDeleteStaffHandler} = require('./delete-staff');
 const {makeInviteStudentHandler} = require('./invite-student');
+const {
+  makeArchiveSchoolYearHandler,
+  TIME_ZONE,
+} = require('./archive-school-year');
 const emailjsServiceId = defineSecret('EMAILJS_SERVICE_ID');
 const emailjsTemplateId = defineSecret('EMAILJS_TEMPLATE_ID');
 const emailjsPublicKey = defineSecret('EMAILJS_PUBLIC_KEY');
 const emailjsPrivateKey = defineSecret('EMAILJS_PRIVATE_KEY');
 initializeApp();
+
+exports.archiveSchoolYear = onSchedule({
+  schedule: '0 1 * * *',
+  timeZone: TIME_ZONE,
+  region: 'us-central1',
+  timeoutSeconds: 540,
+  memory: '256MiB',
+}, makeArchiveSchoolYearHandler({
+  db: getFirestore(),
+  fieldValue: FieldValue,
+}));
 exports.deleteStaffAccount = onRequest({region: 'us-central1', cors: true, timeoutSeconds: 120},
   makeDeleteStaffHandler({auth: getAuth(), db: getFirestore()}));
 exports.inviteStudentAccount = onRequest({region: 'us-central1', cors: true, timeoutSeconds: 120,
