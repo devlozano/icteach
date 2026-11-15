@@ -50,7 +50,7 @@ void main() {
   );
 
   testWidgets(
-    'Mobile gradebook displays workbook periods and complete overall grade',
+    'Mobile gradebook displays three terms and saved complete final grade',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -84,25 +84,9 @@ void main() {
         200,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.text('Prelim'), findsWidgets);
-      expect(find.text('Midterm'), findsWidgets);
-      expect(find.text('Final'), findsWidgets);
-      expect(find.text('Overall'), findsOneWidget);
-      expect(find.text('Passed'), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.text('Edit Prelim').first,
-        300,
-        scrollable: find
-            .byWidgetPredicate(
-              (widget) =>
-                  widget is Scrollable &&
-                  widget.axisDirection == AxisDirection.right,
-            )
-            .last,
-      );
-      await tester.ensureVisible(find.text('Edit Prelim').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Edit Prelim').first);
+      expect(find.text('Term 3'), findsOneWidget);
+      expect(find.textContaining('Final: 75'), findsOneWidget);
+      await tester.tap(find.text('Sample Student'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextFormField).first, '60');
       await tester.scrollUntilVisible(
@@ -110,10 +94,10 @@ void main() {
         250,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.textContaining('Prelim grade: 74'), findsOneWidget);
+      expect(find.textContaining('Term grade: 74'), findsOneWidget);
       await tester.tap(find.text('Save scores'));
       await tester.pumpAndSettle();
-      expect(find.text('74'), findsOneWidget);
+      expect(find.textContaining('Term 1: 74'), findsOneWidget);
       final saved = await service.book
           .collection('records')
           .doc('student_1')

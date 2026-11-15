@@ -215,32 +215,7 @@ void main() {
                 .first,
           );
           await tester.pumpAndSettle();
-          await tester.scrollUntilVisible(
-            find.text('Edit Prelim').first,
-            300,
-            scrollable: find
-                .byWidgetPredicate(
-                  (widget) =>
-                      widget is Scrollable &&
-                      widget.axisDirection == AxisDirection.right,
-                )
-                .last,
-          );
-          await tester.scrollUntilVisible(
-            find.text('Edit Prelim').first,
-            250,
-            scrollable: find
-                .descendant(
-                  of: find.byKey(const ValueKey('insights-grades')),
-                  matching: find.byWidgetPredicate(
-                    (widget) =>
-                        widget is Scrollable &&
-                        widget.axisDirection == AxisDirection.down,
-                  ),
-                )
-                .first,
-          );
-          await tester.tap(find.text('Edit Prelim').first);
+          await tester.tap(find.text('Alexandra Dela Cruz'));
           await tester.pumpAndSettle();
           expect(find.text('Record component scores'), findsOneWidget);
           await capture('score-entry');

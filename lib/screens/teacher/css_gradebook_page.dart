@@ -36,67 +36,6 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
   void message(String text) =>
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
 
-  List<DataCell> _gradeRowCells({
-    required BuildContext context,
-    required int number,
-    required MapEntry<String, String> student,
-    required List<int?> grades,
-    required Map<String, Map<String, dynamic>> all,
-    required CssGradingProfile profile,
-    required int schoolYear,
-  }) {
-    final overall = DepEdGrading.finalGrade(grades);
-    final remark = DepEdGrading.remark(grades);
-    final remarkColor = remark == 'Passed'
-        ? const Color(0xFF16794B)
-        : remark == 'Failed'
-        ? const Color(0xFFB42318)
-        : insightsMuted;
-    return [
-      DataCell(Text('$number')),
-      DataCell(
-        ConstrainedBox(
-          constraints: const BoxConstraints(minWidth: 180, maxWidth: 260),
-          child: Text(
-            student.value,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ),
-      for (final grade in grades) DataCell(Text('${grade ?? '—'}')),
-      DataCell(Text('${overall ?? '—'}')),
-      DataCell(
-        Text(
-          remark,
-          style: TextStyle(color: remarkColor, fontWeight: FontWeight.w700),
-        ),
-      ),
-      DataCell(
-        TextButton.icon(
-          onPressed: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => _TermEditor(
-                service: service,
-                studentId: student.key,
-                studentName: student.value,
-                term: term,
-                profile: profile,
-                year: schoolYear,
-                initial: CssGradebookService.readScores(
-                  all['${student.key}_$term'] ?? {},
-                ),
-              ),
-            ),
-          ),
-          icon: const Icon(Icons.edit_outlined, size: 17),
-          label: Text('Edit ${DepEdGrading.periodLabel(term)}'),
-        ),
-      ),
-    ];
-  }
-
   @override
   Widget build(
     BuildContext context,
@@ -119,7 +58,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
               title: 'Set up your gradebook',
               eyebrow: 'CSS / TECHPRO',
               icon: Icons.auto_stories_outlined,
-              subtitle: 'Track each learner across Prelim, Midterm, and Final.',
+              subtitle: 'Track each learner across three grading terms.',
             ),
             const InsightsPanel(
               child: Column(
@@ -185,7 +124,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                         if (mounted) setState(() => busy = false);
                       }
                     },
-              child: Text(busy ? 'Saving…' : 'Create gradebook'),
+              child: Text(busy ? 'Saving…' : 'Create three-term gradebook'),
             ),
           ],
         );
@@ -217,7 +156,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                 eyebrow: 'SY $schoolYear–${schoolYear + 1}',
                 icon: Icons.auto_stories_outlined,
                 subtitle:
-                    'Select a grading period, then open a learner to enter or review scores.',
+                    'Select a term, then open a student to enter or review scores.',
               ),
               InsightsStats(
                 items: [
@@ -227,7 +166,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                     icon: Icons.people_outline,
                   ),
                   (
-                    label: '${DepEdGrading.periodLabel(term)} completed',
+                    label: 'Term $term completed',
                     value:
                         '${widget.students.keys.where((id) => result(id, term) != null).length}',
                     icon: Icons.task_alt,
@@ -281,7 +220,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                 children: [
                   for (var t = 1; t <= 3; t++)
                     ChoiceChip(
-                      label: Text(DepEdGrading.periodLabel(t)),
+                      label: Text('Term $t'),
                       selected: term == t,
                       onSelected: (_) => setState(() => term = t),
                     ),
@@ -292,11 +231,10 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                       final rows = <List<Object?>>[
                         [
                           'Student',
-                          'Prelim',
-                          'Midterm',
-                          'Final',
-                          'Overall grade',
-                          'Remarks',
+                          'Term 1',
+                          'Term 2',
+                          'Term 3',
+                          'Final grade',
                         ],
                         for (final student in widget.students.entries)
                           [
@@ -308,10 +246,6 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                                     result(student.key, t)?.grade,
                                 ]) ??
                                 'Incomplete',
-                            DepEdGrading.remark([
-                              for (var t = 1; t <= 3; t++)
-                                result(student.key, t)?.grade,
-                            ]),
                           ],
                       ];
                       final export = await showDialog<bool>(
@@ -371,11 +305,10 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                               'School year',
                               'Profile',
                               'Student',
-                              'Prelim',
-                              'Midterm',
-                              'Final',
-                              'Overall grade',
-                              'Remarks',
+                              'Term 1',
+                              'Term 2',
+                              'Term 3',
+                              'Final grade',
                               'Descriptor',
                             ],
                             ...widget.students.entries.map((s) {
@@ -392,7 +325,6 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                                 s.value,
                                 ...grades.map((g) => g ?? 'Incomplete'),
                                 finalGrade ?? 'Incomplete',
-                                DepEdGrading.remark(grades),
                                 finalGrade == null
                                     ? ''
                                     : DepEdGrading.descriptor(finalGrade),
@@ -417,68 +349,114 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                   subtitle:
                       'Enrolled learners will appear here for score entry.',
                 ),
-              if (widget.students.isNotEmpty)
-                InsightsPanel(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(20, 18, 20, 8),
-                        child: Text(
-                          'Class grading sheet',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                            color: insightsNavy,
+              for (final student in widget.students.entries)
+                Builder(
+                  builder: (context) {
+                    final grades = [
+                      for (var t = 1; t <= 3; t++)
+                        result(student.key, t)?.grade,
+                    ];
+                    final finalGrade = DepEdGrading.finalGrade(grades);
+                    return InsightsPanel(
+                      padding: EdgeInsets.zero,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => _TermEditor(
+                              service: service,
+                              studentId: student.key,
+                              studentName: student.value,
+                              term: term,
+                              profile: profile,
+                              year: schoolYear,
+                              initial: CssGradebookService.readScores(
+                                all['${student.key}_$term'] ?? {},
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(20, 0, 20, 12),
-                        child: Text(
-                          'Select a period above, then use Edit to record Quiz, Simulation, and Assignment scores.',
-                          style: TextStyle(color: insightsMuted, height: 1.4),
-                        ),
-                      ),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: DataTable(
-                          headingRowColor: const WidgetStatePropertyAll(
-                            Color(0xFFE8F0F8),
-                          ),
-                          columns: const [
-                            DataColumn(label: Text('No.')),
-                            DataColumn(label: Text('Student')),
-                            DataColumn(label: Text('Prelim'), numeric: true),
-                            DataColumn(label: Text('Midterm'), numeric: true),
-                            DataColumn(label: Text('Final'), numeric: true),
-                            DataColumn(label: Text('Overall'), numeric: true),
-                            DataColumn(label: Text('Remarks')),
-                            DataColumn(label: Text('Action')),
-                          ],
-                          rows: [
-                            for (final indexed
-                                in widget.students.entries.indexed)
-                              DataRow(
-                                cells: _gradeRowCells(
-                                  context: context,
-                                  number: indexed.$1 + 1,
-                                  student: indexed.$2,
-                                  grades: [
-                                    for (var t = 1; t <= 3; t++)
-                                      result(indexed.$2.key, t)?.grade,
-                                  ],
-                                  all: all,
-                                  profile: profile,
-                                  schoolYear: schoolYear,
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      student.value,
+                                      style: const TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w700,
+                                        color: insightsNavy,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Icon(
+                                    Icons.edit_outlined,
+                                    color: insightsTeal,
+                                    size: 20,
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  for (var t = 0; t < 3; t++)
+                                    InsightsPill(
+                                      'Term ${t + 1}: ${grades[t] ?? "Incomplete"}',
+                                      color: t + 1 == term
+                                          ? insightsTeal
+                                          : insightsMuted,
+                                    ),
+                                ],
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                child: Divider(
+                                  height: 1,
+                                  color: insightsBorder,
                                 ),
                               ),
-                          ],
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 8,
+                                children: [
+                                  Text(
+                                    'Final: ${finalGrade ?? "Incomplete"}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: insightsNavy,
+                                    ),
+                                  ),
+                                  if (finalGrade != null)
+                                    InsightsPill(
+                                      DepEdGrading.descriptor(finalGrade),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Edit Term $term scores',
+                                style: const TextStyle(
+                                  color: insightsTeal,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
             ],
           );
@@ -578,9 +556,7 @@ class _TermEditorState extends State<_TermEditor> {
         appBar: AppBar(
           backgroundColor: insightsNavy,
           foregroundColor: Colors.white,
-          title: Text(
-            '${DepEdGrading.periodLabel(widget.term)} | ${widget.studentName}',
-          ),
+          title: Text('Term ${widget.term} | ${widget.studentName}'),
         ),
         body: Form(
           key: form,
@@ -720,13 +696,13 @@ class _TermEditorState extends State<_TermEditor> {
                       'Simulation weighted score: ${result.simulation.toStringAsFixed(2)}\n'
                       'Assignment weighted score: ${result.assignment.toStringAsFixed(2)}\n'
                       'Initial grade: ${result.initial.toStringAsFixed(2)}\n'
-                      '${DepEdGrading.periodLabel(widget.term)} grade: ${result.grade} | ${DepEdGrading.descriptor(result.grade)}',
+                      'Term grade: ${result.grade} | ${DepEdGrading.descriptor(result.grade)}',
                     ),
                   ),
                 )
               else
                 const Text(
-                  'Incomplete: quiz, simulation, and assignment scores are required for this grading period.',
+                  'Incomplete: quiz, simulation, and assignment scores are required for a term grade.',
                 ),
               const SizedBox(height: 16),
               FilledButton(
