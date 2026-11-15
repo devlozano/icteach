@@ -77,9 +77,9 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      InsightsPill('Written 15%'),
-                      InsightsPill('Performance 65%'),
-                      InsightsPill('Exams 20%'),
+                      InsightsPill('Quiz 20%'),
+                      InsightsPill('Simulation 65%'),
+                      InsightsPill('Assignment 15%'),
                     ],
                   ),
                   SizedBox(height: 14),
@@ -197,9 +197,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                       color: insightsNavy,
                     ),
                   ),
-                  subtitle: Text(
-                    'Written ${profile.writtenWeight}% · Performance ${profile.performanceWeight}% · Exams 20%',
-                  ),
+                  subtitle: Text('Quiz 20% · Simulation 65% · Assignment 15%'),
                   childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                   children: [
                     Text(
@@ -210,7 +208,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Exams: ST1 30%, ST2 30%, Term Exam 40%. Enter total earned and possible points for each component. Blank scores stay incomplete; enter 0 only for an actual zero. Practice, attendance, and activity averages are not automatically included.',
+                      'Enter total earned and possible points for the quiz, simulation, and assignment. Blank scores stay incomplete; enter 0 only for an actual zero.',
                       style: TextStyle(color: insightsMuted, height: 1.5),
                     ),
                   ],
@@ -510,7 +508,7 @@ class _TermEditorState extends State<_TermEditor> {
   }
 
   Map<String, GradeScore> scores() => {
-    for (var i = 0; i < 5; i++)
+    for (var i = 0; i < DepEdGrading.components.length; i++)
       if (raw[i].text.trim().isNotEmpty && maximum[i].text.trim().isNotEmpty)
         DepEdGrading.components[i]: GradeScore(
           double.parse(raw[i].text),
@@ -572,7 +570,7 @@ class _TermEditorState extends State<_TermEditor> {
               ),
               const InsightsPanel(
                 child: Text(
-                  'For written works and performance tasks, sum the earned points and highest possible points across graded tasks. Retain individual task records as supporting evidence.',
+                  'Enter the earned and possible points for the learner’s quiz, simulation, and assignment. Retain the individual activity records as supporting evidence.',
                   style: TextStyle(color: insightsMuted, height: 1.5),
                 ),
               ),
@@ -615,7 +613,7 @@ class _TermEditorState extends State<_TermEditor> {
                           ),
                         ],
                       ),
-                      for (var i = 0; i < 5; i++)
+                      for (var i = 0; i < DepEdGrading.components.length; i++)
                         TableRow(
                           decoration: BoxDecoration(
                             color: i.isEven
@@ -694,9 +692,9 @@ class _TermEditorState extends State<_TermEditor> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Text(
-                      'Written weighted score: ${result.written.toStringAsFixed(2)}\n'
-                      'Performance weighted score: ${result.performance.toStringAsFixed(2)}\n'
-                      'Exam weighted score: ${result.exams.toStringAsFixed(2)}\n'
+                      'Quiz weighted score: ${result.quiz.toStringAsFixed(2)}\n'
+                      'Simulation weighted score: ${result.simulation.toStringAsFixed(2)}\n'
+                      'Assignment weighted score: ${result.assignment.toStringAsFixed(2)}\n'
                       'Initial grade: ${result.initial.toStringAsFixed(2)}\n'
                       'Term grade: ${result.grade} | ${DepEdGrading.descriptor(result.grade)}',
                     ),
@@ -704,7 +702,7 @@ class _TermEditorState extends State<_TermEditor> {
                 )
               else
                 const Text(
-                  'Incomplete: all five score pairs are required for a term grade.',
+                  'Incomplete: quiz, simulation, and assignment scores are required for a term grade.',
                 ),
               const SizedBox(height: 16),
               FilledButton(

@@ -25,7 +25,7 @@ beforeEach(async () => {
 });
 const db = uid => env.authenticatedContext(uid).firestore();
 const record = (overrides={}) => ({studentId:'student',term:1,
-  scores:{ww:{raw:0,maximum:100}},updatedAt:serverTimestamp(),...overrides});
+  scores:{quiz:{raw:0,maximum:100}},updatedAt:serverTimestamp(),...overrides});
 test('owner can save draft, read, and update valid scores', async () => {
   const ref = doc(db('teacher'), path+'/records/student_1');
   await assertSucceeds(setDoc(ref, record()));
@@ -49,20 +49,19 @@ test('student, other teacher, and unauthenticated access cannot bypass namespace
     await assertFails(getDoc(doc(client,path)));
   }
 });
-test('assigned trainer reads and manages the teacher-owned gradebook', async () => {
+test('assigned trainer cannot read or manage the teacher-owned gradebook', async () => {
   const ref = doc(db('trainer'),path+'/records/student_1');
-  await assertSucceeds(getDoc(doc(db('trainer'),path)));
-  await assertSucceeds(setDoc(ref,record()));
-  await assertSucceeds(updateDoc(ref,{scores:{pt:{raw:80,maximum:100}},updatedAt:serverTimestamp()}));
+  await assertFails(getDoc(doc(db('trainer'),path)));
+  await assertFails(setDoc(ref,record()));
 });
 test('invalid scores, term four, outsider, and unknown fields rejected on create and update', async () => {
   const ref = doc(db('teacher'),path+'/records/student_1');
   for (const patch of [{term:4},{studentId:'outsider'},{extra:true},
-    {scores:{ww:{raw:101,maximum:100}}},{scores:{ww:{raw:0,maximum:0}}},
-    {scores:{ww:{raw:'5',maximum:100}}},{scores:{attendance:{raw:1,maximum:1}}}]) {
+    {scores:{quiz:{raw:101,maximum:100}}},{scores:{quiz:{raw:0,maximum:0}}},
+    {scores:{quiz:{raw:'5',maximum:100}}},{scores:{attendance:{raw:1,maximum:1}}}]) {
     await assertFails(setDoc(ref,record(patch)));
   }
   await assertSucceeds(setDoc(ref,record()));
-  await assertFails(updateDoc(ref,{scores:{pt:{raw:-1,maximum:100}},updatedAt:serverTimestamp()}));
+  await assertFails(updateDoc(ref,{scores:{simulation:{raw:-1,maximum:100}},updatedAt:serverTimestamp()}));
   await assertFails(updateDoc(doc(db('teacher'),path),{profile:'techPro'}));
 });

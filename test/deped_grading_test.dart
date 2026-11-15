@@ -14,29 +14,38 @@ void main() {
     expect(DepEdGrading.transmute(100), 100);
     expect(DepEdGrading.transmute(69.999), 74);
   });
-  test(
-    'TLE and TechPro use different component weights with 30/30/40 exams',
-    () {
-      final scores = {
-        'ww': GradeScore(40, 50),
+  test('Quiz, simulation, and assignment use 20/65/15 weights', () {
+    final scores = {
+      'quiz': GradeScore(80, 100),
+      'simulation': GradeScore(90, 100),
+      'assignment': GradeScore(60, 100),
+    };
+    final result = DepEdGrading.calculate(
+      scores,
+      CssGradingProfile.techPro,
+      2026,
+    )!;
+    expect(result.quiz, 16);
+    expect(result.simulation, 58.5);
+    expect(result.assignment, 9);
+    expect(result.initial, 83.5);
+    expect(result.grade, 86);
+  });
+
+  test('Archived five-component records remain readable with new weights', () {
+    final result = DepEdGrading.calculate(
+      {
+        'ww': GradeScore(80, 100),
         'pt': GradeScore(90, 100),
-        'st1': GradeScore(10, 20),
-        'st2': GradeScore(30, 40),
+        'st1': GradeScore(60, 100),
+        'st2': GradeScore(60, 100),
         'te': GradeScore(60, 100),
-      };
-      final tle = DepEdGrading.calculate(scores, CssGradingProfile.tle, 2026)!;
-      expect(tle.exams, closeTo(12.3, .00001));
-      expect(tle.initial, closeTo(82.3, .00001));
-      expect(tle.grade, 85);
-      final shs = DepEdGrading.calculate(
-        scores,
-        CssGradingProfile.techPro,
-        2026,
-      )!;
-      expect(shs.initial, closeTo(82.8, .00001));
-      expect(shs.grade, 85);
-    },
-  );
+      },
+      CssGradingProfile.techPro,
+      2026,
+    )!;
+    expect(result.initial, 83.5);
+  });
   test('Missing scores remain incomplete while zero is a real score', () {
     expect(DepEdGrading.calculate({}, CssGradingProfile.tle, 2026), isNull);
     expect(

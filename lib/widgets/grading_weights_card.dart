@@ -12,13 +12,11 @@ class GradingWeightsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Grading weights by subject',
+            'ICTeach grading weights',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'WWs: Written Works • PTs: Performance Tasks\nSTs–TE: Summative Tests & Term Exams',
-          ),
+          const Text('Quiz 20% • Simulation 65% • Assignment 15%'),
           const SizedBox(height: 16),
           for (final weights in GradingWeights.subjectGroups)
             Padding(
@@ -35,22 +33,16 @@ class GradingWeightsCard extends StatelessWidget {
                     spacing: 20,
                     runSpacing: 4,
                     children: [
-                      Text('WWs ${weights.writtenWorks}%'),
-                      Text('PTs ${weights.performanceTasks}%'),
-                      Text(
-                        weights.summativeTestsTermExams == 0
-                            ? 'STs–TE —'
-                            : 'STs–TE ${weights.summativeTestsTermExams}%',
-                      ),
+                      Text('Quiz ${weights.quiz}%'),
+                      Text('Simulation ${weights.simulation}%'),
+                      Text('Assignment ${weights.assignment}%'),
                     ],
                   ),
                 ],
               ),
             ),
           const Text(
-            'DepEd Order 015, s. 2026. Three terms per school year. '
-            '— means no exam component. Use the Grades tab for CSS term and final grades. '
-            'Activity averages below are progress indicators.',
+            'Three terms are recorded per school year. Use the Grades tab for term and final grades.',
             style: TextStyle(fontSize: 12),
           ),
         ],

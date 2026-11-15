@@ -6,7 +6,7 @@ import 'package:icteach/screens/teacher/css_gradebook_page.dart';
 import 'package:icteach/utils/deped_grading.dart';
 
 void main() {
-  test('assigned staff share the authoritative teacher gradebook path', () {
+  test('teacher gradebook remains in the authoritative teacher path', () {
     final service = CssGradebookService(
       'class-a',
       firestore: FakeFirebaseFirestore(),
@@ -102,7 +102,7 @@ void main() {
           .collection('records')
           .doc('student_1')
           .get();
-      expect(CssGradebookService.readScores(saved.data()!)['ww']!.raw, 60);
+      expect(CssGradebookService.readScores(saved.data()!)['quiz']!.raw, 60);
       expect(tester.takeException(), isNull);
     },
   );

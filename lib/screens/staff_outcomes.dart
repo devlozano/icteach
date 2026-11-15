@@ -530,14 +530,14 @@ class _WeightedAssessmentMonitoring extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  InsightsPill('Written Works 15%'),
-                  InsightsPill('Performance Tasks 65%'),
-                  InsightsPill('Exams 20%'),
+                  InsightsPill('Quiz 20%'),
+                  InsightsPill('Simulation 65%'),
+                  InsightsPill('Assignment 15%'),
                 ],
               ),
               SizedBox(height: 10),
               Text(
-                'Exam grade: Summative Test 1 = 30%, Summative Test 2 = 30%, and Term Exam = 40%. Each learner requires three completed terms for a final grade.',
+                'Each learner requires quiz, simulation, and assignment scores for every term. Three completed terms are required for a final grade.',
                 style: TextStyle(color: insightsMuted, height: 1.45),
               ),
             ],

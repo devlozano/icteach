@@ -1,9 +1,9 @@
 /// DepEd Order 015, s. 2026, section VI and Annex D (pp. 35–37).
 /// https://www.deped.gov.ph/wp-content/uploads/DO_s2026_015r.pdf
 enum CssGradingProfile {
-  tle('Junior high CSS / TLE', 20, 60),
-  techPro('Strengthened SHS CSS / TechPro', 15, 65),
-  legacyTvl('Grade 12 TVL (non-strengthened, SY 2026–2027)', 20, 60);
+  tle('Junior high CSS / TLE', 20, 65),
+  techPro('Strengthened SHS CSS / TechPro', 20, 65),
+  legacyTvl('Grade 12 TVL (non-strengthened, SY 2026–2027)', 20, 65);
 
   const CssGradingProfile(
     this.label,
@@ -37,21 +37,23 @@ class GradeScore {
 }
 
 class DepEdTermResult {
-  const DepEdTermResult(this.written, this.performance, this.exams, this.grade);
-  final double written, performance, exams;
+  const DepEdTermResult(
+    this.quiz,
+    this.simulation,
+    this.assignment,
+    this.grade,
+  );
+  final double quiz, simulation, assignment;
+  double get written => quiz;
+  double get performance => simulation;
+  double get exams => assignment;
   final int grade;
-  double get initial => written + performance + exams;
+  double get initial => quiz + simulation + assignment;
 }
 
 class DepEdGrading {
-  static const components = ['ww', 'pt', 'st1', 'st2', 'te'];
-  static const labels = [
-    'Written / Oral Works',
-    'Performance Tasks',
-    'Summative Test 1',
-    'Summative Test 2',
-    'Term Exam',
-  ];
+  static const components = ['quiz', 'simulation', 'assignment'];
+  static const labels = ['Quiz', 'Simulation', 'Assignment'];
 
   // Explicit lower bounds preserve the published table's irregular intervals.
   static const lowerBounds = <double>[
@@ -119,19 +121,31 @@ class DepEdGrading {
         (profile == CssGradingProfile.legacyTvl && schoolYearStart != 2026)) {
       throw ArgumentError('Unsupported school year for this grading profile.');
     }
-    if (components.any((key) => !scores.containsKey(key))) return null;
-    final ww = scores['ww']!.percentage * profile.writtenWeight / 100;
-    final pt = scores['pt']!.percentage * profile.performanceWeight / 100;
-    final exams =
-        (scores['st1']!.percentage * .30 +
-            scores['st2']!.percentage * .30 +
-            scores['te']!.percentage * .40) *
-        .20;
-    final initial = (ww + pt + exams).clamp(0.0, 100.0);
+    final hasCurrent = components.every(scores.containsKey);
+    final hasLegacy = [
+      'ww',
+      'pt',
+      'st1',
+      'st2',
+      'te',
+    ].every(scores.containsKey);
+    if (!hasCurrent && !hasLegacy) return null;
+    final quizScore = scores[hasCurrent ? 'quiz' : 'ww']!.percentage;
+    final simulationScore =
+        scores[hasCurrent ? 'simulation' : 'pt']!.percentage;
+    final assignmentScore = hasCurrent
+        ? scores['assignment']!.percentage
+        : scores['st1']!.percentage * .30 +
+              scores['st2']!.percentage * .30 +
+              scores['te']!.percentage * .40;
+    final quiz = quizScore * .20;
+    final simulation = simulationScore * .65;
+    final assignment = assignmentScore * .15;
+    final initial = (quiz + simulation + assignment).clamp(0.0, 100.0);
     return DepEdTermResult(
-      ww,
-      pt,
-      exams,
+      quiz,
+      simulation,
+      assignment,
       schoolYearStart == 2026 ? transmute(initial) : initial.round(),
     );
   }

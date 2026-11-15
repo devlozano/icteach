@@ -171,9 +171,7 @@ service cloud.firestore {
       let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return request.auth != null && classroom.teacherId == teacherId
         && profile.get('isActive', true) == true
-        && ((profile.role == 'teacher' && request.auth.uid == teacherId)
-          || (profile.role == 'trainer'
-            && request.auth.uid in classroom.get('trainerIds', [])));
+        && profile.role == 'teacher' && request.auth.uid == teacherId;
     }
     function validGradeScore(score) {
       return score is map && score.keys().hasAll(['raw', 'maximum'])
@@ -183,7 +181,10 @@ service cloud.firestore {
         && score.raw >= 0 && score.raw <= score.maximum;
     }
     function validGradeScores(scores) {
-      return scores is map && scores.keys().hasOnly(['ww', 'pt', 'st1', 'st2', 'te'])
+      return scores is map && scores.keys().hasOnly(['quiz', 'simulation', 'assignment', 'ww', 'pt', 'st1', 'st2', 'te'])
+        && (!('quiz' in scores) || validGradeScore(scores.quiz))
+        && (!('simulation' in scores) || validGradeScore(scores.simulation))
+        && (!('assignment' in scores) || validGradeScore(scores.assignment))
         && (!('ww' in scores) || validGradeScore(scores.ww))
         && (!('pt' in scores) || validGradeScore(scores.pt))
         && (!('st1' in scores) || validGradeScore(scores.st1))
