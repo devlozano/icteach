@@ -52,6 +52,19 @@ class DepEdTermResult {
 }
 
 class DepEdGrading {
+  static const List<String> periodLabels = <String>[
+    'Prelim',
+    'Midterm',
+    'Final',
+  ];
+
+  static String periodLabel(int period) {
+    if (period < 1 || period > periodLabels.length) {
+      throw ArgumentError.value(period, 'period', 'must be from 1 to 3');
+    }
+    return periodLabels[period - 1];
+  }
+
   static const components = ['quiz', 'simulation', 'assignment'];
   static const labels = ['Quiz', 'Simulation', 'Assignment'];
 
@@ -156,6 +169,12 @@ class DepEdGrading {
       throw ArgumentError('Invalid term grade.');
     }
     return (terms.cast<int>().reduce((a, b) => a + b) / 3).round();
+  }
+
+  static String remark(List<int?> terms) {
+    final grade = finalGrade(terms);
+    if (grade == null) return 'Incomplete';
+    return grade >= 75 ? 'Passed' : 'Failed';
   }
 
   static String descriptor(int grade) => grade >= 90

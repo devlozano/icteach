@@ -66,6 +66,18 @@ void main() {
     expect(DepEdGrading.finalGrade([75, null, 90]), isNull);
     expect(DepEdGrading.finalGrade([75, 80, 90, 95]), isNull);
   });
+  test('Workbook periods and remarks are consistent', () {
+    expect(
+      [
+        for (var period = 1; period <= 3; period++)
+          DepEdGrading.periodLabel(period),
+      ],
+      ['Prelim', 'Midterm', 'Final'],
+    );
+    expect(DepEdGrading.remark([75, 80, 90]), 'Passed');
+    expect(DepEdGrading.remark([74, 74, 74]), 'Failed');
+    expect(DepEdGrading.remark([75, null, 90]), 'Incomplete');
+  });
   test('Invalid score and policy inputs are rejected', () {
     for (final pair in [
       [-1.0, 10.0],
