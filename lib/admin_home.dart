@@ -16,6 +16,7 @@ import 'admin/content_overview_page.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'admin/create_staff_page.dart';
+import 'admin/principal_archives_page.dart';
 
 import 'admin/evaluation_reports_page.dart';
 import 'package:icteach/services/quiz_service.dart';
@@ -173,6 +174,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return 'Create and manage teacher & trainer accounts';
       case 'Manage Classes':
         return 'View all classes across the platform';
+      case 'Archives':
+        return 'Browse preserved classes and records by school year';
       case 'Performance':
         return 'Track student quiz performance and leaderboards';
       case 'Reports':
@@ -190,6 +193,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return Icons.manage_accounts_outlined;
       case 'Manage Classes':
         return Icons.school_outlined;
+      case 'Archives':
+        return Icons.inventory_2_outlined;
       case 'Performance':
         return Icons.analytics_outlined;
       case 'Reports':
@@ -211,6 +216,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
         return _ManageUsersContent();
       case 'Manage Classes':
         return const _ManageClassesContent();
+      case 'Archives':
+        return const PrincipalArchivesPage();
       case 'Performance':
         return const _PerformanceContent();
       case 'Reports':
