@@ -18,6 +18,7 @@ class ProgressTrackerPage extends StatefulWidget {
   final String className;
   final FirebaseFirestore? firestore;
   final CssGradebookService? gradebookService;
+  final int? initialTab;
 
   const ProgressTrackerPage({
     super.key,
@@ -25,6 +26,7 @@ class ProgressTrackerPage extends StatefulWidget {
     required this.className,
     this.firestore,
     this.gradebookService,
+    this.initialTab,
   });
 
   @override
@@ -146,6 +148,7 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
       questionnaireResponses: responseSnapshot.docs
           .map((doc) => doc.data())
           .toList(),
+      teacherId: classData['teacherId']?.toString() ?? '',
     );
   }
 
@@ -184,7 +187,9 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 5,
-      initialIndex: WorkspacePreferences.tab('insights_${widget.classId}', 5),
+      initialIndex:
+          widget.initialTab ??
+          WorkspacePreferences.tab('insights_${widget.classId}', 5),
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F7FB),
         appBar: AppBar(
@@ -361,7 +366,13 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
                   questionnaireResponses: insights.questionnaireResponses,
                 ),
                 CssGradebookPage(
-                  service: widget.gradebookService,
+                  service:
+                      widget.gradebookService ??
+                      CssGradebookService(
+                        widget.classId,
+                        firestore: widget.firestore,
+                        teacherId: insights.teacherId,
+                      ),
                   classId: widget.classId,
                   students: {
                     for (final student in insights.students)
@@ -423,12 +434,14 @@ class _ClassInsights {
     required this.simulationRecords,
     required this.feedback,
     required this.questionnaireResponses,
+    required this.teacherId,
   });
 
   final List<_StudentInsight> students;
   final List<Map<String, dynamic>> simulationRecords;
   final List<Map<String, dynamic>> feedback;
   final List<Map<String, dynamic>> questionnaireResponses;
+  final String teacherId;
 }
 
 class _StudentInsight {

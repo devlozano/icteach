@@ -6,6 +6,9 @@ import 'package:flutter/material.dart';
 import '../services/student_outcomes.dart';
 import '../widgets/outcome_chart.dart';
 import 'teacher/progress_tracker_page.dart';
+import '../services/css_gradebook_service.dart';
+import '../utils/deped_grading.dart';
+import '../widgets/insights_ui.dart';
 
 class StaffOutcomes extends StatelessWidget {
   final bool admin, feedback, trainer;
@@ -24,16 +27,21 @@ class StaffOutcomes extends StatelessWidget {
           ? WorkspaceData.assignedClasses(uid)
           : WorkspaceData.teacherClassDocs(uid),
       builder: (context, snapshot) {
-        if (snapshot.hasError)
+        if (snapshot.hasError) {
           return const Text('Could not load class monitoring.');
-        if (!snapshot.hasData)
+        }
+        if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
+        }
         return _content(snapshot.data!);
       },
     );
   }
 
   Widget _content(List<QueryDocumentSnapshot<Map<String, dynamic>>>? classes) {
+    if (!admin && !feedback) {
+      return _WeightedAssessmentMonitoring(classes: classes ?? const []);
+    }
     final studentClasses = <String, String>{};
     for (final c
         in classes ?? <QueryDocumentSnapshot<Map<String, dynamic>>>[]) {
@@ -187,6 +195,233 @@ class StaffOutcomes extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _WeightedAssessmentMonitoring extends StatelessWidget {
+  const _WeightedAssessmentMonitoring({required this.classes});
+
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> classes;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeClasses = classes
+        .where((classroom) => classroom.data()['status'] != 'archived')
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const InsightsHeader(
+          title: 'Assessment result monitoring',
+          eyebrow: 'DEPED WEIGHTED GRADING',
+          icon: Icons.fact_check_outlined,
+          subtitle:
+              'Monitor and manage the same official component grades for every assigned class.',
+        ),
+        const SizedBox(height: 14),
+        const InsightsPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Computer Systems Servicing / TechPro',
+                style: TextStyle(
+                  color: insightsNavy,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  InsightsPill('Written Works 15%'),
+                  InsightsPill('Performance Tasks 65%'),
+                  InsightsPill('Exams 20%'),
+                ],
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Exam grade: Summative Test 1 = 30%, Summative Test 2 = 30%, and Term Exam = 40%. Each learner requires three completed terms for a final grade.',
+                style: TextStyle(color: insightsMuted, height: 1.45),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        if (activeClasses.isEmpty)
+          const InsightsEmpty(
+            icon: Icons.school_outlined,
+            title: 'No active assigned classes',
+            subtitle:
+                'Assessment monitoring appears after a class is assigned.',
+          )
+        else
+          for (final classroom in activeClasses)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _WeightedClassCard(classroom: classroom),
+            ),
+      ],
+    );
+  }
+}
+
+class _WeightedClassCard extends StatelessWidget {
+  const _WeightedClassCard({required this.classroom});
+
+  final QueryDocumentSnapshot<Map<String, dynamic>> classroom;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = classroom.data();
+    final className = data['name']?.toString() ?? 'Class';
+    final teacherId = data['teacherId']?.toString() ?? '';
+    final studentIds = List<String>.from(
+      data['enrolledStudentIds'] as List? ?? const [],
+    );
+    final service = CssGradebookService(classroom.id, teacherId: teacherId);
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: service.book.snapshots(),
+      builder: (context, settings) {
+        final config = settings.data?.data();
+        return InsightsPanel(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          className,
+                          style: const TextStyle(
+                            color: insightsNavy,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        Text(
+                          '${data['sectionCode'] ?? 'No section'} • ${data['teacherName'] ?? 'Teacher'}',
+                          style: const TextStyle(color: insightsMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ProgressTrackerPage(
+                          classId: classroom.id,
+                          className: className,
+                          initialTab: 4,
+                        ),
+                      ),
+                    ),
+                    icon: const Icon(Icons.edit_note_rounded, size: 18),
+                    label: Text(
+                      config == null ? 'Set up gradebook' : 'Manage grades',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              if (settings.hasError)
+                const Text(
+                  'The weighted gradebook could not be loaded.',
+                  style: TextStyle(color: Colors.red),
+                )
+              else if (!settings.hasData)
+                const LinearProgressIndicator()
+              else if (config == null)
+                Text(
+                  '${studentIds.length} enrolled • Gradebook setup required',
+                  style: const TextStyle(color: insightsMuted),
+                )
+              else
+                _WeightedClassMetrics(
+                  service: service,
+                  config: config,
+                  studentIds: studentIds,
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _WeightedClassMetrics extends StatelessWidget {
+  const _WeightedClassMetrics({
+    required this.service,
+    required this.config,
+    required this.studentIds,
+  });
+
+  final CssGradebookService service;
+  final Map<String, dynamic> config;
+  final List<String> studentIds;
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: service.book.collection('records').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const LinearProgressIndicator();
+        final profile = CssGradingProfile.values.byName(
+          config['profile']?.toString() ?? CssGradingProfile.techPro.name,
+        );
+        final year = (config['year'] as num?)?.toInt() ?? 2026;
+        final records = {
+          for (final document in snapshot.data!.docs)
+            document.id: document.data(),
+        };
+        DepEdTermResult? termResult(String studentId, int term) {
+          return DepEdGrading.calculate(
+            CssGradebookService.readScores(
+              records['${studentId}_$term'] ?? const {},
+            ),
+            profile,
+            year,
+          );
+        }
+
+        final finalGrades = <int>[];
+        var completedTerms = 0;
+        for (final studentId in studentIds) {
+          final terms = [
+            for (var term = 1; term <= 3; term++)
+              termResult(studentId, term)?.grade,
+          ];
+          completedTerms += terms.whereType<int>().length;
+          final grade = DepEdGrading.finalGrade(terms);
+          if (grade != null) finalGrades.add(grade);
+        }
+        final average = finalGrades.isEmpty
+            ? null
+            : finalGrades.reduce((a, b) => a + b) / finalGrades.length;
+        final passing = finalGrades.where((grade) => grade >= 75).length;
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            InsightsPill('${studentIds.length} learners'),
+            InsightsPill('$completedTerms/${studentIds.length * 3} terms'),
+            InsightsPill('${finalGrades.length} final grades'),
+            InsightsPill(
+              average == null
+                  ? 'Class average: Incomplete'
+                  : 'Class average: ${average.toStringAsFixed(1)}',
+            ),
+            InsightsPill('$passing meeting 75'),
+          ],
+        );
+      },
+    );
+  }
 }
 
 class _StudentOutcomeRow extends StatefulWidget {

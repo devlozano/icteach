@@ -166,8 +166,14 @@ service cloud.firestore {
     // CSS gradebooks are scoped to the authenticated teacher, never client-
     // supplied ownership. Profiles are immutable once configured. Records store
     // component totals; computed grades are derived using the versioned policy.
-    function gradebookOwner(teacherId) {
-      return request.auth != null && request.auth.uid == teacherId && isActiveTeacher();
+    function gradebookStaff(teacherId, classId) {
+      let classroom = get(/databases/$(database)/documents/classes/$(classId)).data;
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return request.auth != null && classroom.teacherId == teacherId
+        && profile.get('isActive', true) == true
+        && ((profile.role == 'teacher' && request.auth.uid == teacherId)
+          || (profile.role == 'trainer'
+            && request.auth.uid in classroom.get('trainerIds', [])));
     }
     function validGradeScore(score) {
       return score is map && score.keys().hasAll(['raw', 'maximum'])
@@ -185,8 +191,8 @@ service cloud.firestore {
         && (!('te' in scores) || validGradeScore(scores.te));
     }
     match /css_gradebooks/{teacherId}/classes/{classId} {
-      allow read: if gradebookOwner(teacherId);
-      allow create: if gradebookOwner(teacherId) && ownsClass(classId)
+      allow read: if gradebookStaff(teacherId, classId);
+      allow create: if gradebookStaff(teacherId, classId)
         && request.resource.data.keys().hasOnly(['profile', 'year', 'updatedAt'])
         && request.resource.data.profile == 'techPro'
         && request.resource.data.year is int
@@ -194,8 +200,8 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
       allow update, delete: if false;
       match /records/{recordId} {
-        allow read: if gradebookOwner(teacherId);
-        allow create, update: if gradebookOwner(teacherId) && ownsClass(classId)
+        allow read: if gradebookStaff(teacherId, classId);
+        allow create, update: if gradebookStaff(teacherId, classId)
           && exists(/databases/$(database)/documents/css_gradebooks/$(teacherId)/classes/$(classId))
           && request.resource.data.keys().hasOnly(['studentId', 'term', 'scores', 'updatedAt'])
           && request.resource.data.studentId is string

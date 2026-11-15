@@ -6,6 +6,15 @@ import 'package:icteach/screens/teacher/css_gradebook_page.dart';
 import 'package:icteach/utils/deped_grading.dart';
 
 void main() {
+  test('assigned staff share the authoritative teacher gradebook path', () {
+    final service = CssGradebookService(
+      'class-a',
+      firestore: FakeFirebaseFirestore(),
+      teacherId: 'teacher-a',
+    );
+    expect(service.book.path, 'css_gradebooks/teacher-a/classes/class-a');
+  });
+
   test(
     'Save, reload, and isolate three terms; setup cannot reinterpret saved grades',
     () async {

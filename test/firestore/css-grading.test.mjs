@@ -17,7 +17,9 @@ beforeEach(async () => {
     await setDoc(doc(ctx.firestore(), 'users/teacher'), {role:'teacher',isActive:true});
     await setDoc(doc(ctx.firestore(), 'users/other'), {role:'teacher',isActive:true});
     await setDoc(doc(ctx.firestore(), 'users/student'), {role:'student',isActive:true});
-    await setDoc(doc(ctx.firestore(), 'classes/class'), {teacherId:'teacher',enrolledStudentIds:['student']});
+    await setDoc(doc(ctx.firestore(), 'users/trainer'), {role:'trainer',isActive:true});
+    await setDoc(doc(ctx.firestore(), 'users/unassigned-trainer'), {role:'trainer',isActive:true});
+    await setDoc(doc(ctx.firestore(), 'classes/class'), {teacherId:'teacher',trainerIds:['trainer'],enrolledStudentIds:['student']});
     await setDoc(doc(ctx.firestore(), path), {profile:'techPro',year:2026});
   });
 });
@@ -42,10 +44,16 @@ test('new gradebook accepts TechPro only and rejects wrong year and ownership', 
   await assertSucceeds(setDoc(ref,{profile:'techPro',year:2026,updatedAt:serverTimestamp()}));
 });
 test('student, other teacher, and unauthenticated access cannot bypass namespace', async () => {
-  for (const client of [db('student'),db('other'),env.unauthenticatedContext().firestore()]) {
+  for (const client of [db('student'),db('other'),db('unassigned-trainer'),env.unauthenticatedContext().firestore()]) {
     await assertFails(setDoc(doc(client,path+'/records/student_1'),record()));
     await assertFails(getDoc(doc(client,path)));
   }
+});
+test('assigned trainer reads and manages the teacher-owned gradebook', async () => {
+  const ref = doc(db('trainer'),path+'/records/student_1');
+  await assertSucceeds(getDoc(doc(db('trainer'),path)));
+  await assertSucceeds(setDoc(ref,record()));
+  await assertSucceeds(updateDoc(ref,{scores:{pt:{raw:80,maximum:100}},updatedAt:serverTimestamp()}));
 });
 test('invalid scores, term four, outsider, and unknown fields rejected on create and update', async () => {
   const ref = doc(db('teacher'),path+'/records/student_1');
