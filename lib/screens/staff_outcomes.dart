@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../services/student_outcomes.dart';
 import '../widgets/outcome_chart.dart';
 import 'teacher/progress_tracker_page.dart';
+import 'teacher/assessment_review_page.dart';
 import '../services/css_gradebook_service.dart';
 import '../utils/deped_grading.dart';
 import '../widgets/insights_ui.dart';
@@ -39,8 +40,19 @@ class StaffOutcomes extends StatelessWidget {
   }
 
   Widget _content(List<QueryDocumentSnapshot<Map<String, dynamic>>>? classes) {
+    if (trainer && !feedback) {
+      return _SchoolYearReportScope(
+        classes: classes ?? const [],
+        builder: (scopedClasses) =>
+            _TrainerAssessmentMonitoring(classes: scopedClasses),
+      );
+    }
     if (!admin && !feedback) {
-      return _WeightedAssessmentMonitoring(classes: classes ?? const []);
+      return _SchoolYearReportScope(
+        classes: classes ?? const [],
+        builder: (scopedClasses) =>
+            _WeightedAssessmentMonitoring(classes: scopedClasses),
+      );
     }
     final studentClasses = <String, String>{};
     for (final c
@@ -197,6 +209,291 @@ class StaffOutcomes extends StatelessWidget {
   );
 }
 
+class _SchoolYearReportScope extends StatefulWidget {
+  const _SchoolYearReportScope({required this.classes, required this.builder});
+
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> classes;
+  final Widget Function(
+    List<QueryDocumentSnapshot<Map<String, dynamic>>> classes,
+  )
+  builder;
+
+  @override
+  State<_SchoolYearReportScope> createState() => _SchoolYearReportScopeState();
+}
+
+class _SchoolYearReportScopeState extends State<_SchoolYearReportScope> {
+  String? selectedYear;
+
+  @override
+  Widget build(BuildContext context) {
+    final years =
+        widget.classes
+            .map((item) => item.data()['schoolYear']?.toString().trim() ?? '')
+            .where((year) => year.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort((a, b) => b.compareTo(a));
+    final year = selectedYear ?? (years.isEmpty ? null : years.first);
+    final scopedClasses = widget.classes
+        .where(
+          (item) =>
+              year == null || item.data()['schoolYear']?.toString() == year,
+        )
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (years.isNotEmpty)
+          Align(
+            alignment: Alignment.centerRight,
+            child: SizedBox(
+              width: 220,
+              child: DropdownButtonFormField<String>(
+                initialValue: year,
+                decoration: const InputDecoration(
+                  labelText: 'Report school year',
+                  prefixIcon: Icon(Icons.calendar_month_outlined),
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
+                items: years
+                    .map(
+                      (item) =>
+                          DropdownMenuItem(value: item, child: Text(item)),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() => selectedYear = value),
+              ),
+            ),
+          ),
+        if (years.isNotEmpty) const SizedBox(height: 14),
+        widget.builder(scopedClasses),
+      ],
+    );
+  }
+}
+
+bool trainerValidationBelongsToAssignedClass(
+  Map<String, dynamic> validation,
+  Set<String> assignedClassIds,
+) => assignedClassIds.contains(validation['classId']?.toString());
+
+class _TrainerAssessmentMonitoring extends StatelessWidget {
+  const _TrainerAssessmentMonitoring({required this.classes});
+
+  final List<QueryDocumentSnapshot<Map<String, dynamic>>> classes;
+
+  @override
+  Widget build(BuildContext context) {
+    final trainerId = FirebaseAuth.instance.currentUser!.uid;
+    final activeClasses = classes;
+    final assignedClassIds = activeClasses.map((item) => item.id).toSet();
+    final classNames = {
+      for (final classroom in activeClasses)
+        classroom.id:
+            classroom.data()['name']?.toString() ??
+            classroom.data()['className']?.toString() ??
+            'Class',
+    };
+    final studentIds = activeClasses
+        .expand(
+          (classroom) => List<String>.from(
+            classroom.data()['enrolledStudentIds'] as List? ?? const [],
+          ),
+        )
+        .toSet();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const InsightsHeader(
+          title: 'My assessment results',
+          eyebrow: 'TRAINER PRACTICAL VALIDATION',
+          icon: Icons.fact_check_outlined,
+          subtitle:
+              'Review only the practical observations and competency validations you recorded for your assigned students.',
+        ),
+        const SizedBox(height: 14),
+        if (activeClasses.isEmpty)
+          const InsightsEmpty(
+            icon: Icons.school_outlined,
+            title: 'No assigned classes for this school year',
+            subtitle: 'Results appear after the principal assigns you a class.',
+          )
+        else ...[
+          InsightsPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Assigned practical assessments',
+                  style: TextStyle(
+                    color: insightsNavy,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Teacher gradebook scores are managed separately. Use a class below to observe a student and record your own COC 1 or COC 2 validation.',
+                  style: TextStyle(color: insightsMuted, height: 1.45),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final classroom in activeClasses)
+                      OutlinedButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => AssessmentReviewPage(
+                              classId: classroom.id,
+                              className: classNames[classroom.id]!,
+                            ),
+                          ),
+                        ),
+                        icon: const Icon(Icons.visibility_outlined, size: 18),
+                        label: Text(classNames[classroom.id]!),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+            stream: studentIds.isEmpty
+                ? Stream.value(
+                    const <QueryDocumentSnapshot<Map<String, dynamic>>>[],
+                  )
+                : WorkspaceData.students(studentIds),
+            builder: (context, studentsSnapshot) {
+              final studentNames = {
+                for (final student in studentsSnapshot.data ?? const [])
+                  student.id:
+                      student.data()['name']?.toString() ??
+                      student.data()['displayName']?.toString() ??
+                      student.data()['email']?.toString() ??
+                      'Student',
+              };
+              return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collection('competency_validations')
+                    .where('reviewerId', isEqualTo: trainerId)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return const InsightsEmpty(
+                      icon: Icons.error_outline,
+                      title: 'Assessment results could not be loaded',
+                      subtitle: 'Reopen this page to try again.',
+                    );
+                  }
+                  if (!snapshot.hasData || !studentsSnapshot.hasData) {
+                    return const LinearProgressIndicator();
+                  }
+                  final validations =
+                      snapshot.data!.docs
+                          .where(
+                            (item) => trainerValidationBelongsToAssignedClass(
+                              item.data(),
+                              assignedClassIds,
+                            ),
+                          )
+                          .toList()
+                        ..sort((a, b) {
+                          final aTime = a.data()['updatedAt'] as Timestamp?;
+                          final bTime = b.data()['updatedAt'] as Timestamp?;
+                          return (bTime?.millisecondsSinceEpoch ?? 0).compareTo(
+                            aTime?.millisecondsSinceEpoch ?? 0,
+                          );
+                        });
+                  if (validations.isEmpty) {
+                    return const InsightsEmpty(
+                      icon: Icons.assignment_turned_in_outlined,
+                      title: 'No practical validations recorded yet',
+                      subtitle:
+                          'Open an assigned class, observe the practical task, and save your assessment.',
+                    );
+                  }
+                  final validated = validations
+                      .where((item) => item.data()['status'] == 'validated')
+                      .length;
+                  return InsightsPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            InsightsPill('${validations.length} assessments'),
+                            InsightsPill('$validated validated'),
+                            InsightsPill(
+                              '${validations.length - validated} need practice',
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        for (final validation in validations) ...[
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              backgroundColor:
+                                  validation.data()['status'] == 'validated'
+                                  ? const Color(0xFFE8F5EE)
+                                  : const Color(0xFFFFF4E5),
+                              child: Icon(
+                                validation.data()['status'] == 'validated'
+                                    ? Icons.check_rounded
+                                    : Icons.refresh_rounded,
+                                color:
+                                    validation.data()['status'] == 'validated'
+                                    ? const Color(0xFF287A46)
+                                    : const Color(0xFFB45309),
+                              ),
+                            ),
+                            title: Text(
+                              '${studentNames[validation.data()['studentId']?.toString()] ?? 'Student'} · ${validation.data()['competency'] ?? 'Competency'}',
+                              style: const TextStyle(
+                                color: insightsNavy,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            subtitle: Text(
+                              '${classNames[validation.data()['classId']?.toString()] ?? 'Assigned class'}\n${validation.data()['notes'] ?? 'No observation notes'}',
+                            ),
+                            isThreeLine: true,
+                            trailing: Text(
+                              validation.data()['status'] == 'validated'
+                                  ? 'Validated'
+                                  : 'Needs practice',
+                              style: TextStyle(
+                                color:
+                                    validation.data()['status'] == 'validated'
+                                    ? const Color(0xFF287A46)
+                                    : const Color(0xFFB45309),
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          if (validation != validations.last) const Divider(),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _WeightedAssessmentMonitoring extends StatelessWidget {
   const _WeightedAssessmentMonitoring({required this.classes});
 
@@ -204,9 +501,7 @@ class _WeightedAssessmentMonitoring extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeClasses = classes
-        .where((classroom) => classroom.data()['status'] != 'archived')
-        .toList();
+    final activeClasses = classes;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -252,7 +547,7 @@ class _WeightedAssessmentMonitoring extends StatelessWidget {
         if (activeClasses.isEmpty)
           const InsightsEmpty(
             icon: Icons.school_outlined,
-            title: 'No active assigned classes',
+            title: 'No assigned classes for this school year',
             subtitle:
                 'Assessment monitoring appears after a class is assigned.',
           )

@@ -1,10 +1,53 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'summary_pdf_service.dart';
 import 'module_access_service.dart';
 
 class ClassSummaryService {
-  static Future<List<SummarySection>> load(String classId) async {
+  static List<SummarySection> sectionsForRole(
+    String role,
+    List<SummarySection> sections,
+  ) {
+    final byTitle = {for (final section in sections) section.title: section};
+    if (role == 'trainer') {
+      return [
+        if (byTitle['Students'] case final section?) section,
+        if (byTitle['Trainer practical validation'] case final section?)
+          section,
+      ];
+    }
+    if (role == 'teacher') {
+      const titles = [
+        'Learning progress summary',
+        'Students',
+        'Module access',
+        'Quiz results',
+        'Pre-assessment',
+        'Simulations',
+      ];
+      return [
+        for (final title in titles)
+          if (byTitle[title] case final section?) section,
+      ];
+    }
+    return sections;
+  }
+
+  static Future<List<SummarySection>> load(
+    String classId, {
+    String? role,
+    String? userId,
+  }) async {
     final db = FirebaseFirestore.instance;
+    final uid = userId ?? FirebaseAuth.instance.currentUser?.uid;
+    final resolvedRole =
+        role ??
+        (uid == null
+            ? 'admin'
+            : (await db.collection('users').doc(uid).get())
+                      .data()?['role']
+                      ?.toString() ??
+                  'admin');
     final classroom =
         (await db.collection('classes').doc(classId).get()).data() ?? {};
     final members = Set<String>.from(classroom['enrolledStudentIds'] ?? []);
@@ -37,7 +80,12 @@ class ClassSummaryService {
     ]);
     final quizzes = sections[0],
         assessments = sections[1],
-        validations = sections[2],
+        validations = sections[2]
+            .where(
+              (record) =>
+                  resolvedRole != 'trainer' || record['reviewerId'] == uid,
+            )
+            .toList(),
         feedback = sections[3],
         activities = sections[4];
     final content = await Future.wait([
@@ -66,7 +114,7 @@ class ClassSummaryService {
         );
       }
     }
-    return [
+    final reportSections = [
       SummarySection(
         'Learning progress summary',
         [
@@ -147,7 +195,9 @@ class ClassSummaryService {
         ],
       ),
       SummarySection(
-        'Practical validation',
+        resolvedRole == 'trainer'
+            ? 'Trainer practical validation'
+            : 'Practical validation',
         ['Student', 'Competency', 'Status', 'Notes'],
         [
           for (final a in validations)
@@ -194,6 +244,7 @@ class ClassSummaryService {
         ],
       ),
     ];
+    return sectionsForRole(resolvedRole, reportSections);
   }
 
   static List<Object?> _moduleRow(

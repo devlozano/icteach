@@ -45,10 +45,9 @@ class AdminHomePage extends StatefulWidget {
 }
 
 class _AdminHomePageState extends State<AdminHomePage> {
-  String _currentSelectedLabel =
-      (WorkspacePreferences.selection('admin_panel') ?? 'Dashboard')
-          .replaceFirst('LRN Registry', 'Dashboard')
-          .replaceFirst('LRN Registration', 'Dashboard');
+  String _currentSelectedLabel = normalizePrincipalPanelSelection(
+    WorkspacePreferences.selection('admin_panel'),
+  );
 
   void _selectPanel(String label) {
     setState(() => _currentSelectedLabel = label);
@@ -181,7 +180,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
       case 'Reports':
         return 'Student counts and NC II pass monitoring';
       case 'Settings':
-        return 'Manage your account and app preferences';
+        return 'Manage the school profile, academic year, and account security';
       default:
         return '';
     }
@@ -230,8 +229,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
             SizedBox(height: 640, child: EvaluationReportsPage()),
           ],
         );
-      case 'School Profile':
-        return const SchoolProfileEditor();
       case 'Settings':
         return const _SettingsContent();
       default:
@@ -1851,6 +1848,9 @@ class _ReportsContentState extends State<_ReportsContent> {
   int _totalQuizSubmissions = 0;
   int _totalAssignmentSubmissions = 0;
   List<Map<String, dynamic>> _classBreakdown = [];
+  List<String> _schoolYears = [];
+  String? _selectedSchoolYear;
+  String? _reportError;
 
   @override
   void initState() {
@@ -1864,7 +1864,23 @@ class _ReportsContentState extends State<_ReportsContent> {
 
       // Get all classes
       final classesSnapshot = await db.collection('classes').get();
-      final classes = classesSnapshot.docs;
+      final years =
+          classesSnapshot.docs
+              .map((item) => item.data()['schoolYear']?.toString().trim() ?? '')
+              .where((year) => year.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort((a, b) => b.compareTo(a));
+      final selectedYear =
+          _selectedSchoolYear ?? (years.isEmpty ? null : years.first);
+      final classes = classesSnapshot.docs
+          .where(
+            (item) =>
+                selectedYear == null ||
+                item.data()['schoolYear']?.toString() == selectedYear,
+          )
+          .toList();
+      final classIds = classes.map((item) => item.id).toSet();
 
       int totalQuizzes = 0;
       int totalAssignments = 0;
@@ -1908,6 +1924,7 @@ class _ReportsContentState extends State<_ReportsContent> {
         totalModules += mc;
 
         breakdown.add({
+          'classId': classId,
           'className': className,
           'teacherName': teacherName,
           'studentCount': studentCount,
@@ -1917,12 +1934,16 @@ class _ReportsContentState extends State<_ReportsContent> {
         });
       }
 
-      // Count global submissions
-      final quizSubmissions = await db.collection('quiz_results').count().get();
-      final assignmentSubmissions = await db
-          .collection('submissions')
-          .count()
-          .get();
+      final submissionSnapshots = await Future.wait([
+        db.collection('quiz_results').get(),
+        db.collection('submissions').get(),
+      ]);
+      final quizSubmissions = submissionSnapshots[0].docs
+          .where((item) => classIds.contains(item.data()['classId']))
+          .length;
+      final assignmentSubmissions = submissionSnapshots[1].docs
+          .where((item) => classIds.contains(item.data()['classId']))
+          .length;
 
       // Sort breakdown by student count
       breakdown.sort(
@@ -1935,23 +1956,81 @@ class _ReportsContentState extends State<_ReportsContent> {
           _totalQuizzes = totalQuizzes;
           _totalAssignments = totalAssignments;
           _totalModules = totalModules;
-          _totalQuizSubmissions = quizSubmissions.count ?? 0;
-          _totalAssignmentSubmissions = assignmentSubmissions.count ?? 0;
+          _totalQuizSubmissions = quizSubmissions;
+          _totalAssignmentSubmissions = assignmentSubmissions;
           _classBreakdown = breakdown;
+          _schoolYears = years;
+          _selectedSchoolYear = selectedYear;
+          _reportError = null;
           _isLoading = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _reportError = 'Reports could not be loaded. Please retry.';
+          _isLoading = false;
+        });
       }
     }
   }
+
+  List<SummarySection> _principalSummary() => [
+    SummarySection(
+      'School year overview',
+      [
+        'School year',
+        'Classes',
+        'Students',
+        'Modules',
+        'Quizzes',
+        'Assignments',
+      ],
+      [
+        [
+          _selectedSchoolYear ?? 'No school year',
+          _classBreakdown.length,
+          _classBreakdown.fold<int>(
+            0,
+            (total, item) => total + (item['studentCount'] as int),
+          ),
+          _totalModules,
+          _totalQuizzes,
+          _totalAssignments,
+        ],
+      ],
+    ),
+    SummarySection(
+      'Class summary',
+      ['Class', 'Teacher', 'Students', 'Modules', 'Quizzes', 'Assignments'],
+      [
+        for (final item in _classBreakdown)
+          [
+            item['className'],
+            item['teacherName'],
+            item['studentCount'],
+            item['moduleCount'],
+            item['quizCount'],
+            item['assignmentCount'],
+          ],
+      ],
+    ),
+    SummarySection(
+      'Submission summary',
+      ['Quiz submissions', 'Assignment submissions'],
+      [
+        [_totalQuizSubmissions, _totalAssignmentSubmissions],
+      ],
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const _LoadingShimmer(height: 400);
+    }
+    if (_reportError != null) {
+      return _ErrorCard(message: _reportError!, onRetry: _loadReportData);
     }
 
     return Column(
@@ -1983,15 +2062,50 @@ class _ReportsContentState extends State<_ReportsContent> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Platform Content Overview',
+                      'Principal Report${_selectedSchoolYear == null ? '' : ' · SY $_selectedSchoolYear'}',
                       maxLines: 2,
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
+                  ),
+                  if (_schoolYears.isNotEmpty)
+                    SizedBox(
+                      width: 150,
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _selectedSchoolYear,
+                        decoration: const InputDecoration(
+                          labelText: 'School year',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _schoolYears
+                            .map(
+                              (year) => DropdownMenuItem(
+                                value: year,
+                                child: Text(year),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (year) {
+                          if (year == null || year == _selectedSchoolYear)
+                            return;
+                          setState(() {
+                            _selectedSchoolYear = year;
+                            _isLoading = true;
+                          });
+                          _loadReportData();
+                        },
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  SummaryPrintButton(
+                    title:
+                        'Principal school year report - ${_selectedSchoolYear ?? 'Unspecified'}',
+                    load: () async => _principalSummary(),
                   ),
                   TextButton.icon(
                     onPressed: () {
@@ -3071,8 +3185,9 @@ class _EmptyState extends StatelessWidget {
 }
 
 class _ErrorCard extends StatelessWidget {
-  const _ErrorCard({required this.message});
+  const _ErrorCard({required this.message, this.onRetry});
   final String message;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -3093,6 +3208,8 @@ class _ErrorCard extends StatelessWidget {
               style: TextStyle(color: Colors.red.shade700),
             ),
           ),
+          if (onRetry != null)
+            TextButton(onPressed: onRetry, child: const Text('Retry')),
         ],
       ),
     );

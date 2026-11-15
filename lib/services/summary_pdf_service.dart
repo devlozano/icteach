@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -14,6 +14,36 @@ class SummarySection {
 }
 
 class SummaryPdfService {
+  static String printableValue(Object? value) {
+    if (value == null) return '';
+    if (value is Timestamp) {
+      return value
+          .toDate()
+          .toIso8601String()
+          .replaceFirst('T', ' ')
+          .split('.')
+          .first;
+    }
+    if (value is Map || value is Iterable) {
+      try {
+        return jsonEncode(value);
+      } catch (_) {
+        return value.toString();
+      }
+    }
+    return value.toString();
+  }
+
+  static List<List<String>> normalizedRows(SummarySection section) => section
+      .rows
+      .map(
+        (row) => List<String>.generate(
+          section.columns.length,
+          (index) => printableValue(index < row.length ? row[index] : null),
+        ),
+      )
+      .toList();
+
   static Future<Uint8List> build({
     required String college,
     required String title,
@@ -93,9 +123,7 @@ class SummaryPdfService {
             else
               pw.TableHelper.fromTextArray(
                 headers: section.columns,
-                data: section.rows
-                    .map((r) => r.map((v) => v?.toString() ?? '').toList())
-                    .toList(),
+                data: normalizedRows(section),
                 cellStyle: const pw.TextStyle(fontSize: 9),
                 headerStyle: pw.TextStyle(
                   fontSize: 9,
@@ -127,24 +155,21 @@ class SummaryPdfService {
                 .doc('school_profile')
                 .get())
             .data();
-    final college = profile?['name']?.toString().trim() ?? '';
-    if (college.isEmpty) {
-      throw StateError(
-        'Set the college name in Admin > School Profile before printing.',
-      );
-    }
+    final configuredName = profile?['name']?.toString().trim() ?? '';
+    final college = configuredName.isEmpty ? 'ICTeach School' : configuredName;
     Uint8List? logo;
     final url = profile?['logoUrl']?.toString() ?? '';
     if (url.isNotEmpty) {
-      final response = await http
-          .get(Uri.parse(url))
-          .timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200 || response.bodyBytes.isEmpty) {
-        throw StateError(
-          'College logo could not be loaded. Check School Profile and retry.',
-        );
+      try {
+        final response = await http
+            .get(Uri.parse(url))
+            .timeout(const Duration(seconds: 15));
+        if (response.statusCode == 200 && response.bodyBytes.isNotEmpty) {
+          logo = response.bodyBytes;
+        }
+      } catch (_) {
+        // A report remains printable when the optional remote logo is unavailable.
       }
-      logo = response.bodyBytes;
     }
     final bytes = await build(
       college: college,

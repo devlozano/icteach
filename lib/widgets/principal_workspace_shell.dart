@@ -15,9 +15,21 @@ const principalPanelLabels = <String>[
   'Performance',
   'Reports',
   'Feedback',
-  'School Profile',
   'Settings',
 ];
+
+String normalizePrincipalPanelSelection(String? selection) {
+  switch (selection) {
+    case 'School Profile':
+      return 'Settings';
+    case 'LRN Registry':
+    case 'LRN Registration':
+    case null:
+      return 'Dashboard';
+    default:
+      return principalPanelLabels.contains(selection) ? selection : 'Dashboard';
+  }
+}
 
 const _navColor = Color(0xFF0F172A);
 const _accent = Color(0xFF0891B2);
@@ -159,7 +171,6 @@ class PrincipalSidebar extends StatelessWidget {
                   _item(Icons.bar_chart_rounded, 'Performance'),
                   _item(Icons.assessment_rounded, 'Reports'),
                   _item(Icons.rate_review_outlined, 'Feedback'),
-                  _item(Icons.school_outlined, 'School Profile'),
                 ],
               ),
             ),
