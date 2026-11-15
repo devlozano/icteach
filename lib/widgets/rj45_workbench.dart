@@ -89,38 +89,40 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
   @override
   Widget build(BuildContext context) {
     if (session == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'RJ45 cable workshop',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Prepare and terminate both ends. Test your own wiring.',
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                children: [
-                  for (final kind in CableKind.values)
-                    FilledButton(
-                      onPressed: () =>
-                          setState(() => session = Rj45Session(kind)),
-                      child: Text(
-                        kind == CableKind.straight
-                            ? 'Straight-through'
-                            : 'Crossover (10/100)',
+      return SingleChildScrollView(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'RJ45 cable workshop',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Prepare and terminate both ends. Test your own wiring.',
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    for (final kind in CableKind.values)
+                      FilledButton(
+                        onPressed: () =>
+                            setState(() => session = Rj45Session(kind)),
+                        child: Text(
+                          kind == CableKind.straight
+                              ? 'Straight-through'
+                              : 'Crossover (10/100)',
+                        ),
                       ),
-                    ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -263,6 +265,9 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                       title: 'What to do',
                       text: instruction(),
                     ),
+                    if (end.stage == CableStage.jacket ||
+                        end.stage == CableStage.trim)
+                      measurementControl(),
                     AnimatedSwitcher(
                       duration: MediaQuery.disableAnimationsOf(context)
                           ? Duration.zero
@@ -306,7 +311,7 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                           tween: Tween(begin: 0, end: 1),
                           duration: MediaQuery.disableAnimationsOf(context)
                               ? Duration.zero
-                              : const Duration(milliseconds: 650),
+                              : const Duration(milliseconds: 1600),
                           builder: (context, value, _) => cableArt(value),
                         ),
                       ),
@@ -328,7 +333,7 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                       ),
                     if (end.stage == CableStage.arrange) ...[
                       const Text(
-                        'Drag each conductor to a pin. Tap a filled pin to remove it. No wiring is graded yet.',
+                        'Drag each conductor to a pin. Tap a filled pin to remove it. Use the dark pin channels so white-striped conductors remain visible.',
                       ),
                       Wrap(
                         spacing: 6,
@@ -367,26 +372,30 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                                     padding: const EdgeInsets.all(3),
                                     decoration: BoxDecoration(
                                       color: hover.isNotEmpty
-                                          ? Colors.blue.shade100
-                                          : Colors.grey.shade100,
+                                          ? const Color(0xFF24536A)
+                                          : const Color(0xFF10283F),
                                       border: Border.all(
-                                        color: Colors.blueGrey,
+                                        color: const Color(0xFF7DD3FC),
                                       ),
                                       borderRadius: BorderRadius.circular(5),
                                     ),
                                     child: Column(
                                       children: [
-                                        Text('${p + 1}'),
-                                        if (end.pins[p] != null) ...[
-                                          Container(
-                                            height: 14,
-                                            color: wireColor(end.pins[p]!),
+                                        Text(
+                                          '${p + 1}',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
                                           ),
+                                        ),
+                                        if (end.pins[p] != null) ...[
+                                          _wireSwatch(end.pins[p]!),
                                           Expanded(
                                             child: Text(
                                               Rj45Session.colors[end.pins[p]!],
                                               style: const TextStyle(
                                                 fontSize: 9,
+                                                color: Colors.white,
                                               ),
                                               textAlign: TextAlign.center,
                                             ),
@@ -481,15 +490,112 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
     'End complete',
   ][end.stage.index];
   String instruction() => [
-    'Drag the jacket stripper onto the intact cable. Score only the outer sheath and slide it off; do not nick the insulated conductors. Use the plug manufacturer preparation length.',
+    'Set the preparation ruler, then drag the jacket stripper onto the cable. For this training plug, expose 30 mm of jacket while keeping the acceptable manufacturer range at 25–40 mm. Score only the sheath, rotate lightly, and slide it off without nicking conductor insulation.',
     'The plastic cross-shaped spline separates the pairs. Spread the pairs aside, then drag the flush cutters onto the cable to remove the exposed spline near the jacket without cutting any wire.',
     'Separate each of the four pairs yourself. Untwist only the exposed length needed for termination, keeping the twist close to the jacket. Leave each conductor insulation intact.',
     'Choose your color order using the reference if needed. Gold contacts face you and the latch faces away; the cable enters from below. Assign pins 1–8 from left to right.',
-    'Hold all eight conductors flat in your chosen order. Drag the flush cutters onto the cable to make one even cut to the length required by the plug.',
+    'Hold all eight conductors flat in the chosen order. Set the trim ruler to 12–13 mm from the jacket edge, then drag the flush cutters onto the cable to make one square, even cut.',
     'Drag the prepared end into the empty plug. All eight tips must reach the front stop and the jacket must enter beneath the strain-relief tab.',
     'The conductors are seated. Drag the RJ45 crimper onto the plug to press all contacts and the jacket strain relief. A crimped plug cannot be uncrimped and reused.',
     'This end is crimped. Prepare the other end before connecting the tester.',
   ][end.stage.index];
+
+  Widget measurementControl() {
+    final stripping = end.stage == CableStage.jacket;
+    final value = stripping ? end.stripLengthMm : end.trimLengthMm;
+    final minimum = stripping ? 20.0 : 8.0;
+    final maximum = stripping ? 45.0 : 18.0;
+    final divisions = stripping ? 25 : 20;
+    final acceptable = stripping
+        ? value >= 25 && value <= 40
+        : value >= 12 && value <= 13;
+    return Container(
+      key: ValueKey(stripping ? 'strip-length-ruler' : 'trim-length-ruler'),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF4C95D)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.straighten, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  stripping
+                      ? 'Outer-jacket preparation: ${value.toStringAsFixed(0)} mm'
+                      : 'Conductor trim length: ${value.toStringAsFixed(1)} mm',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              Text(
+                acceptable ? 'IN RANGE' : 'ADJUST',
+                style: TextStyle(
+                  color: acceptable
+                      ? const Color(0xFF16794B)
+                      : const Color(0xFFB42318),
+                  fontWeight: FontWeight.w800,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: value,
+            min: minimum,
+            max: maximum,
+            divisions: divisions,
+            label: '${value.toStringAsFixed(stripping ? 0 : 1)} mm',
+            onChanged: (next) => change(() {
+              if (stripping) {
+                end.stripLengthMm = next;
+              } else {
+                end.trimLengthMm = next;
+              }
+            }),
+          ),
+          Text(
+            stripping
+                ? 'Training target: 30 mm. Acceptable range: 25–40 mm; always follow the actual plug and cable manufacturer.'
+                : 'Training target: 12.5 mm. Acceptable range: 12–13 mm so every tip reaches the front stop and the jacket enters the strain relief.',
+            style: const TextStyle(fontSize: 11, height: 1.35),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _wireSwatch(int wire) => Container(
+    height: 16,
+    margin: const EdgeInsets.symmetric(vertical: 3),
+    decoration: BoxDecoration(
+      color: wireColor(wire),
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(color: Colors.white70),
+    ),
+    child: wire.isEven
+        ? Align(
+            alignment: Alignment.centerLeft,
+            child: FractionallySizedBox(
+              widthFactor: .62,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.horizontal(
+                    left: Radius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : null,
+  );
+
   Widget testerPanel() {
     final s = session!;
     return SingleChildScrollView(
@@ -643,7 +749,11 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                 tested = false;
                 lit = -1;
               }),
-              onSubmit: () => widget.onComplete(s.passed ? 8 : 0, 8, s.passed),
+              onSubmit: () => widget.onComplete(
+                s.rubric.score,
+                Rj45RubricResult.total,
+                s.passed,
+              ),
             ),
           // Kept unreachable only to preserve compatibility with older snapshots.
           // ignore: dead_code
@@ -685,8 +795,11 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                     child: Text('Cut off plug ${e == 0 ? "A" : "B"} and retry'),
                   ),
                 FilledButton(
-                  onPressed: () =>
-                      widget.onComplete(s.passed ? 8 : 0, 8, s.passed),
+                  onPressed: () => widget.onComplete(
+                    s.rubric.score,
+                    Rj45RubricResult.total,
+                    s.passed,
+                  ),
                   child: const Text('Submit result'),
                 ),
               ],

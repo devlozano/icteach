@@ -4,6 +4,7 @@ import 'package:icteach/data/simulation_data.dart';
 import 'package:icteach/data/guided_setup_data.dart';
 import 'package:icteach/widgets/guided_setup_workbench.dart';
 import 'package:icteach/widgets/simulation_process_guide.dart';
+import 'package:icteach/widgets/rj45_workbench.dart';
 
 void main() {
   for (final simulation in SimulationData.getAllSimulations()) {
@@ -29,6 +30,17 @@ void main() {
         expect(find.byType(GuidedSetupWorkbench), findsOneWidget);
         expect(
           find.text('Guided practice • no assessment credit'),
+          findsOneWidget,
+        );
+        return;
+      }
+      if (simulation.id == 'sim_coc2_crimping') {
+        expect(find.byType(Rj45Workbench), findsOneWidget);
+        expect(find.text('Straight-through'), findsOneWidget);
+        await tester.tap(find.text('Straight-through'));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('strip-length-ruler')),
           findsOneWidget,
         );
         return;

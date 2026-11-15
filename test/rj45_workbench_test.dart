@@ -59,9 +59,7 @@ void main() {
                     as RenderRepaintBoundary)
                 .toImage();
         final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-        await File(
-          'build/' + name + '.png',
-        ).writeAsBytes(bytes!.buffer.asUint8List());
+        await File('build/$name.png').writeAsBytes(bytes!.buffer.asUint8List());
         image.dispose();
       });
     }
@@ -88,6 +86,8 @@ void main() {
     await tester.tap(find.text('Straight-through'));
     await tester.pumpAndSettle();
     await screenshot('rj45-assets-jacket');
+    expect(find.byKey(const ValueKey('strip-length-ruler')), findsOneWidget);
+    expect(find.textContaining('Training target: 30 mm'), findsOneWidget);
     Future<void> drag(String data, Finder target) async {
       final source = find.byWidgetPredicate(
         (w) => w is Draggable<String> && w.data == data,
@@ -116,6 +116,8 @@ void main() {
       expect(find.textContaining('FAIL'), findsNothing);
       await tester.tap(find.text('Keep this order and trim'));
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('trim-length-ruler')), findsOneWidget);
+      expect(find.textContaining('Training target: 12.5 mm'), findsOneWidget);
       await drag('cutters', find.byKey(const ValueKey('cable-work-area')));
       await drag('bundle', find.byKey(const ValueKey('empty-rj45')));
       if (e == 0) {

@@ -13,6 +13,8 @@ enum CableStage {
 
 class CableEnd {
   CableStage stage = CableStage.jacket;
+  double stripLengthMm = 30;
+  double trimLengthMm = 12.5;
   final Set<int> separatedPairs = {};
   final List<int?> pins = List.filled(8, null);
   bool seated = false;
@@ -58,6 +60,14 @@ class CableEnd {
     seated = true;
     stage = CableStage.crimp;
   }
+}
+
+class Rj45RubricResult {
+  const Rj45RubricResult(this.criteria);
+
+  final Map<String, int> criteria;
+  int get score => criteria.values.fold(0, (total, value) => total + value);
+  static const int total = 10;
 }
 
 class Rj45Session {
@@ -111,6 +121,31 @@ class Rj45Session {
   }
 
   bool get passed => readyToTest && standardEnds && same(wireMap, expectedMap);
+  Rj45RubricResult get rubric {
+    final preparedSafely = ends.every(
+      (end) =>
+          end.stage == CableStage.finished && end.separatedPairs.length == 4,
+    );
+    final measuredCuts = ends.every(
+      (end) =>
+          end.stripLengthMm >= 25 &&
+          end.stripLengthMm <= 40 &&
+          end.trimLengthMm >= 12 &&
+          end.trimLengthMm <= 13,
+    );
+    final seatedAndCrimped = ends.every(
+      (end) => end.seated && end.stage == CableStage.finished,
+    );
+    final correctMap = readyToTest && same(wireMap, expectedMap);
+    return Rj45RubricResult({
+      'Safe preparation and pair integrity': preparedSafely ? 2 : 0,
+      'Measured strip and trim lengths': measuredCuts ? 2 : 0,
+      'Correct T568A/T568B color order': standardEnds ? 3 : 0,
+      'Full insertion, jacket capture, and crimp': seatedAndCrimped ? 2 : 0,
+      'LAN tester wire-map verification': correctMap ? 1 : 0,
+    });
+  }
+
   void reterminate(int end) {
     ends[end] = CableEnd();
     ports.fillRange(0, 2, null);

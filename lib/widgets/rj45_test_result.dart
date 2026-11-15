@@ -17,6 +17,7 @@ class Rj45TestResult extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final passed = session.passed;
+    final rubric = session.rubric;
     final correctPins = List.generate(
       8,
       (index) => session.wireMap[index] == session.expectedMap[index],
@@ -177,6 +178,74 @@ class Rj45TestResult extends StatelessWidget {
                     ),
                   ),
                 ],
+                const SizedBox(height: 14),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF4F7FB),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFD7E1EA)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'PRACTICAL CRIMPING RUBRIC',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: .5,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            '${rubric.score}/${Rj45RubricResult.total}',
+                            key: const ValueKey('rj45-rubric-score'),
+                            style: TextStyle(
+                              color: accent,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      for (final criterion in rubric.criteria.entries)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                criterion.value > 0
+                                    ? Icons.check_circle_outline
+                                    : Icons.cancel_outlined,
+                                size: 18,
+                                color: criterion.value > 0
+                                    ? const Color(0xFF16794B)
+                                    : const Color(0xFFB42318),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(criterion.key)),
+                              Text(
+                                '${criterion.value} pts',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Passing requires a correct standard color order and a passing LAN tester result. The score also records preparation and workmanship.',
+                        style: TextStyle(fontSize: 11, height: 1.35),
+                      ),
+                    ],
+                  ),
+                ),
                 const SizedBox(height: 10),
                 ExpansionTile(
                   tilePadding: EdgeInsets.zero,

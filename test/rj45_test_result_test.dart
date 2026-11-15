@@ -57,6 +57,8 @@ void main() {
       expect(find.text('LAN TEST FAILED'), findsOneWidget);
       expect(find.byKey(const ValueKey('lan-pin-1')), findsOneWidget);
       expect(find.text('Expected 1'), findsOneWidget);
+      expect(find.byKey(const ValueKey('rj45-rubric-score')), findsOneWidget);
+      expect(find.text('6/10'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
@@ -65,10 +67,12 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: Rj45TestResult(
-            session: _testedSession(valid: true),
-            onRetry: (_) {},
-            onSubmit: () {},
+          body: SingleChildScrollView(
+            child: Rj45TestResult(
+              session: _testedSession(valid: true),
+              onRetry: (_) {},
+              onSubmit: () {},
+            ),
           ),
         ),
       ),
@@ -76,6 +80,7 @@ void main() {
 
     expect(find.text('LAN TEST PASSED'), findsOneWidget);
     expect(find.text('8/8'), findsOneWidget);
+    expect(find.text('10/10'), findsOneWidget);
     expect(
       find.text('All pins match the selected cable standard.'),
       findsOneWidget,

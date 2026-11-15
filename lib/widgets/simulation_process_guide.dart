@@ -4,6 +4,7 @@ import '../data/simulation_step_detail.dart';
 import '../models/simulation_model.dart';
 import 'simulation_step_lab.dart';
 import 'guided_setup_workbench.dart';
+import 'rj45_workbench.dart';
 import '../data/guided_setup_data.dart';
 
 /// Replayable reference; reviewed checkpoints never award assessment credit.
@@ -68,6 +69,32 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
           Expanded(
             child: GuidedSetupWorkbench(kind: kind, onComplete: (_, _, _) {}),
           ),
+        ],
+      );
+      if (widget.embedded) return content;
+      return Dialog(insetPadding: const EdgeInsets.all(12), child: content);
+    }
+    if (widget.simulation.id == 'sim_coc2_crimping') {
+      final content = Column(
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Text(
+                    'Guided RJ45 practice • measured cutting and crimping • no assessment credit',
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Close walkthrough',
+                onPressed: _close,
+                icon: const Icon(Icons.close),
+              ),
+            ],
+          ),
+          Expanded(child: Rj45Workbench(onComplete: (_, _, _) {})),
         ],
       );
       if (widget.embedded) return content;

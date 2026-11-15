@@ -52,6 +52,7 @@ void main() {
       expect(s.readyToTest, isTrue);
       expect(s.wireMap, s.expectedMap);
       expect(s.passed, isTrue);
+      expect(s.rubric.score, 10);
       s.connect(0, 1);
       expect(s.readyToTest, isFalse);
       s.connect(1, 0);
@@ -74,6 +75,7 @@ void main() {
       s.connect(1, 1);
       expect(s.wireMap, [2, 1, 3, 4, 5, 6, 7, 8]);
       expect(s.passed, isFalse);
+      expect(s.rubric.score, 6);
       s.reterminate(0);
       expect(s.ends[0].stage, CableStage.jacket);
       expect(s.ports, [null, null]);
@@ -89,5 +91,17 @@ void main() {
     expect(s.wireMap, [1, 2, 3, 4, 5, 6, 7, 8]);
     expect(s.standardEnds, isFalse);
     expect(s.passed, isFalse);
+  });
+  test('rubric records measured cutting workmanship separately', () {
+    final s = Rj45Session(CableKind.straight);
+    finish(s.ends[0], Rj45Session.t568b);
+    finish(s.ends[1], Rj45Session.t568b);
+    s.ends[0].stripLengthMm = 45;
+    s.ends[1].trimLengthMm = 10;
+    s.connect(0, 0);
+    s.connect(1, 1);
+    expect(s.passed, isTrue);
+    expect(s.rubric.criteria['Measured strip and trim lengths'], 0);
+    expect(s.rubric.score, 8);
   });
 }
