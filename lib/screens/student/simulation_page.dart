@@ -106,6 +106,8 @@ class _SimulationPageState extends State<_SimulationSession> {
   bool _prerequisiteCompleted = true;
   bool _feedbackSubmitted = false;
   bool _savingProgress = false;
+  bool _allowPop = false;
+  bool _exitDialogOpen = false;
   List<String> _attemptErrors = [];
   int? _lastScore;
   int? _lastTotal;
@@ -221,6 +223,17 @@ class _SimulationPageState extends State<_SimulationSession> {
 
   @override
   Widget build(BuildContext context) {
+    final confirmExit = _hasStarted && !_isCompleted;
+    return PopScope(
+      canPop: !confirmExit || _allowPop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && confirmExit) _requestExit();
+      },
+      child: _buildSession(context),
+    );
+  }
+
+  Widget _buildSession(BuildContext context) {
     if (_isLoading) {
       return _scaffold(const Center(child: CircularProgressIndicator()));
     }
@@ -315,8 +328,57 @@ class _SimulationPageState extends State<_SimulationSession> {
   );
 
   Future<void> _leaveSimulation() async {
+    if (_hasStarted && !_isCompleted) {
+      await _requestExit();
+      return;
+    }
+    await _exitNow();
+  }
+
+  Future<void> _requestExit() async {
+    if (_exitDialogOpen || !mounted) return;
+    _exitDialogOpen = true;
+    final leave = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(
+          Icons.warning_amber_rounded,
+          color: Color(0xFFB45309),
+          size: 38,
+        ),
+        title: const Text('Leave this simulation?'),
+        content: const Text(
+          'Your current attempt is still in progress. If you leave now, unsaved actions in this attempt will be lost.',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Continue simulation'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFB42318),
+            ),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.exit_to_app_rounded),
+            label: const Text('Leave simulation'),
+          ),
+        ],
+      ),
+    );
+    _exitDialogOpen = false;
+    if (leave == true && mounted) await _exitNow();
+  }
+
+  Future<void> _exitNow() async {
     await _setGameplayOrientation(false);
-    if (mounted) Navigator.maybePop(context);
+    if (!mounted) return;
+    setState(() => _allowPop = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) Navigator.pop(context);
+    });
   }
 
   Widget _buildStartPage() {
