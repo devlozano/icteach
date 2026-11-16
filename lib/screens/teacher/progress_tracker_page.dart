@@ -187,9 +187,7 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
   Widget build(BuildContext context) {
     return DefaultTabController(
       length: 5,
-      initialIndex:
-          widget.initialTab ??
-          WorkspacePreferences.tab('insights_${widget.classId}', 5),
+      initialIndex: widget.initialTab ?? 0,
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F7FB),
         appBar: AppBar(

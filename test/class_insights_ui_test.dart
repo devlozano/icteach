@@ -121,6 +121,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      expect(find.text('Your class at a glance'), findsOneWidget);
       Future<void> capture(String tab) async {
         expect(tester.takeException(), isNull, reason: '$tab at $width');
         if (!preview) return;

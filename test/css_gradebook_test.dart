@@ -88,7 +88,7 @@ void main() {
       expect(find.textContaining('Final: 75'), findsOneWidget);
       await tester.tap(find.text('Sample Student'));
       await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextFormField).first, '60');
+      await tester.enterText(find.byKey(const ValueKey('earned-quiz')), '60');
       await tester.scrollUntilVisible(
         find.text('Save scores'),
         250,

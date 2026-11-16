@@ -577,108 +577,114 @@ class _TermEditorState extends State<_TermEditor> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: SizedBox(
-                  width: 650,
+                  width: 760,
                   child: Table(
                     border: TableBorder.all(color: const Color(0xFFCAD6E2)),
                     defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                     columnWidths: const {
-                      0: FlexColumnWidth(1.4),
+                      0: FlexColumnWidth(1.25),
                       1: FlexColumnWidth(),
                       2: FlexColumnWidth(),
+                      3: FlexColumnWidth(),
                     },
                     children: [
-                      const TableRow(
+                      TableRow(
                         decoration: BoxDecoration(color: Color(0xFFE8F0F8)),
                         children: [
-                          Padding(
+                          const Padding(
                             padding: EdgeInsets.all(12),
                             child: Text(
-                              'Component',
+                              'Score sheet',
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
-                          Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Text(
-                              'Earned points',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Text(
-                              'Possible points',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                      for (var i = 0; i < DepEdGrading.components.length; i++)
-                        TableRow(
-                          decoration: BoxDecoration(
-                            color: i.isEven
-                                ? Colors.white
-                                : const Color(0xFFF5F8FA),
-                          ),
-                          children: [
+                          for (final label in DepEdGrading.labels)
                             Padding(
                               padding: const EdgeInsets.all(12),
                               child: Text(
-                                DepEdGrading.labels[i],
+                                label,
+                                textAlign: TextAlign.center,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
-                            for (var side = 0; side < 2; side++)
-                              SizedBox(
-                                child: Padding(
-                                  padding: EdgeInsets.zero,
-                                  child: TextFormField(
-                                    controller: side == 0 ? raw[i] : maximum[i],
-                                    enabled: !busy,
-                                    inputFormatters: [ScoreInputFormatter()],
-                                    textAlign: TextAlign.right,
-                                    textInputAction: TextInputAction.next,
-                                    onFieldSubmitted: (_) =>
-                                        FocusScope.of(context).nextFocus(),
-                                    autovalidateMode:
-                                        AutovalidateMode.onUserInteraction,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                    decoration: InputDecoration(
-                                      filled: true,
-                                      fillColor: const Color(0xFFF5F8FA),
-                                      border: const OutlineInputBorder(),
-                                      labelText: side == 0
-                                          ? 'Earned points'
-                                          : 'Possible points',
-                                    ),
-                                    onChanged: (_) =>
-                                        setState(() => dirty = true),
-                                    validator: (_) {
-                                      final a = raw[i].text.trim(),
-                                          b = maximum[i].text.trim();
-                                      if (a.isEmpty && b.isEmpty) return null;
-                                      final r = double.tryParse(a),
-                                          m = double.tryParse(b);
-                                      if (r == null ||
-                                          m == null ||
-                                          !r.isFinite ||
-                                          !m.isFinite ||
-                                          m <= 0 ||
-                                          m > 1000000 ||
-                                          r < 0 ||
-                                          r > m) {
-                                        return side == 0
-                                            ? 'Enter 0 to maximum'
-                                            : 'Enter positive maximum';
-                                      }
-                                      return null;
-                                    },
+                        ],
+                      ),
+                      for (var possible = 1; possible >= 0; possible--)
+                        TableRow(
+                          decoration: BoxDecoration(
+                            color: possible == 1
+                                ? const Color(0xFFF5F8FA)
+                                : Colors.white,
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Text(
+                                possible == 1
+                                    ? 'Possible points'
+                                    : 'Earned points',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            for (
+                              var i = 0;
+                              i < DepEdGrading.components.length;
+                              i++
+                            )
+                              Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: TextFormField(
+                                  key: ValueKey(
+                                    '${possible == 1 ? 'possible' : 'earned'}-${DepEdGrading.components[i]}',
                                   ),
+                                  controller: possible == 1
+                                      ? maximum[i]
+                                      : raw[i],
+                                  enabled: !busy,
+                                  inputFormatters: [ScoreInputFormatter()],
+                                  textAlign: TextAlign.center,
+                                  textInputAction: TextInputAction.next,
+                                  onFieldSubmitted: (_) =>
+                                      FocusScope.of(context).nextFocus(),
+                                  autovalidateMode:
+                                      AutovalidateMode.onUserInteraction,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: const OutlineInputBorder(),
+                                    hintText: '0',
+                                    isDense: true,
+                                  ),
+                                  onChanged: (_) =>
+                                      setState(() => dirty = true),
+                                  validator: (_) {
+                                    final a = raw[i].text.trim(),
+                                        b = maximum[i].text.trim();
+                                    if (a.isEmpty && b.isEmpty) return null;
+                                    final r = double.tryParse(a),
+                                        m = double.tryParse(b);
+                                    if (r == null ||
+                                        m == null ||
+                                        !r.isFinite ||
+                                        !m.isFinite ||
+                                        m <= 0 ||
+                                        m > 1000000 ||
+                                        r < 0 ||
+                                        r > m) {
+                                      return possible == 1
+                                          ? 'Positive maximum'
+                                          : '0 to maximum';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
                           ],
