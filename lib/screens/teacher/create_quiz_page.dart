@@ -102,7 +102,10 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
 
   void _calculateTotalPoints() {
     setState(() {
-      _totalPoints = _questions.fold(0, (sum, question) => sum + question.points);
+      _totalPoints = _questions.fold(
+        0,
+        (sum, question) => sum + question.points,
+      );
     });
   }
 
@@ -134,46 +137,89 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       final answer = column('correctanswer');
       final explanation = column('explanation');
       final points = column('points');
-      if ([questionColumn, a, b, c, d, answer].any((index) => index < 0)) {
+      final typeColumn = column('type');
+      if ([questionColumn, answer].any((index) => index < 0)) {
         throw const FormatException(
-          'Required headers: Question, Option A, Option B, Option C, Option D, Correct Answer.',
+          'Required headers: Question and Correct Answer. Add Type for mixed question types.',
         );
       }
       final imported = <Question>[];
       for (var rowNumber = 1; rowNumber < rows.length; rowNumber++) {
         final row = rows[rowNumber];
         if (row.every((value) => value.trim().isEmpty)) continue;
-        String valueAt(int index) => index < row.length ? row[index].trim() : '';
-        final answerText = valueAt(answer).toUpperCase();
-        final answerIndex = const {'A': 0, 'B': 1, 'C': 2, 'D': 3}[answerText] ??
+        String valueAt(int index) =>
+            index >= 0 && index < row.length ? row[index].trim() : '';
+        final typeText = typeColumn < 0
+            ? ''
+            : valueAt(typeColumn).toLowerCase();
+        final type = switch (typeText.replaceAll(RegExp(r'[ _-]'), '')) {
+          'truefalse' => QuestionType.trueFalse,
+          'fillintheblank' || 'fillblank' => QuestionType.fillInTheBlank,
+          'enumeration' => QuestionType.enumeration,
+          _ => QuestionType.multipleChoice,
+        };
+        final answerValue = valueAt(answer);
+        final answerText = answerValue.toUpperCase();
+        var answerIndex =
+            const {'A': 0, 'B': 1, 'C': 2, 'D': 3}[answerText] ??
             ((int.tryParse(answerText) ?? 0) - 1);
-        final options = [valueAt(a), valueAt(b), valueAt(c), valueAt(d)];
-        if (valueAt(questionColumn).isEmpty ||
-            options.any((option) => option.isEmpty) ||
-            answerIndex < 0 ||
-            answerIndex > 3) {
-          throw FormatException('Check row ${rowNumber + 1}: every option and a correct answer (A-D or 1-4) are required.');
+        final options = type == QuestionType.trueFalse
+            ? const ['True', 'False']
+            : [valueAt(a), valueAt(b), valueAt(c), valueAt(d)];
+        final typed =
+            type == QuestionType.fillInTheBlank ||
+            type == QuestionType.enumeration;
+        if (type == QuestionType.trueFalse) {
+          answerIndex = answerText == 'TRUE' || answerText == 'T' ? 0 : 1;
         }
-        imported.add(Question(
-          id: const Uuid().v4(),
-          text: valueAt(questionColumn),
-          options: options,
-          correctAnswer: answerIndex,
-          explanation: explanation < 0 ? '' : valueAt(explanation),
-          points: points < 0
-              ? 1
-              : (int.tryParse(valueAt(points)) ?? 1).clamp(1, 100),
-        ));
+        if (valueAt(questionColumn).isEmpty ||
+            answerValue.isEmpty ||
+            (!typed &&
+                type == QuestionType.multipleChoice &&
+                (options.any((option) => option.isEmpty) ||
+                    answerIndex < 0 ||
+                    answerIndex > 3))) {
+          throw FormatException(
+            'Check row ${rowNumber + 1}: the question type, choices, and correct answer must agree.',
+          );
+        }
+        imported.add(
+          Question(
+            id: const Uuid().v4(),
+            text: valueAt(questionColumn),
+            options: options,
+            correctAnswer: answerIndex,
+            type: type,
+            acceptedAnswers: typed
+                ? answerValue
+                      .split('|')
+                      .map((value) => value.trim())
+                      .where((value) => value.isNotEmpty)
+                      .toList()
+                : const [],
+            explanation: explanation < 0 ? '' : valueAt(explanation),
+            points: points < 0
+                ? 1
+                : (int.tryParse(valueAt(points)) ?? 1).clamp(1, 100),
+          ),
+        );
       }
-      if (imported.isEmpty) throw const FormatException('No question rows were found.');
+      if (imported.isEmpty) {
+        throw const FormatException('No question rows were found.');
+      }
       if (_questions.length + imported.length > 200) {
-        throw const FormatException('A quiz can contain at most 200 questions.');
+        throw const FormatException(
+          'A quiz can contain at most 200 questions.',
+        );
       }
       setState(() => _questions.addAll(imported));
       _calculateTotalPoints();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${imported.length} question(s) imported from CSV.'), backgroundColor: Colors.green),
+          SnackBar(
+            content: Text('${imported.length} question(s) imported from CSV.'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } on FormatException catch (error) {
@@ -201,7 +247,11 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
         row.add(field.toString());
         field.clear();
       } else if ((char == '\n' || char == '\r') && !quoted) {
-        if (char == '\r' && index + 1 < source.length && source[index + 1] == '\n') index++;
+        if (char == '\r' &&
+            index + 1 < source.length &&
+            source[index + 1] == '\n') {
+          index++;
+        }
         row.add(field.toString());
         field.clear();
         rows.add(row);
@@ -210,7 +260,9 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
         field.write(char);
       }
     }
-    if (quoted) throw const FormatException('The CSV has an unclosed quoted value.');
+    if (quoted) {
+      throw const FormatException('The CSV has an unclosed quoted value.');
+    }
     if (field.isNotEmpty || row.isNotEmpty) {
       row.add(field.toString());
       rows.add(row);
@@ -228,7 +280,17 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
         _showMessage('Please fill in question ${i + 1}');
         return;
       }
-      for (int j = 0; j < q.options.length; j++) {
+      if ((q.type == QuestionType.fillInTheBlank ||
+              q.type == QuestionType.enumeration) &&
+          q.acceptedAnswers.isEmpty) {
+        _showMessage('Add at least one accepted answer for question ${i + 1}');
+        return;
+      }
+      for (
+        int j = 0;
+        j < (q.type == QuestionType.multipleChoice ? q.options.length : 0);
+        j++
+      ) {
         if (q.options[j].trim().isEmpty) {
           _showMessage('Please fill in all options for question ${i + 1}');
           return;
@@ -521,7 +583,9 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                             ),
                           ),
                           OutlinedButton.icon(
-                            onPressed: _isLoading ? null : _importQuestionsFromCsv,
+                            onPressed: _isLoading
+                                ? null
+                                : _importQuestionsFromCsv,
                             icon: const Icon(Icons.upload_file_outlined),
                             label: const Text('Import CSV'),
                           ),
@@ -555,7 +619,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Add questions manually or import a CSV. Required headers: Question, Option A-D, Correct Answer (A-D or 1-4).',
+                                'Add questions manually or import a CSV. Use headers: Type, Question, Option A-D, Correct Answer, Explanation, Points. For typed answers, separate accepted alternatives with |.',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 14,
@@ -787,7 +851,9 @@ class _QuestionCardState extends State<_QuestionCard> {
   final _textController = TextEditingController();
   final List<TextEditingController> _optionControllers = [];
   final _explanationController = TextEditingController();
+  final _acceptedAnswersController = TextEditingController();
   int _selectedAnswer = 0;
+  late QuestionType _type;
 
   @override
   void initState() {
@@ -797,7 +863,11 @@ class _QuestionCardState extends State<_QuestionCard> {
       widget.question.options.map((o) => TextEditingController(text: o)),
     );
     _explanationController.text = widget.question.explanation;
+    _acceptedAnswersController.text = widget.question.acceptedAnswers.join(
+      ' | ',
+    );
     _selectedAnswer = widget.question.correctAnswer;
+    _type = widget.question.type;
   }
 
   @override
@@ -807,6 +877,7 @@ class _QuestionCardState extends State<_QuestionCard> {
       c.dispose();
     }
     _explanationController.dispose();
+    _acceptedAnswersController.dispose();
     super.dispose();
   }
 
@@ -816,6 +887,12 @@ class _QuestionCardState extends State<_QuestionCard> {
       options: _optionControllers.map((c) => c.text).toList(),
       correctAnswer: _selectedAnswer,
       explanation: _explanationController.text,
+      type: _type,
+      acceptedAnswers: _acceptedAnswersController.text
+          .split('|')
+          .map((value) => value.trim())
+          .where((value) => value.isNotEmpty)
+          .toList(),
     );
     widget.onUpdate(updated);
   }
@@ -873,22 +950,72 @@ class _QuestionCardState extends State<_QuestionCard> {
             ],
           ),
           const SizedBox(height: 8),
-          ..._optionControllers.asMap().entries.map((entry) {
-            final optionIndex = entry.key;
-            final controller = entry.value;
-            return _OptionTile(
-              index: optionIndex,
-              controller: controller,
-              isSelected: _selectedAnswer == optionIndex,
-              onTap: () {
-                setState(() {
-                  _selectedAnswer = optionIndex;
-                });
-                _updateQuestion();
-              },
+          DropdownButtonFormField<QuestionType>(
+            initialValue: _type,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Question type',
+              prefixIcon: Icon(Icons.category_outlined),
+              border: OutlineInputBorder(),
+            ),
+            items: [
+              for (final type in QuestionType.values)
+                DropdownMenuItem(value: type, child: Text(type.label)),
+            ],
+            onChanged: (type) {
+              if (type == null) return;
+              setState(() {
+                _type = type;
+                if (type == QuestionType.trueFalse) {
+                  _selectedAnswer = _selectedAnswer.clamp(0, 1);
+                  _optionControllers[0].text = 'True';
+                  _optionControllers[1].text = 'False';
+                }
+              });
+              _updateQuestion();
+            },
+          ),
+          const SizedBox(height: 12),
+          if (_type == QuestionType.fillInTheBlank ||
+              _type == QuestionType.enumeration)
+            TextFormField(
+              controller: _acceptedAnswersController,
+              decoration: InputDecoration(
+                labelText: _type == QuestionType.enumeration
+                    ? 'Accepted enumeration answer(s)'
+                    : 'Accepted answer(s)',
+                helperText:
+                    'Separate alternative correct answers with a vertical bar ( | ).',
+                prefixIcon: const Icon(Icons.check_circle_outline),
+                border: const OutlineInputBorder(),
+              ),
+              minLines: _type == QuestionType.enumeration ? 2 : 1,
+              maxLines: 3,
               onChanged: (_) => _updateQuestion(),
-            );
-          }),
+            )
+          else
+            ...(_type == QuestionType.trueFalse
+                    ? _optionControllers.take(2)
+                    : _optionControllers)
+                .toList()
+                .asMap()
+                .entries
+                .map((entry) {
+                  final optionIndex = entry.key;
+                  final controller = entry.value;
+                  return _OptionTile(
+                    index: optionIndex,
+                    controller: controller,
+                    isSelected: _selectedAnswer == optionIndex,
+                    onTap: () {
+                      setState(() {
+                        _selectedAnswer = optionIndex;
+                      });
+                      _updateQuestion();
+                    },
+                    onChanged: (_) => _updateQuestion(),
+                  );
+                }),
           const SizedBox(height: 8),
           TextFormField(
             controller: _explanationController,

@@ -67,6 +67,7 @@ void main() {
         const Offset(0, -900),
       );
       await tester.pump();
+      expect(find.text('Multiple choice'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

@@ -93,12 +93,14 @@ class _TeacherQuizResultsPageState extends State<TeacherQuizResultsPage> {
           final totalStudents = results.length;
           final averageScore =
               results.fold<double>(0, (sum, r) => sum + r.percentage) /
-                  totalStudents;
+              totalStudents;
           final passedCount = results.where((r) => r.isPassed).length;
-          final highestScore =
-              results.map((r) => r.percentage).reduce((a, b) => a > b ? a : b);
-          final lowestScore =
-              results.map((r) => r.percentage).reduce((a, b) => a < b ? a : b);
+          final highestScore = results
+              .map((r) => r.percentage)
+              .reduce((a, b) => a > b ? a : b);
+          final lowestScore = results
+              .map((r) => r.percentage)
+              .reduce((a, b) => a < b ? a : b);
 
           return Column(
             children: [
@@ -111,7 +113,7 @@ class _TeacherQuizResultsPageState extends State<TeacherQuizResultsPage> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
+                      color: Colors.black.withValues(alpha: 0.04),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -220,10 +222,7 @@ class _StatItem extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
         ),
       ],
     );
@@ -252,8 +251,9 @@ class _ResultCard extends StatelessWidget {
       child: Row(
         children: [
           CircleAvatar(
-            backgroundColor:
-                result.isPassed ? Colors.green.shade100 : Colors.red.shade100,
+            backgroundColor: result.isPassed
+                ? Colors.green.shade100
+                : Colors.red.shade100,
             child: Text(
               result.studentName.isNotEmpty
                   ? result.studentName[0].toUpperCase()
@@ -273,9 +273,7 @@ class _ResultCard extends StatelessWidget {
               children: [
                 Text(
                   result.studentName,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Row(
                   children: [
@@ -289,7 +287,9 @@ class _ResultCard extends StatelessWidget {
                     const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(8),
@@ -321,8 +321,9 @@ class _ResultCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color:
-                  result.isPassed ? Colors.green.shade100 : Colors.red.shade100,
+              color: result.isPassed
+                  ? Colors.green.shade100
+                  : Colors.red.shade100,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(

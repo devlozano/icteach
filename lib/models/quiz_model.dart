@@ -27,16 +27,15 @@ class QuizModel {
     required this.updatedAt,
   });
 
-  factory QuizModel.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+  factory QuizModel.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
     return QuizModel(
       id: doc.id,
       classId: data['classId'] ?? '',
       title: data['title'] ?? 'Untitled Quiz',
       description: data['description'] ?? '',
-      questions: (data['questions'] as List?)
+      questions:
+          (data['questions'] as List?)
               ?.map((q) => Question.fromMap(q))
               .toList() ??
           [],
@@ -94,12 +93,25 @@ class QuizModel {
 }
 
 // Question Model (keep as is, or update if needed)
+enum QuestionType { multipleChoice, trueFalse, fillInTheBlank, enumeration }
+
+extension QuestionTypeLabel on QuestionType {
+  String get label => switch (this) {
+    QuestionType.multipleChoice => 'Multiple choice',
+    QuestionType.trueFalse => 'True or false',
+    QuestionType.fillInTheBlank => 'Fill in the blank',
+    QuestionType.enumeration => 'Enumeration',
+  };
+}
+
 class Question {
   final String id;
   final String text;
   final List<String> options;
   final int correctAnswer;
   final String explanation;
+  final QuestionType type;
+  final List<String> acceptedAnswers;
   final int points; // ✅ Optional: points per question
 
   Question({
@@ -108,16 +120,25 @@ class Question {
     required this.options,
     required this.correctAnswer,
     this.explanation = '',
+    this.type = QuestionType.multipleChoice,
+    this.acceptedAnswers = const [],
     this.points = 1, // ✅ Default points per question
   });
 
   factory Question.fromMap(Map<String, dynamic> map) {
+    final typeName = map['type'] as String? ?? QuestionType.multipleChoice.name;
     return Question(
       id: map['id'] ?? '',
       text: map['text'] ?? '',
       options: List<String>.from(map['options'] ?? ['', '', '', '']),
       correctAnswer: map['correctAnswer'] ?? 0,
       explanation: map['explanation'] ?? '',
+      type:
+          QuestionType.values
+              .where((type) => type.name == typeName)
+              .firstOrNull ??
+          QuestionType.multipleChoice,
+      acceptedAnswers: List<String>.from(map['acceptedAnswers'] ?? const []),
       points: map['points'] ?? 1,
     );
   }
@@ -129,6 +150,8 @@ class Question {
       'options': options,
       'correctAnswer': correctAnswer,
       'explanation': explanation,
+      'type': type.name,
+      'acceptedAnswers': acceptedAnswers,
       'points': points,
     };
   }
@@ -139,6 +162,8 @@ class Question {
     List<String>? options,
     int? correctAnswer,
     String? explanation,
+    QuestionType? type,
+    List<String>? acceptedAnswers,
     int? points,
   }) {
     return Question(
@@ -147,8 +172,18 @@ class Question {
       options: options ?? this.options,
       correctAnswer: correctAnswer ?? this.correctAnswer,
       explanation: explanation ?? this.explanation,
+      type: type ?? this.type,
+      acceptedAnswers: acceptedAnswers ?? this.acceptedAnswers,
       points: points ?? this.points,
     );
+  }
+
+  bool matchesText(String answer) {
+    String normalize(String value) =>
+        value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+    final normalized = normalize(answer);
+    return normalized.isNotEmpty &&
+        acceptedAnswers.any((value) => normalize(value) == normalized);
   }
 }
 
@@ -176,9 +211,7 @@ class QuizResult {
     required this.timeSpent,
   });
 
-  factory QuizResult.fromFirestore(
-    DocumentSnapshot<Map<String, dynamic>> doc,
-  ) {
+  factory QuizResult.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
     return QuizResult(
       quizId: data['quizId'] ?? '',
@@ -187,7 +220,8 @@ class QuizResult {
       studentName: data['studentName'] ?? '',
       score: data['score'] ?? 0,
       totalPoints: data['totalPoints'] ?? 0,
-      userAnswers: (data['userAnswers'] as List?)
+      userAnswers:
+          (data['userAnswers'] as List?)
               ?.map((a) => UserAnswer.fromMap(a))
               .toList() ??
           [],
@@ -213,6 +247,7 @@ class QuizResult {
             (a) => {
               'questionId': a.questionId,
               'selectedAnswer': a.selectedAnswer,
+              'textAnswer': a.textAnswer,
             },
           )
           .toList(),
@@ -231,6 +266,7 @@ class UserAnswer {
   final bool isCorrect;
   final String correctAnswerText;
   final String explanation;
+  final String textAnswer;
 
   UserAnswer({
     required this.questionId,
@@ -238,6 +274,7 @@ class UserAnswer {
     required this.isCorrect,
     required this.correctAnswerText,
     required this.explanation,
+    this.textAnswer = '',
   });
 
   factory UserAnswer.fromMap(Map<String, dynamic> map) {
@@ -247,6 +284,7 @@ class UserAnswer {
       isCorrect: map['isCorrect'] ?? false,
       correctAnswerText: map['correctAnswerText'] ?? '',
       explanation: map['explanation'] ?? '',
+      textAnswer: map['textAnswer'] ?? '',
     );
   }
 
@@ -257,6 +295,7 @@ class UserAnswer {
       'isCorrect': isCorrect,
       'correctAnswerText': correctAnswerText,
       'explanation': explanation,
+      'textAnswer': textAnswer,
     };
   }
 }

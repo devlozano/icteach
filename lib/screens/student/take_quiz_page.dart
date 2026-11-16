@@ -42,6 +42,7 @@ class _QuizSession extends StatefulWidget {
 class _TakeQuizPageState extends State<_QuizSession> {
   final QuizService _quizService = QuizService();
   List<int?> _selectedAnswers = [];
+  late final List<TextEditingController> _textAnswers;
   late final AssessmentOrder _order;
   int _currentQuestionIndex = 0;
   bool _isSubmitting = false;
@@ -56,6 +57,9 @@ class _TakeQuizPageState extends State<_QuizSession> {
       widget.quiz.questions.map((q) => q.options.length).toList(),
     );
     _selectedAnswers = List.filled(widget.quiz.questions.length, null);
+    _textAnswers = [
+      for (final _ in widget.quiz.questions) TextEditingController(),
+    ];
     if (widget.quiz.timeLimit > 0) {
       _timeRemaining = widget.quiz.timeLimit * 60;
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -73,6 +77,9 @@ class _TakeQuizPageState extends State<_QuizSession> {
   @override
   void dispose() {
     _timer?.cancel();
+    for (final controller in _textAnswers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
@@ -104,7 +111,13 @@ class _TakeQuizPageState extends State<_QuizSession> {
       for (int i = 0; i < widget.quiz.questions.length; i++) {
         final question = widget.quiz.questions[i];
         final selected = _selectedAnswers[i];
-        final isCorrect = selected == question.correctAnswer;
+        final typed =
+            question.type == QuestionType.fillInTheBlank ||
+            question.type == QuestionType.enumeration;
+        final textAnswer = _textAnswers[i].text;
+        final isCorrect = typed
+            ? question.matchesText(textAnswer)
+            : selected == question.correctAnswer;
 
         if (isCorrect) correctCount += question.points;
 
@@ -113,8 +126,11 @@ class _TakeQuizPageState extends State<_QuizSession> {
             questionId: question.id,
             selectedAnswer: selected ?? -1,
             isCorrect: isCorrect,
-            correctAnswerText: question.options[question.correctAnswer],
+            correctAnswerText: typed
+                ? question.acceptedAnswers.join(' | ')
+                : question.options[question.correctAnswer],
             explanation: question.explanation,
+            textAnswer: textAnswer,
           ),
         );
       }
@@ -256,83 +272,114 @@ class _TakeQuizPageState extends State<_QuizSession> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Options
-                  ..._order.options[originalIndex].asMap().entries.map((entry) {
-                    final index = entry.value;
-                    final option = question.options[index];
-                    final isSelected = _selectedAnswers[originalIndex] == index;
+                  if (question.type == QuestionType.fillInTheBlank ||
+                      question.type == QuestionType.enumeration)
+                    TextField(
+                      key: ValueKey('typed-answer-${question.id}'),
+                      controller: _textAnswers[originalIndex],
+                      enabled:
+                          !_isSubmitting &&
+                          !(widget.quiz.timeLimit > 0 && _timeRemaining <= 0),
+                      minLines: question.type == QuestionType.enumeration
+                          ? 3
+                          : 1,
+                      maxLines: question.type == QuestionType.enumeration
+                          ? 6
+                          : 1,
+                      decoration: InputDecoration(
+                        labelText: question.type == QuestionType.enumeration
+                            ? 'Enter your enumeration answer'
+                            : 'Enter your answer',
+                        helperText: question.type == QuestionType.enumeration
+                            ? 'Use the order and separators requested in the question.'
+                            : 'Spelling is checked without regard to capitalization.',
+                        border: const OutlineInputBorder(),
+                      ),
+                      onChanged: (_) => setState(() {}),
+                    )
+                  else
+                    ..._order.options[originalIndex].asMap().entries.map((
+                      entry,
+                    ) {
+                      final index = entry.value;
+                      final option = question.options[index];
+                      final isSelected =
+                          _selectedAnswers[originalIndex] == index;
 
-                    return GestureDetector(
-                      onTap:
-                          _isSubmitting ||
-                              (widget.quiz.timeLimit > 0 && _timeRemaining <= 0)
-                          ? null
-                          : () {
-                              setState(() {
-                                _selectedAnswers[originalIndex] = index;
-                              });
-                            },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? const Color(0xFF0B2B4A).withOpacity(0.08)
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
+                      return GestureDetector(
+                        onTap:
+                            _isSubmitting ||
+                                (widget.quiz.timeLimit > 0 &&
+                                    _timeRemaining <= 0)
+                            ? null
+                            : () {
+                                setState(() {
+                                  _selectedAnswers[originalIndex] = index;
+                                });
+                              },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
                             color: isSelected
-                                ? const Color(0xFF0B2B4A)
-                                : Colors.grey.shade300,
-                            width: isSelected ? 2 : 1,
+                                ? const Color(
+                                    0xFF0B2B4A,
+                                  ).withValues(alpha: 0.08)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                  ? const Color(0xFF0B2B4A)
+                                  : Colors.grey.shade300,
+                              width: isSelected ? 2 : 1,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 28,
-                              height: 28,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isSelected
-                                    ? const Color(0xFF0B2B4A)
-                                    : Colors.grey.shade300,
-                              ),
-                              child: Center(
-                                child: Text(
-                                  String.fromCharCode(65 + entry.key),
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.black54,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 28,
+                                height: 28,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isSelected
+                                      ? const Color(0xFF0B2B4A)
+                                      : Colors.grey.shade300,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    String.fromCharCode(65 + entry.key),
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : Colors.black54,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                option,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  option,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                                  ),
                                 ),
                               ),
-                            ),
-                            if (isSelected)
-                              const Icon(
-                                Icons.check_circle,
-                                color: Color(0xFF0B2B4A),
-                              ),
-                          ],
+                              if (isSelected)
+                                const Icon(
+                                  Icons.check_circle,
+                                  color: Color(0xFF0B2B4A),
+                                ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  }),
+                      );
+                    }),
 
                   const SizedBox(height: 24),
 
@@ -425,7 +472,17 @@ class _TakeQuizPageState extends State<_QuizSession> {
                       index,
                     ) {
                       final isAnswered =
-                          _selectedAnswers[_order.questions[index]] != null;
+                          widget.quiz.questions[_order.questions[index]].type ==
+                                  QuestionType.fillInTheBlank ||
+                              widget
+                                      .quiz
+                                      .questions[_order.questions[index]]
+                                      .type ==
+                                  QuestionType.enumeration
+                          ? _textAnswers[_order.questions[index]].text
+                                .trim()
+                                .isNotEmpty
+                          : _selectedAnswers[_order.questions[index]] != null;
                       final isCurrent = index == _currentQuestionIndex;
                       return Container(
                         width: 12,
