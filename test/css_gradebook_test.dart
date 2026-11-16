@@ -72,7 +72,10 @@ void main() {
           home: Scaffold(
             body: CssGradebookPage(
               classId: 'class',
-              students: const {'student': 'Sample Student'},
+              students: const {
+                'student': 'Sample Student',
+                'aaron': 'Aaron Student',
+              },
               service: service,
             ),
           ),
@@ -88,22 +91,27 @@ void main() {
       expect(find.textContaining('Final: 75'), findsOneWidget);
       await tester.tap(find.text('Sample Student'));
       await tester.pumpAndSettle();
-      expect(find.text('POSSIBLE POINTS'), findsOneWidget);
-      expect(find.text('STUDENT SCORE'), findsOneWidget);
-      expect(find.text('GRADE WEIGHT'), findsOneWidget);
-      expect(find.text('20%'), findsOneWidget);
-      expect(find.text('65%'), findsOneWidget);
-      expect(find.text('15%'), findsOneWidget);
-      expect(find.byKey(const ValueKey('possible-quiz')), findsOneWidget);
-      expect(find.byKey(const ValueKey('earned-quiz')), findsOneWidget);
-      await tester.enterText(find.byKey(const ValueKey('earned-quiz')), '60');
+      expect(find.text('POSSIBLE POINTS'), findsNothing);
+      expect(find.text('QUIZ\n20%'), findsOneWidget);
+      expect(find.text('SIMULATION\n65%'), findsOneWidget);
+      expect(find.text('ASSIGNMENT\n15%'), findsOneWidget);
+      expect(find.text('Sample Student'), findsOneWidget);
+      expect(find.text('Aaron Student'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Aaron Student')).dy,
+        lessThan(tester.getTopLeft(find.text('Sample Student')).dy),
+      );
+      expect(find.byKey(const ValueKey('score-student-quiz')), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const ValueKey('score-student-quiz')),
+        '60',
+      );
       await tester.scrollUntilVisible(
-        find.text('Save scores'),
+        find.text('Save class scores'),
         250,
         scrollable: find.byType(Scrollable).first,
       );
-      expect(find.textContaining('Term grade: 74'), findsOneWidget);
-      await tester.tap(find.text('Save scores'));
+      await tester.tap(find.text('Save class scores'));
       await tester.pumpAndSettle();
       expect(find.textContaining('Term 1: 74'), findsOneWidget);
       final saved = await service.book

@@ -143,6 +143,10 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
             return const Center(child: CircularProgressIndicator());
           }
           final all = {for (final doc in data.data!.docs) doc.id: doc.data()};
+          final students = widget.students.entries.toList()
+            ..sort(
+              (a, b) => a.value.toLowerCase().compareTo(b.value.toLowerCase()),
+            );
           DepEdTermResult? result(String id, int t) => DepEdGrading.calculate(
             CssGradebookService.readScores(all['${id}_$t'] ?? {}),
             profile,
@@ -236,7 +240,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                           'Term 3',
                           'Final grade',
                         ],
-                        for (final student in widget.students.entries)
+                        for (final student in students)
                           [
                             student.value,
                             for (var t = 1; t <= 3; t++)
@@ -311,7 +315,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                               'Final grade',
                               'Descriptor',
                             ],
-                            ...widget.students.entries.map((s) {
+                            ...students.map((s) {
                               final grades = [
                                 for (var t = 1; t <= 3; t++)
                                   result(s.key, t)?.grade,
@@ -349,7 +353,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                   subtitle:
                       'Enrolled learners will appear here for score entry.',
                 ),
-              for (final student in widget.students.entries)
+              for (final student in students)
                 Builder(
                   builder: (context) {
                     final grades = [
@@ -366,14 +370,16 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                           MaterialPageRoute(
                             builder: (_) => _TermEditor(
                               service: service,
-                              studentId: student.key,
-                              studentName: student.value,
+                              students: students,
                               term: term,
                               profile: profile,
                               year: schoolYear,
-                              initial: CssGradebookService.readScores(
-                                all['${student.key}_$term'] ?? {},
-                              ),
+                              initial: {
+                                for (final learner in students)
+                                  learner.key: CssGradebookService.readScores(
+                                    all['${learner.key}_$term'] ?? {},
+                                  ),
+                              },
                             ),
                           ),
                         ),
@@ -397,7 +403,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                                   ),
                                   const SizedBox(width: 12),
                                   const Icon(
-                                    Icons.edit_outlined,
+                                    Icons.table_chart_outlined,
                                     color: insightsTeal,
                                     size: 20,
                                   ),
@@ -444,7 +450,7 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Edit Term $term scores',
+                                'Open Term $term class score sheet',
                                 style: const TextStyle(
                                   color: insightsTeal,
                                   fontSize: 12,
@@ -469,365 +475,335 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
 class _TermEditor extends StatefulWidget {
   const _TermEditor({
     required this.service,
-    required this.studentId,
-    required this.studentName,
+    required this.students,
     required this.term,
     required this.profile,
     required this.year,
     required this.initial,
   });
   final CssGradebookService service;
-  final String studentId, studentName;
+  final List<MapEntry<String, String>> students;
   final int term, year;
   final CssGradingProfile profile;
-  final Map<String, GradeScore> initial;
+  final Map<String, Map<String, GradeScore>> initial;
   @override
   State<_TermEditor> createState() => _TermEditorState();
 }
 
 class _TermEditorState extends State<_TermEditor> {
   final form = GlobalKey<FormState>();
-  late final raw = [
-    for (final key in DepEdGrading.components)
-      TextEditingController(text: widget.initial[key]?.raw.toString() ?? ''),
-  ];
-  late final maximum = [
-    for (final key in DepEdGrading.components)
-      TextEditingController(
-        text: widget.initial[key]?.maximum.toString() ?? '',
-      ),
-  ];
-  bool busy = false;
-  bool dirty = false;
+  late final fields = <String, List<TextEditingController>>{
+    for (final student in widget.students)
+      student.key: [
+        for (final component in DepEdGrading.components)
+          TextEditingController(
+            text: _shown(widget.initial[student.key]?[component]),
+          ),
+      ],
+  };
+  bool busy = false, dirty = false;
+
+  static String _shown(GradeScore? score) {
+    if (score == null || score.maximum <= 0) return '';
+    final value = score.raw / score.maximum * 100;
+    return value == value.roundToDouble()
+        ? value.toInt().toString()
+        : value.toStringAsFixed(2);
+  }
+
+  Map<String, GradeScore> _scores(String id) => {
+    for (var i = 0; i < DepEdGrading.components.length; i++)
+      if (fields[id]![i].text.trim().isNotEmpty)
+        DepEdGrading.components[i]: GradeScore(
+          double.parse(fields[id]![i].text),
+          100,
+        ),
+  };
+
+  DepEdTermResult? _result(String id) {
+    try {
+      return DepEdGrading.calculate(_scores(id), widget.profile, widget.year);
+    } catch (_) {
+      return null;
+    }
+  }
+
   @override
   void dispose() {
-    for (final c in [...raw, ...maximum]) {
-      c.dispose();
+    for (final row in fields.values) {
+      for (final field in row) {
+        field.dispose();
+      }
     }
     super.dispose();
   }
 
-  Map<String, GradeScore> scores() => {
-    for (var i = 0; i < DepEdGrading.components.length; i++)
-      if (raw[i].text.trim().isNotEmpty && maximum[i].text.trim().isNotEmpty)
-        DepEdGrading.components[i]: GradeScore(
-          double.parse(raw[i].text),
-          double.parse(maximum[i].text),
+  Future<void> _save() async {
+    if (!form.currentState!.validate()) return;
+    setState(() => busy = true);
+    try {
+      for (final student in widget.students) {
+        await widget.service.save(
+          student.key,
+          widget.term,
+          _scores(student.key),
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        busy = false;
+        dirty = false;
+      });
+      Navigator.pop(context);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => busy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unable to save scores. Your edits are still here.'),
         ),
-  };
+      );
+    }
+  }
 
-  TableRow _scoreInputRow({
-    required String label,
-    required List<TextEditingController> controllers,
-    required String keyPrefix,
-    required Color background,
-  }) {
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !dirty && !busy,
+    onPopInvokedWithResult: (didPop, _) async {
+      if (didPop || busy) return;
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Discard unsaved scores?'),
+          content: const Text(
+            'The class score sheet contains unsaved changes.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep editing'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Discard'),
+            ),
+          ],
+        ),
+      );
+      if (discard == true && mounted) {
+        setState(() => dirty = false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) Navigator.pop(context);
+        });
+      }
+    },
+    child: Scaffold(
+      backgroundColor: const Color(0xFFF4F7FB),
+      appBar: AppBar(
+        backgroundColor: insightsNavy,
+        foregroundColor: Colors.white,
+        title: Text('Term ${widget.term} class score sheet'),
+      ),
+      body: Form(
+        key: form,
+        child: InsightsList(
+          children: [
+            InsightsHeader(
+              title: 'Record component scores',
+              eyebrow:
+                  '${widget.students.length} STUDENTS • TERM ${widget.term}',
+              icon: Icons.table_chart_outlined,
+              subtitle:
+                  'Enter every learner’s component score in one class spreadsheet.',
+            ),
+            InsightsPanel(
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF176B45),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.grid_on_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'CLASS SCORE SHEET',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'SCORES 0–100',
+                          style: TextStyle(
+                            color: Color(0xFFD8F3E7),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: 820,
+                      child: Table(
+                        border: TableBorder.all(color: const Color(0xFFB8C7D6)),
+                        defaultVerticalAlignment:
+                            TableCellVerticalAlignment.middle,
+                        columnWidths: const {
+                          0: FlexColumnWidth(1.8),
+                          1: FlexColumnWidth(),
+                          2: FlexColumnWidth(),
+                          3: FlexColumnWidth(),
+                          4: FixedColumnWidth(92),
+                        },
+                        children: [
+                          const TableRow(
+                            decoration: BoxDecoration(color: Color(0xFFDDEAE3)),
+                            children: [
+                              _ScoreCellLabel('STUDENT'),
+                              _ScoreCellLabel('QUIZ\n20%'),
+                              _ScoreCellLabel('SIMULATION\n65%'),
+                              _ScoreCellLabel('ASSIGNMENT\n15%'),
+                              _ScoreCellLabel('TERM GRADE'),
+                            ],
+                          ),
+                          for (var i = 0; i < widget.students.length; i++)
+                            _row(widget.students[i], i),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: Text(
+                      'Students are arranged alphabetically. Enter 0 to 100 for each component. Leave a cell blank only when it has not been graded.',
+                      style: TextStyle(
+                        color: insightsMuted,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: busy ? null : _save,
+              icon: busy
+                  ? const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: Text(busy ? 'Saving…' : 'Save class scores'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  TableRow _row(MapEntry<String, String> student, int rowIndex) {
+    final row = fields[student.key]!;
+    final result = _result(student.key);
     return TableRow(
-      decoration: BoxDecoration(color: background),
+      decoration: BoxDecoration(
+        color: rowIndex.isEven ? Colors.white : const Color(0xFFF7F9FB),
+      ),
       children: [
-        _ScoreCellLabel(label),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          child: Text(
+            student.value,
+            style: const TextStyle(
+              color: insightsNavy,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
         for (var i = 0; i < DepEdGrading.components.length; i++)
           Padding(
             padding: const EdgeInsets.all(8),
             child: TextFormField(
-              key: ValueKey('$keyPrefix-${DepEdGrading.components[i]}'),
-              controller: controllers[i],
+              key: ValueKey(
+                'score-${student.key}-${DepEdGrading.components[i]}',
+              ),
+              controller: row[i],
               enabled: !busy,
-              inputFormatters: [ScoreInputFormatter()],
+              inputFormatters: [ScoreInputFormatter(maximum: 100)],
               textAlign: TextAlign.center,
-              textInputAction: TextInputAction.next,
-              onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
-              autovalidateMode: AutovalidateMode.onUserInteraction,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              decoration: InputDecoration(
+              textInputAction: TextInputAction.next,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              decoration: const InputDecoration(
                 filled: true,
-                fillColor: keyPrefix == 'possible'
-                    ? const Color(0xFFFFFDF4)
-                    : Colors.white,
-                border: const OutlineInputBorder(),
-                hintText: '0',
+                fillColor: Colors.white,
+                border: OutlineInputBorder(),
+                hintText: '—',
                 isDense: true,
               ),
-              onChanged: (_) => setState(() => dirty = true),
-              validator: (_) {
-                final earned = raw[i].text.trim();
-                final possible = maximum[i].text.trim();
-                if (earned.isEmpty && possible.isEmpty) return null;
-                final earnedValue = double.tryParse(earned);
-                final possibleValue = double.tryParse(possible);
-                if (earnedValue == null ||
-                    possibleValue == null ||
-                    !earnedValue.isFinite ||
-                    !possibleValue.isFinite ||
-                    possibleValue <= 0 ||
-                    possibleValue > 1000000 ||
-                    earnedValue < 0 ||
-                    earnedValue > possibleValue) {
-                  return keyPrefix == 'possible'
-                      ? 'Positive maximum'
-                      : '0 to maximum';
-                }
-                return null;
+              validator: (value) {
+                final text = value?.trim() ?? '';
+                if (text.isEmpty) return null;
+                final score = double.tryParse(text);
+                return score == null ||
+                        !score.isFinite ||
+                        score < 0 ||
+                        score > 100
+                    ? '0–100'
+                    : null;
               },
+              onChanged: (_) => setState(() => dirty = true),
             ),
           ),
+        Padding(
+          padding: const EdgeInsets.all(10),
+          child: Text(
+            result?.grade.toString() ?? '—',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
       ],
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    DepEdTermResult? result;
-    try {
-      result = DepEdGrading.calculate(scores(), widget.profile, widget.year);
-    } catch (_) {
-      result = null;
-    }
-    return PopScope(
-      canPop: !dirty && !busy,
-      onPopInvokedWithResult: (didPop, _) async {
-        if (didPop || busy) return;
-        final discard = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Discard unsaved scores?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Keep editing'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Discard'),
-              ),
-            ],
-          ),
-        );
-        if (discard == true && mounted) {
-          setState(() => dirty = false);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) Navigator.pop(context);
-          });
-        }
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF4F7FB),
-        appBar: AppBar(
-          backgroundColor: insightsNavy,
-          foregroundColor: Colors.white,
-          title: Text('Term ${widget.term} | ${widget.studentName}'),
-        ),
-        body: Form(
-          key: form,
-          child: InsightsList(
-            children: [
-              const InsightsHeader(
-                title: 'Record component scores',
-                icon: Icons.edit_note,
-                subtitle:
-                    'Review the computed result below, then save your changes.',
-              ),
-              const InsightsPanel(
-                child: Text(
-                  'Enter the earned and possible points for the learner’s quiz, simulation, and assignment. Retain the individual activity records as supporting evidence.',
-                  style: TextStyle(color: insightsMuted, height: 1.5),
-                ),
-              ),
-              InsightsPanel(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF176B45),
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.grid_on_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              '${widget.studentName} • Term ${widget.term}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ),
-                          const Text(
-                            'SCORE SHEET',
-                            style: TextStyle(
-                              color: Color(0xFFD8F3E7),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: .8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: 720,
-                        child: Table(
-                          border: TableBorder.all(
-                            color: const Color(0xFFB8C7D6),
-                          ),
-                          defaultVerticalAlignment:
-                              TableCellVerticalAlignment.middle,
-                          columnWidths: const {
-                            0: FlexColumnWidth(1.15),
-                            1: FlexColumnWidth(),
-                            2: FlexColumnWidth(),
-                            3: FlexColumnWidth(),
-                          },
-                          children: [
-                            TableRow(
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFDDEAE3),
-                              ),
-                              children: [
-                                const _ScoreCellLabel('COMPONENT'),
-                                for (final label in DepEdGrading.labels)
-                                  _ScoreCellLabel(label.toUpperCase()),
-                              ],
-                            ),
-                            _scoreInputRow(
-                              label: 'POSSIBLE POINTS',
-                              controllers: maximum,
-                              keyPrefix: 'possible',
-                              background: const Color(0xFFFFF6D8),
-                            ),
-                            _scoreInputRow(
-                              label: 'STUDENT SCORE',
-                              controllers: raw,
-                              keyPrefix: 'earned',
-                              background: Colors.white,
-                            ),
-                            const TableRow(
-                              decoration: BoxDecoration(
-                                color: Color(0xFFF2F6F9),
-                              ),
-                              children: [
-                                _ScoreCellLabel('GRADE WEIGHT'),
-                                _ScoreCellLabel('20%'),
-                                _ScoreCellLabel('65%'),
-                                _ScoreCellLabel('15%'),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: Text(
-                        'Enter Possible Points first, then enter the student score below it. Only numbers are accepted, and a student score cannot exceed its possible points.',
-                        style: TextStyle(
-                          color: insightsMuted,
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (result != null)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Quiz weighted score: ${result.quiz.toStringAsFixed(2)}\n'
-                      'Simulation weighted score: ${result.simulation.toStringAsFixed(2)}\n'
-                      'Assignment weighted score: ${result.assignment.toStringAsFixed(2)}\n'
-                      'Initial grade: ${result.initial.toStringAsFixed(2)}\n'
-                      'Term grade: ${result.grade} | ${DepEdGrading.descriptor(result.grade)}',
-                    ),
-                  ),
-                )
-              else
-                const Text(
-                  'Incomplete: quiz, simulation, and assignment scores are required for a term grade.',
-                ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: busy
-                    ? null
-                    : () async {
-                        if (!form.currentState!.validate()) return;
-                        setState(() => busy = true);
-                        try {
-                          await widget.service.save(
-                            widget.studentId,
-                            widget.term,
-                            scores(),
-                          );
-                          if (!mounted) return;
-                          setState(() {
-                            busy = false;
-                            dirty = false;
-                          });
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) Navigator.pop(context);
-                          });
-                        } catch (_) {
-                          if (mounted && context.mounted) {
-                            setState(() => busy = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Unable to save scores. Your edits are still here.',
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                child: Text(busy ? 'Saving…' : 'Save scores'),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
 
 class _ScoreCellLabel extends StatelessWidget {
   const _ScoreCellLabel(this.text);
-
   final String text;
-
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Color(0xFF24364B),
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-          letterSpacing: .25,
-        ),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+    child: Text(
+      text,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: Color(0xFF24364B),
+        fontSize: 12,
+        fontWeight: FontWeight.w800,
       ),
-    );
-  }
+    ),
+  );
 }
