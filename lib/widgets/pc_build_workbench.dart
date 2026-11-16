@@ -631,14 +631,8 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                 width: 87,
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 5),
                 decoration: BoxDecoration(
-                  color: assignment.$1 == expected
-                      ? const Color(0xFF087F8C)
-                      : const Color(0xFF293744),
-                  border: Border.all(
-                    color: assignment.$1 == expected
-                        ? Colors.cyanAccent
-                        : Colors.white24,
-                  ),
+                  color: const Color(0xFF293744),
+                  border: Border.all(color: Colors.white24),
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: Column(
@@ -671,14 +665,8 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       height: 48,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       decoration: BoxDecoration(
-        color: token == expected
-            ? const Color(0xffe6f7f8)
-            : const Color(0xfff4f6f8),
-        border: Border.all(
-          color: token == expected
-              ? const Color(0xff087f8c)
-              : const Color(0xffcbd5e1),
-        ),
+        color: const Color(0xfff4f6f8),
+        border: Border.all(color: const Color(0xffcbd5e1)),
         borderRadius: BorderRadius.circular(7),
       ),
       child: Row(
@@ -1366,88 +1354,6 @@ class _BuildMechanicsPainter extends CustomPainter {
       );
     }
 
-    final placementIndex = current == null
-        ? null
-        : PcBuildProcedure.placementOperation[current!];
-    if (current != null &&
-        placementIndex == operation &&
-        !installed.contains(current)) {
-      final target = PcBuildProcedure.targetRect(current!);
-      final targetRect = Rect.fromLTWH(
-        target.left * size.width,
-        target.top * size.height,
-        target.width * size.width,
-        target.height * size.height,
-      );
-      final pulse = busy ? .35 + .25 * math.sin(motion * math.pi) : .28;
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(targetRect, const Radius.circular(5)),
-        Paint()..color = Colors.cyanAccent.withValues(alpha: pulse),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(targetRect, const Radius.circular(5)),
-        Paint()
-          ..color = Colors.amber
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
-      const corner = 12.0;
-      final guide = Paint()
-        ..color = Colors.white
-        ..strokeWidth = 2;
-      for (final pair in [
-        (targetRect.topLeft, const Offset(1, 1)),
-        (targetRect.topRight, const Offset(-1, 1)),
-        (targetRect.bottomLeft, const Offset(1, -1)),
-        (targetRect.bottomRight, const Offset(-1, -1)),
-      ]) {
-        canvas.drawLine(
-          pair.$1,
-          pair.$1 + Offset(pair.$2.dx * corner, 0),
-          guide,
-        );
-        canvas.drawLine(
-          pair.$1,
-          pair.$1 + Offset(0, pair.$2.dy * corner),
-          guide,
-        );
-      }
-      if (current == 'ram') {
-        final seated = PcBuildProcedure.rects['ram']!;
-        final slot = Rect.fromLTWH(
-          seated.left * size.width,
-          seated.top * size.height,
-          seated.width * size.width,
-          seated.height * size.height,
-        );
-        canvas.drawRRect(
-          RRect.fromRectAndRadius(slot.inflate(2), const Radius.circular(2)),
-          Paint()
-            ..color = Colors.white
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2,
-        );
-        canvas.drawLine(
-          Offset(slot.left - 4, slot.center.dy),
-          Offset(slot.right + 4, slot.center.dy),
-          Paint()
-            ..color = Colors.black
-            ..strokeWidth = 3,
-        );
-      } else {
-        for (final point
-            in PcBuildProcedure.fasteners[current!] ?? const <Offset>[]) {
-          canvas.drawCircle(
-            p(point.dx, point.dy),
-            4,
-            Paint()
-              ..color = Colors.white70
-              ..style = PaintingStyle.stroke
-              ..strokeWidth = 1.5,
-          );
-        }
-      }
-    }
     void wire(
       bool shown,
       Offset end,
