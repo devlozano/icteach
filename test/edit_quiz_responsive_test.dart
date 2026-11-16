@@ -68,6 +68,10 @@ void main() {
       );
       await tester.pump();
       expect(find.text('Multiple choice'), findsOneWidget);
+      expect(
+        find.textContaining('Import a complete quiz with:'),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     });
   }

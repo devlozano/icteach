@@ -138,17 +138,66 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
       final explanation = column('explanation');
       final points = column('points');
       final typeColumn = column('type');
+      final quizTitleColumn = column('quiztitle');
+      final quizDescriptionColumn = column('quizdescription');
+      final timeLimitColumn = column('timelimit');
+      final passingScoreColumn = column('passingscore');
+      final publishedColumn = column('published');
       if ([questionColumn, answer].any((index) => index < 0)) {
         throw const FormatException(
           'Required headers: Question and Correct Answer. Add Type for mixed question types.',
         );
       }
       final imported = <Question>[];
+      String? importedTitle;
+      String? importedDescription;
+      int? importedTimeLimit;
+      int? importedPassingScore;
+      bool? importedPublished;
       for (var rowNumber = 1; rowNumber < rows.length; rowNumber++) {
         final row = rows[rowNumber];
         if (row.every((value) => value.trim().isEmpty)) continue;
         String valueAt(int index) =>
             index >= 0 && index < row.length ? row[index].trim() : '';
+        importedTitle ??= valueAt(quizTitleColumn).isEmpty
+            ? null
+            : valueAt(quizTitleColumn);
+        importedDescription ??= valueAt(quizDescriptionColumn).isEmpty
+            ? null
+            : valueAt(quizDescriptionColumn);
+        if (importedTimeLimit == null && valueAt(timeLimitColumn).isNotEmpty) {
+          importedTimeLimit = int.tryParse(valueAt(timeLimitColumn));
+          if (importedTimeLimit == null || importedTimeLimit < 0) {
+            throw FormatException(
+              'Check row ${rowNumber + 1}: Time Limit must be 0 or a positive number of minutes.',
+            );
+          }
+        }
+        if (importedPassingScore == null &&
+            valueAt(passingScoreColumn).isNotEmpty) {
+          importedPassingScore = int.tryParse(valueAt(passingScoreColumn));
+          if (importedPassingScore == null || importedPassingScore < 0) {
+            throw FormatException(
+              'Check row ${rowNumber + 1}: Passing Score must be 0 or a positive whole number.',
+            );
+          }
+        }
+        if (importedPublished == null && valueAt(publishedColumn).isNotEmpty) {
+          final publishValue = valueAt(publishedColumn).toLowerCase();
+          if (!const {
+            'true',
+            'false',
+            'yes',
+            'no',
+            '1',
+            '0',
+          }.contains(publishValue)) {
+            throw FormatException(
+              'Check row ${rowNumber + 1}: Published must be Yes/No or True/False.',
+            );
+          }
+          importedPublished = const {'true', 'yes', '1'}.contains(publishValue);
+        }
         final typeText = typeColumn < 0
             ? ''
             : valueAt(typeColumn).toLowerCase();
@@ -212,12 +261,27 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
           'A quiz can contain at most 200 questions.',
         );
       }
-      setState(() => _questions.addAll(imported));
+      setState(() {
+        _questions.addAll(imported);
+        if (importedTitle != null) _titleController.text = importedTitle;
+        if (importedDescription != null) {
+          _descriptionController.text = importedDescription;
+        }
+        if (importedTimeLimit != null) {
+          _timeLimitController.text = importedTimeLimit.toString();
+        }
+        if (importedPassingScore != null) {
+          _passingScoreController.text = importedPassingScore.toString();
+        }
+        if (importedPublished != null) _isPublished = importedPublished;
+      });
       _calculateTotalPoints();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${imported.length} question(s) imported from CSV.'),
+            content: Text(
+              '${imported.length} question(s) and available quiz details imported from CSV.',
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -486,6 +550,15 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                           return null;
                         },
                       ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Import a complete quiz with: Quiz Title, Quiz Description, Time Limit, Passing Score, Published, Type, Question, Option A-D, Correct Answer, Explanation, Points.',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
                       // Description
@@ -619,7 +692,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Add questions manually or import a CSV. Use headers: Type, Question, Option A-D, Correct Answer, Explanation, Points. For typed answers, separate accepted alternatives with |.',
+                                'Import a complete quiz with: Quiz Title, Quiz Description, Time Limit, Passing Score, Published, Type, Question, Option A-D, Correct Answer, Explanation, Points. Old question-only CSV files still work. For typed answers, separate alternatives with |.',
                                 style: TextStyle(
                                   color: Colors.grey.shade500,
                                   fontSize: 14,
