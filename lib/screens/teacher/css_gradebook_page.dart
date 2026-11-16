@@ -516,6 +516,67 @@ class _TermEditorState extends State<_TermEditor> {
         ),
   };
 
+  TableRow _scoreInputRow({
+    required String label,
+    required List<TextEditingController> controllers,
+    required String keyPrefix,
+    required Color background,
+  }) {
+    return TableRow(
+      decoration: BoxDecoration(color: background),
+      children: [
+        _ScoreCellLabel(label),
+        for (var i = 0; i < DepEdGrading.components.length; i++)
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: TextFormField(
+              key: ValueKey('$keyPrefix-${DepEdGrading.components[i]}'),
+              controller: controllers[i],
+              enabled: !busy,
+              inputFormatters: [ScoreInputFormatter()],
+              textAlign: TextAlign.center,
+              textInputAction: TextInputAction.next,
+              onFieldSubmitted: (_) => FocusScope.of(context).nextFocus(),
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: keyPrefix == 'possible'
+                    ? const Color(0xFFFFFDF4)
+                    : Colors.white,
+                border: const OutlineInputBorder(),
+                hintText: '0',
+                isDense: true,
+              ),
+              onChanged: (_) => setState(() => dirty = true),
+              validator: (_) {
+                final earned = raw[i].text.trim();
+                final possible = maximum[i].text.trim();
+                if (earned.isEmpty && possible.isEmpty) return null;
+                final earnedValue = double.tryParse(earned);
+                final possibleValue = double.tryParse(possible);
+                if (earnedValue == null ||
+                    possibleValue == null ||
+                    !earnedValue.isFinite ||
+                    !possibleValue.isFinite ||
+                    possibleValue <= 0 ||
+                    possibleValue > 1000000 ||
+                    earnedValue < 0 ||
+                    earnedValue > possibleValue) {
+                  return keyPrefix == 'possible'
+                      ? 'Positive maximum'
+                      : '0 to maximum';
+                }
+                return null;
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     DepEdTermResult? result;
@@ -574,123 +635,117 @@ class _TermEditorState extends State<_TermEditor> {
                   style: TextStyle(color: insightsMuted, height: 1.5),
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: SizedBox(
-                  width: 760,
-                  child: Table(
-                    border: TableBorder.all(color: const Color(0xFFCAD6E2)),
-                    defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-                    columnWidths: const {
-                      0: FlexColumnWidth(1.25),
-                      1: FlexColumnWidth(),
-                      2: FlexColumnWidth(),
-                      3: FlexColumnWidth(),
-                    },
-                    children: [
-                      TableRow(
-                        decoration: BoxDecoration(color: Color(0xFFE8F0F8)),
+              InsightsPanel(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF176B45),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: Text(
-                              'Score sheet',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
+                          const Icon(
+                            Icons.grid_on_rounded,
+                            color: Colors.white,
+                            size: 20,
                           ),
-                          for (final label in DepEdGrading.labels)
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Text(
-                                label,
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${widget.studentName} • Term ${widget.term}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
+                          ),
+                          const Text(
+                            'SCORE SHEET',
+                            style: TextStyle(
+                              color: Color(0xFFD8F3E7),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: .8,
+                            ),
+                          ),
                         ],
                       ),
-                      for (var possible = 1; possible >= 0; possible--)
-                        TableRow(
-                          decoration: BoxDecoration(
-                            color: possible == 1
-                                ? const Color(0xFFF5F8FA)
-                                : Colors.white,
+                    ),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: 720,
+                        child: Table(
+                          border: TableBorder.all(
+                            color: const Color(0xFFB8C7D6),
                           ),
+                          defaultVerticalAlignment:
+                              TableCellVerticalAlignment.middle,
+                          columnWidths: const {
+                            0: FlexColumnWidth(1.15),
+                            1: FlexColumnWidth(),
+                            2: FlexColumnWidth(),
+                            3: FlexColumnWidth(),
+                          },
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Text(
-                                possible == 1
-                                    ? 'Possible points'
-                                    : 'Earned points',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            TableRow(
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFDDEAE3),
                               ),
+                              children: [
+                                const _ScoreCellLabel('COMPONENT'),
+                                for (final label in DepEdGrading.labels)
+                                  _ScoreCellLabel(label.toUpperCase()),
+                              ],
                             ),
-                            for (
-                              var i = 0;
-                              i < DepEdGrading.components.length;
-                              i++
-                            )
-                              Padding(
-                                padding: const EdgeInsets.all(6),
-                                child: TextFormField(
-                                  key: ValueKey(
-                                    '${possible == 1 ? 'possible' : 'earned'}-${DepEdGrading.components[i]}',
-                                  ),
-                                  controller: possible == 1
-                                      ? maximum[i]
-                                      : raw[i],
-                                  enabled: !busy,
-                                  inputFormatters: [ScoreInputFormatter()],
-                                  textAlign: TextAlign.center,
-                                  textInputAction: TextInputAction.next,
-                                  onFieldSubmitted: (_) =>
-                                      FocusScope.of(context).nextFocus(),
-                                  autovalidateMode:
-                                      AutovalidateMode.onUserInteraction,
-                                  keyboardType:
-                                      const TextInputType.numberWithOptions(
-                                        decimal: true,
-                                      ),
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    border: const OutlineInputBorder(),
-                                    hintText: '0',
-                                    isDense: true,
-                                  ),
-                                  onChanged: (_) =>
-                                      setState(() => dirty = true),
-                                  validator: (_) {
-                                    final a = raw[i].text.trim(),
-                                        b = maximum[i].text.trim();
-                                    if (a.isEmpty && b.isEmpty) return null;
-                                    final r = double.tryParse(a),
-                                        m = double.tryParse(b);
-                                    if (r == null ||
-                                        m == null ||
-                                        !r.isFinite ||
-                                        !m.isFinite ||
-                                        m <= 0 ||
-                                        m > 1000000 ||
-                                        r < 0 ||
-                                        r > m) {
-                                      return possible == 1
-                                          ? 'Positive maximum'
-                                          : '0 to maximum';
-                                    }
-                                    return null;
-                                  },
-                                ),
+                            _scoreInputRow(
+                              label: 'POSSIBLE POINTS',
+                              controllers: maximum,
+                              keyPrefix: 'possible',
+                              background: const Color(0xFFFFF6D8),
+                            ),
+                            _scoreInputRow(
+                              label: 'STUDENT SCORE',
+                              controllers: raw,
+                              keyPrefix: 'earned',
+                              background: Colors.white,
+                            ),
+                            const TableRow(
+                              decoration: BoxDecoration(
+                                color: Color(0xFFF2F6F9),
                               ),
+                              children: [
+                                _ScoreCellLabel('GRADE WEIGHT'),
+                                _ScoreCellLabel('20%'),
+                                _ScoreCellLabel('65%'),
+                                _ScoreCellLabel('15%'),
+                              ],
+                            ),
                           ],
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Text(
+                        'Enter Possible Points first, then enter the student score below it. Only numbers are accepted, and a student score cannot exceed its possible points.',
+                        style: TextStyle(
+                          color: insightsMuted,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               if (result != null)
@@ -748,6 +803,29 @@ class _TermEditorState extends State<_TermEditor> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScoreCellLabel extends StatelessWidget {
+  const _ScoreCellLabel(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: const TextStyle(
+          color: Color(0xFF24364B),
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          letterSpacing: .25,
         ),
       ),
     );

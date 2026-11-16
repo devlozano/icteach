@@ -116,11 +116,14 @@ void main() {
               className: 'Grade 11 • Computer Systems Servicing',
               firestore: db,
               gradebookService: service,
+              initialTab: 4,
             ),
           ),
         ),
       );
       await tester.pumpAndSettle();
+      // Older callers may request another tab, but the restored page must
+      // consistently begin with its Overview.
       expect(find.text('Your class at a glance'), findsOneWidget);
       Future<void> capture(String tab) async {
         expect(tester.takeException(), isNull, reason: '$tab at $width');
