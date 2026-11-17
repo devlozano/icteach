@@ -92,8 +92,10 @@ void main() {
             find.byType(CheckboxListTile).evaluate().isNotEmpty) {
           if (find.byType(CheckboxListTile).evaluate().length == 1) {
             for (var i = 0; i < 3; i++) {
+              await tester.ensureVisible(find.byType(CheckboxListTile));
               await tester.tap(find.byType(CheckboxListTile));
               await tester.pump();
+              await tester.ensureVisible(find.text(i < 2 ? 'Next' : 'Start'));
               await tester.tap(find.text(i < 2 ? 'Next' : 'Start'));
               await tester.pump();
             }

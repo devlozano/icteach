@@ -207,7 +207,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('rotate-system-unit')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('system-unit-rear')), findsOneWidget);
-    expect(find.text('REAR PANEL • EXTERNAL PORTS AND PSU'), findsOneWidget);
+    expect(find.byTooltip('Rotate to open side'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('rotate-system-unit')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('system-unit-open-side')), findsOneWidget);

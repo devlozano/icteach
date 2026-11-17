@@ -39,7 +39,7 @@ void main() {
           find.text(
             'Operation 2 / ${simulation.id == 'sim_coc1_assembly' ? 11 : 4}',
           ),
-          simulation.id == 'sim_coc1_assembly' ? findsOneWidget : findsNothing,
+          findsOneWidget,
         );
         return;
       }

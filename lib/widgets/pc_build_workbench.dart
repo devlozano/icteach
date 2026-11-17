@@ -289,6 +289,25 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
               'Training kit: DDR4 desktop • 2.5-inch SATA SSD. Use the actual manufacturer manual when servicing other hardware.',
               style: TextStyle(fontSize: 11),
             ),
+            if (_powered)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  color: const Color(0xee07120e),
+                  child: Text(
+                    _history.lastWhere(
+                      (s) => s.startsWith('POST:') || s.startsWith('CHECK:'),
+                    ),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      color: Colors.greenAccent,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
             if (item != null && step != null) ...[
               const SizedBox(height: 10),
               Container(
@@ -914,26 +933,6 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
               ),
             ),
           ),
-          if (_powered)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                color: const Color(0xee07120e),
-                child: Text(
-                  _history.lastWhere(
-                    (s) => s.startsWith('POST:') || s.startsWith('CHECK:'),
-                  ),
-                  style: const TextStyle(
-                    fontFamily: 'monospace',
-                    color: Colors.greenAccent,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
     ),

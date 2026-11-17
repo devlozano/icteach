@@ -829,7 +829,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, size) => size.maxHeight < 580
-                  ? _compactReadiness(true)
+                  ? SingleChildScrollView(child: _compactReadiness(true))
                   : _buildPreflight(),
             ),
           ),
