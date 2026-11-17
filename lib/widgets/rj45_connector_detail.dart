@@ -5,9 +5,17 @@ import '../models/rj45_session.dart';
 /// Contact-side view, latch behind, cable entering below. Uses the learner's
 /// actual pin assignments, never a prefilled correct answer.
 class Rj45ConnectorDetail extends StatelessWidget {
-  const Rj45ConnectorDetail({super.key, required this.end, this.progress = 1});
+  const Rj45ConnectorDetail({
+    super.key,
+    required this.end,
+    this.progress = 1,
+    this.onPlace,
+    this.onRemove,
+  });
   final CableEnd end;
   final double progress;
+  final void Function(int wire, int pin)? onPlace;
+  final void Function(int pin)? onRemove;
   @override
   Widget build(BuildContext context) => Semantics(
     label:
@@ -22,15 +30,75 @@ class Rj45ConnectorDetail extends StatelessWidget {
                   ? 'empty'
                   : Rj45Session.colors[end.pins[i]!]),
         ).join(', '),
-    child: CustomPaint(
-      painter: _ConnectorPainter(
-        List.of(end.pins),
-        end.seated,
-        end.stage == CableStage.finished,
-        progress,
-        DefaultTextStyle.of(context).style.fontFamily,
-      ),
-      size: Size.infinite,
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final scale = math.min(
+          constraints.maxWidth / 600,
+          constraints.maxHeight / 300,
+        );
+        final left = (constraints.maxWidth - 600 * scale) / 2;
+        final top = (constraints.maxHeight - 300 * scale) / 2;
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _ConnectorPainter(
+                  List.of(end.pins),
+                  end.seated,
+                  end.stage == CableStage.finished,
+                  progress,
+                  DefaultTextStyle.of(context).style.fontFamily,
+                ),
+                size: Size.infinite,
+              ),
+            ),
+            if (onPlace != null)
+              for (var pin = 0; pin < 8; pin++)
+                Positioned(
+                  left: left + (204 + pin * 24) * scale,
+                  top: top + 86 * scale,
+                  width: 24 * scale,
+                  height: 106 * scale,
+                  child: DragTarget<String>(
+                    onWillAcceptWithDetails: (d) {
+                      final wire = int.tryParse(
+                        d.data.replaceFirst('wire:', ''),
+                      );
+                      return d.data.startsWith('wire:') &&
+                          wire != null &&
+                          wire >= 0 &&
+                          wire < 8;
+                    },
+                    onAcceptWithDetails: (d) =>
+                        onPlace!(int.parse(d.data.split(':')[1]), pin),
+                    builder: (context, candidates, rejected) => Semantics(
+                      label:
+                          'Pin ${pin + 1}: ${end.pins[pin] == null ? "empty" : Rj45Session.colors[end.pins[pin]!]}',
+                      button: true,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => onRemove?.call(pin),
+                        child: Container(
+                          key: ValueKey('wire-pin-$pin'),
+                          decoration: BoxDecoration(
+                            color: candidates.isEmpty
+                                ? Colors.transparent
+                                : Colors.cyan.withValues(alpha: .25),
+                            border: Border.all(
+                              color: candidates.isEmpty
+                                  ? Colors.white24
+                                  : Colors.cyanAccent,
+                            ),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+          ],
+        );
+      },
     ),
   );
 }
@@ -137,7 +205,7 @@ class _ConnectorPainter extends CustomPainter {
       paint,
     );
     // Separate wire channels and copper contact blades.
-    final advance = seated ? (crimped ? 0.0 : 1 - progress) : 1.0;
+    final advance = seated ? (crimped ? 0.0 : 1 - progress) : .3;
     for (var i = 0; i < 8; i++) {
       final x = 216.0 + i * 24;
       rect(Rect.fromLTWH(x - 8, 52, 16, 139), const Color(0x333C6C8A), 3);

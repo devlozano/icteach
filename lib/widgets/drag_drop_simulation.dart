@@ -770,11 +770,24 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       );
     }
     if (widget.simulation.id == 'sim_coc2_crimping') {
-      return _specializedWorkbench(
-        Rj45Workbench(
-          onComplete: widget.onComplete,
-          onFeedback: widget.onFeedback,
-        ),
+      return Stack(
+        children: [
+          Positioned.fill(
+            child: Rj45Workbench(
+              onComplete: widget.onComplete,
+              onFeedback: widget.onFeedback,
+            ),
+          ),
+          Positioned(
+            top: 0,
+            right: 144,
+            child: IconButton(
+              tooltip: 'Animated procedure',
+              icon: const Icon(Icons.play_circle_outline),
+              onPressed: () => setState(() => _showProcedure = true),
+            ),
+          ),
+        ],
       );
     }
     if (MediaQuery.sizeOf(context).width < MediaQuery.sizeOf(context).height &&

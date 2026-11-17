@@ -89,40 +89,38 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
   @override
   Widget build(BuildContext context) {
     if (session == null) {
-      return SingleChildScrollView(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'RJ45 cable workshop',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Prepare and terminate both ends. Test your own wiring.',
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 8,
-                  children: [
-                    for (final kind in CableKind.values)
-                      FilledButton(
-                        onPressed: () =>
-                            setState(() => session = Rj45Session(kind)),
-                        child: Text(
-                          kind == CableKind.straight
-                              ? 'Straight-through'
-                              : 'Crossover (10/100)',
-                        ),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'RJ45 cable workshop',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Prepare and terminate both ends. Test your own wiring.',
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  for (final kind in CableKind.values)
+                    FilledButton(
+                      onPressed: () =>
+                          setState(() => session = Rj45Session(kind)),
+                      child: Text(
+                        kind == CableKind.straight
+                            ? 'Straight-through'
+                            : 'Crossover (10/100)',
                       ),
-                  ],
-                ),
-              ],
-            ),
+                    ),
+                ],
+              ),
+            ],
           ),
         ),
       );
@@ -197,13 +195,12 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final work = s.prepared ? testerPanel() : preparationPanel();
-                if (constraints.maxWidth < 500) {
-                  return SingleChildScrollView(
-                    child: SizedBox(height: 600, child: work),
-                  );
-                }
-                return work;
+                return SizedBox.expand(
+                  key: const ValueKey('rj45-fixed-workbench'),
+                  child: s.prepared
+                      ? SingleChildScrollView(child: testerPanel())
+                      : preparationPanel(),
+                );
               },
             ),
           ),
@@ -212,262 +209,194 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
     );
   }
 
-  Widget preparationPanel() => Row(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      SizedBox(
-        width: 170,
-        child: SingleChildScrollView(
-          child: Column(
+  Widget preparationPanel() => LayoutBuilder(
+    builder: (context, bounds) {
+      final controls = Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
             children: [
               for (var i = 0; i < 2; i++)
-                ListTile(
-                  dense: true,
-                  selected: active == i,
-                  title: Text('Cable end ${i == 0 ? "A" : "B"}'),
-                  subtitle: Text(
-                    session!.ends[i].stage == CableStage.finished
-                        ? 'Crimped'
-                        : 'Not finished',
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => change(() => active = i),
+                    child: Text(
+                      'End ${i == 0 ? "A" : "B"}${active == i ? " •" : ""}',
+                    ),
                   ),
-                  onTap: () => change(() => active = i),
                 ),
-              const Divider(),
-              draggable('stripper', 'Jacket stripper', Icons.content_cut),
-              draggable('cutters', 'Flush cutters', Icons.cut),
-              draggable('crimper', 'RJ45 crimper', Icons.handyman),
-              const Padding(
-                padding: EdgeInsets.all(8),
-                child: Text(
-                  'Drag the tool onto the cable. Keep the cable disconnected from powered equipment.',
-                  style: TextStyle(fontSize: 12),
+              IconButton(
+                tooltip: 'Step instructions',
+                icon: const Icon(Icons.info_outline),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => AlertDialog(
+                    title: Text(stageTitle()),
+                    content: SingleChildScrollView(
+                      child: Text('${instruction()}\n\n${inspection()}'),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Back to work'),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '${math.min(end.stage.index + 1, 7)}/7 • ${stageTitle()}',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            '${math.min(end.stage.index + 1, 7)}/7 • ${stageTitle()}',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          if (end.stage == CableStage.jacket || end.stage == CableStage.trim)
+            measurementControl(),
+          if (end.stage == CableStage.untwist)
+            Wrap(
+              spacing: 6,
+              children: [
+                for (var p = 0; p < 4; p++)
+                  OutlinedButton(
+                    onPressed: end.separatedPairs.contains(p)
+                        ? null
+                        : () => change(() => end.untwist(p)),
+                    child: Text(
+                      'Untwist ${["orange", "green", "blue", "brown"][p]} pair',
+                    ),
+                  ),
+              ],
             ),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    SimulationDescriptionSection(
-                      title: 'What to do',
-                      text: instruction(),
+          if (end.stage == CableStage.arrange) ...[
+            const Text(
+              'Drag each wire into a numbered channel inside the RJ45 preview. Tap a channel to remove its wire. Keep the order, then trim before final insertion.',
+            ),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final w in [5, 0, 7, 2, 4, 1, 6, 3])
+                  if (!end.pins.contains(w))
+                    draggable(
+                      'wire:$w',
+                      Rj45Session.colors[w],
+                      Icons.drag_indicator,
+                      color: wireColor(w),
                     ),
-                    if (end.stage == CableStage.jacket ||
-                        end.stage == CableStage.trim)
-                      measurementControl(),
-                    AnimatedSwitcher(
-                      duration: MediaQuery.disableAnimationsOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 300),
-                      child: Container(
-                        key: ValueKey('inspection-$active-${end.stage.name}'),
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xffe0f2fe),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'Inspection checkpoint: ${inspection()}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xff0c4a6e),
-                          ),
-                        ),
-                      ),
-                    ),
-                    DragTarget<String>(
-                      onWillAcceptWithDetails: (d) =>
-                          ['stripper', 'cutters', 'crimper'].contains(d.data),
-                      onAcceptWithDetails: (d) =>
-                          change(() => end.tool(d.data)),
-                      builder: (context, candidates, rejected) => Container(
-                        key: const ValueKey('cable-work-area'),
-                        height: MediaQuery.sizeOf(context).width >= 900
-                            ? 260
-                            : 180,
-                        decoration: BoxDecoration(
-                          color: candidates.isEmpty
-                              ? const Color(0xff10283f)
-                              : const Color(0xff234d65),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: TweenAnimationBuilder<double>(
-                          key: ValueKey('$active-$revision'),
-                          tween: Tween(begin: 0, end: 1),
-                          duration: MediaQuery.disableAnimationsOf(context)
-                              ? Duration.zero
-                              : const Duration(milliseconds: 1600),
-                          builder: (context, value, _) => cableArt(value),
-                        ),
-                      ),
-                    ),
-                    if (end.stage == CableStage.untwist)
-                      Wrap(
-                        spacing: 6,
-                        children: [
-                          for (var p = 0; p < 4; p++)
-                            OutlinedButton(
-                              onPressed: end.separatedPairs.contains(p)
-                                  ? null
-                                  : () => change(() => end.untwist(p)),
-                              child: Text(
-                                'Untwist ${["orange", "green", "blue", "brown"][p]} pair',
-                              ),
-                            ),
-                        ],
-                      ),
-                    if (end.stage == CableStage.arrange) ...[
-                      const Text(
-                        'Drag each conductor to a pin. Tap a filled pin to remove it. Use the dark pin channels so white-striped conductors remain visible.',
-                      ),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          for (final w in [5, 0, 7, 2, 4, 1, 6, 3])
-                            if (!end.pins.contains(w))
-                              draggable(
-                                'wire:$w',
-                                Rj45Session.colors[w],
-                                Icons.drag_indicator,
-                                color: wireColor(w),
-                              ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          for (var p = 0; p < 8; p++)
-                            Expanded(
-                              child: DragTarget<String>(
-                                onWillAcceptWithDetails: (d) =>
-                                    d.data.startsWith('wire:'),
-                                onAcceptWithDetails: (d) => change(
-                                  () => end.place(
-                                    int.parse(d.data.split(':')[1]),
-                                    p,
-                                  ),
-                                ),
-                                builder: (context, hover, rejected) => InkWell(
-                                  onTap: () => change(() => end.pins[p] = null),
-                                  child: Container(
-                                    key: ValueKey('wire-pin-$p'),
-                                    height: 78,
-                                    margin: const EdgeInsets.all(2),
-                                    padding: const EdgeInsets.all(3),
-                                    decoration: BoxDecoration(
-                                      color: hover.isNotEmpty
-                                          ? const Color(0xFF24536A)
-                                          : const Color(0xFF10283F),
-                                      border: Border.all(
-                                        color: const Color(0xFF7DD3FC),
-                                      ),
-                                      borderRadius: BorderRadius.circular(5),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        Text(
-                                          '${p + 1}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                        if (end.pins[p] != null) ...[
-                                          _wireSwatch(end.pins[p]!),
-                                          Expanded(
-                                            child: Text(
-                                              Rj45Session.colors[end.pins[p]!],
-                                              style: const TextStyle(
-                                                fontSize: 9,
-                                                color: Colors.white,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      FilledButton(
-                        onPressed: end.pins.any((p) => p == null)
-                            ? null
-                            : () => change(end.finishOrder),
-                        child: const Text('Keep this order and trim'),
-                      ),
-                    ],
-                    if (end.stage == CableStage.insert)
-                      Row(
-                        children: [
-                          Expanded(
-                            child: draggable(
-                              'bundle',
-                              'Prepared cable end',
-                              Icons.cable,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: DragTarget<String>(
-                              onWillAcceptWithDetails: (d) =>
-                                  d.data == 'bundle',
-                              onAcceptWithDetails: (_) => change(end.insert),
-                              builder: (context, hover, rejected) => Container(
-                                key: const ValueKey('empty-rj45'),
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: hover.isEmpty
-                                      ? Colors.blueGrey.shade100
-                                      : Colors.cyan.shade100,
-                                  border: Border.all(color: Colors.blueGrey),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Rj45Art.image('plug_empty', height: 64),
-                                    const Text(
-                                      'Empty RJ45 plug\nDrag conductors fully inside',
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    if (end.stage == CableStage.finished)
-                      FilledButton(
-                        onPressed: () => change(() => active = 1 - active),
-                        child: const Text('Prepare the other end'),
-                      ),
-                  ],
-                ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            FilledButton(
+              onPressed: end.pins.any((p) => p == null)
+                  ? null
+                  : () => change(end.finishOrder),
+              child: const Text('Keep this order and trim'),
             ),
           ],
+          if (end.stage == CableStage.insert)
+            Row(
+              children: [
+                Expanded(
+                  child: draggable('bundle', 'Prepared cable end', Icons.cable),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DragTarget<String>(
+                    onWillAcceptWithDetails: (d) => d.data == 'bundle',
+                    onAcceptWithDetails: (_) => change(end.insert),
+                    builder: (context, hover, rejected) => Container(
+                      key: const ValueKey('empty-rj45'),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: hover.isEmpty
+                            ? Colors.blueGrey.shade100
+                            : Colors.cyan.shade100,
+                        border: Border.all(color: Colors.blueGrey),
+                      ),
+                      child: Column(
+                        children: [
+                          Rj45Art.image('plug_empty', height: 64),
+                          const Text(
+                            'Empty RJ45 plug\nDrag conductors fully inside',
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          if (end.stage == CableStage.finished)
+            FilledButton(
+              onPressed: () => change(() => active = 1 - active),
+              child: const Text('Prepare the other end'),
+            ),
+        ],
+      );
+      final scene = DragTarget<String>(
+        onWillAcceptWithDetails: (d) =>
+            ['stripper', 'cutters', 'crimper'].contains(d.data),
+        onAcceptWithDetails: (d) => change(() => end.tool(d.data)),
+        builder: (context, candidates, rejected) => Container(
+          key: const ValueKey('cable-work-area'),
+
+          decoration: BoxDecoration(
+            color: candidates.isEmpty
+                ? const Color(0xff10283f)
+                : const Color(0xff234d65),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: TweenAnimationBuilder<double>(
+            key: ValueKey('$active-$revision'),
+            tween: Tween(begin: 0, end: 1),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 1600),
+            builder: (context, value, _) => cableArt(value),
+          ),
         ),
-      ),
-    ],
+      );
+      final tools = Row(
+        children: [
+          Expanded(
+            child: draggable('stripper', 'Jacket stripper', Icons.content_cut),
+          ),
+          Expanded(child: draggable('cutters', 'Flush cutters', Icons.cut)),
+          Expanded(child: draggable('crimper', 'RJ45 crimper', Icons.handyman)),
+        ],
+      );
+      if (bounds.maxWidth < 500) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            tools,
+            Expanded(child: scene),
+            Flexible(child: SingleChildScrollView(child: controls)),
+          ],
+        );
+      }
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: bounds.maxWidth > 1000 ? 360 : 300,
+            child: SingleChildScrollView(child: controls),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: scene),
+                tools,
+              ],
+            ),
+          ),
+        ],
+      );
+    },
   );
   String inspection() => [
     'After stripping, check that every conductor insulation is intact. Cut back and restart if any conductor is nicked.',
@@ -570,243 +499,211 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
     );
   }
 
-  Widget _wireSwatch(int wire) => Container(
-    height: 16,
-    margin: const EdgeInsets.symmetric(vertical: 3),
-    decoration: BoxDecoration(
-      color: wireColor(wire),
-      borderRadius: BorderRadius.circular(4),
-      border: Border.all(color: Colors.white70),
-    ),
-    child: wire.isEven
-        ? Align(
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: .62,
-              child: Container(
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.horizontal(
-                    left: Radius.circular(3),
-                  ),
-                ),
-              ),
-            ),
-          )
-        : null,
-  );
-
   Widget testerPanel() {
     final s = session!;
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          const Text(
-            'LAN cable tester',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const Text(
-            'Drag one cable end into MAIN and the other into REMOTE. Then run the test.',
-          ),
-          Row(
-            children: [
-              for (var e = 0; e < 2; e++)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: s.ports.contains(e)
-                        ? Text(
-                            'End ${e == 0 ? "A" : "B"} connected',
-                            textAlign: TextAlign.center,
-                          )
-                        : draggable(
-                            'end:$e',
-                            'Cable end ${e == 0 ? "A" : "B"}',
-                            Icons.cable,
-                          ),
-                  ),
+    return Column(
+      children: [
+        const Text(
+          'LAN cable tester',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const Text(
+          'Drag one cable end into MAIN and the other into REMOTE. Then run the test.',
+        ),
+        Row(
+          children: [
+            for (var e = 0; e < 2; e++)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: s.ports.contains(e)
+                      ? Text(
+                          'End ${e == 0 ? "A" : "B"} connected',
+                          textAlign: TextAlign.center,
+                        )
+                      : draggable(
+                          'end:$e',
+                          'Cable end ${e == 0 ? "A" : "B"}',
+                          Icons.cable,
+                        ),
                 ),
-            ],
-          ),
-          Row(
-            children: [
-              for (var p = 0; p < 2; p++)
-                Expanded(
-                  child: DragTarget<String>(
-                    onWillAcceptWithDetails: (d) =>
-                        !testing && !tested && d.data.startsWith('end:'),
-                    onAcceptWithDetails: (d) => change(
-                      () => s.connect(int.parse(d.data.split(':')[1]), p),
+              ),
+          ],
+        ),
+        Row(
+          children: [
+            for (var p = 0; p < 2; p++)
+              Expanded(
+                child: DragTarget<String>(
+                  onWillAcceptWithDetails: (d) =>
+                      !testing && !tested && d.data.startsWith('end:'),
+                  onAcceptWithDetails: (d) => change(
+                    () => s.connect(int.parse(d.data.split(':')[1]), p),
+                  ),
+                  builder: (context, hover, rejected) => Container(
+                    key: ValueKey('tester-port-$p'),
+                    margin: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: hover.isEmpty
+                          ? const Color(0xff10283f)
+                          : const Color(0xff24536a),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    builder: (context, hover, rejected) => Container(
-                      key: ValueKey('tester-port-$p'),
-                      margin: const EdgeInsets.all(8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: hover.isEmpty
-                            ? const Color(0xff10283f)
-                            : const Color(0xff24536a),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                            p == 0 ? 'MAIN' : 'REMOTE',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    child: Column(
+                      children: [
+                        Text(
+                          p == 0 ? 'MAIN' : 'REMOTE',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
                           ),
-                          const SizedBox(height: 6),
-                          SizedBox(
-                            height: 110,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Rj45Art.image(
-                                  p == 0 ? 'tester_main' : 'tester_remote',
-                                  height: 110,
-                                ),
-                                if (s.ports[p] != null)
-                                  Positioned(
-                                    right: 0,
-                                    top: 0,
-                                    child: Rj45Art.image(
-                                      'cable_plug',
-                                      width: 70,
-                                      height: 55,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            s.ports[p] == null
-                                ? 'Empty socket'
-                                : 'End ${s.ports[p] == 0 ? "A" : "B"} plugged in',
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                          if (s.ports[p] != null && !testing && !tested)
-                            TextButton(
-                              onPressed: () => change(() => s.ports[p] = null),
-                              child: const Text('Unplug'),
-                            ),
-                          Wrap(
-                            spacing: 8,
+                        ),
+                        const SizedBox(height: 6),
+                        SizedBox(
+                          height: 110,
+                          child: Stack(
+                            alignment: Alignment.center,
                             children: [
-                              for (var pin = 1; pin <= 8; pin++)
-                                Column(
-                                  children: [
-                                    AnimatedContainer(
-                                      duration: const Duration(
-                                        milliseconds: 150,
-                                      ),
-                                      width: 15,
-                                      height: 15,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color:
-                                            lit >= 0 &&
-                                                (p == 0
-                                                        ? lit + 1
-                                                        : s.wireMap[lit]) ==
-                                                    pin
-                                            ? Colors.greenAccent
-                                            : Colors.grey.shade700,
-                                      ),
-                                    ),
-                                    Text(
-                                      '$pin',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ],
+                              Rj45Art.image(
+                                p == 0 ? 'tester_main' : 'tester_remote',
+                                height: 110,
+                              ),
+                              if (s.ports[p] != null)
+                                Positioned(
+                                  right: 0,
+                                  top: 0,
+                                  child: Rj45Art.image(
+                                    'cable_plug',
+                                    width: 70,
+                                    height: 55,
+                                  ),
                                 ),
                             ],
                           ),
-                        ],
-                      ),
+                        ),
+                        Text(
+                          s.ports[p] == null
+                              ? 'Empty socket'
+                              : 'End ${s.ports[p] == 0 ? "A" : "B"} plugged in',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        if (s.ports[p] != null && !testing && !tested)
+                          TextButton(
+                            onPressed: () => change(() => s.ports[p] = null),
+                            child: const Text('Unplug'),
+                          ),
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (var pin = 1; pin <= 8; pin++)
+                              Column(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 150),
+                                    width: 15,
+                                    height: 15,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color:
+                                          lit >= 0 &&
+                                              (p == 0
+                                                      ? lit + 1
+                                                      : s.wireMap[lit]) ==
+                                                  pin
+                                          ? Colors.greenAccent
+                                          : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                  Text(
+                                    '$pin',
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
+              ),
+          ],
+        ),
+        FilledButton(
+          onPressed: s.readyToTest && !testing && !tested ? testCable : null,
+          child: Text(
+            testing
+                ? 'Testing pin ${lit + 2 > 8 ? 8 : lit + 2}…'
+                : 'Run LAN test',
+          ),
+        ),
+        if (tested)
+          Rj45TestResult(
+            session: s,
+            onRetry: (end) => change(() {
+              s.reterminate(end);
+              active = end;
+              tested = false;
+              lit = -1;
+            }),
+            onSubmit: () => widget.onComplete(
+              s.rubric.score,
+              Rj45RubricResult.total,
+              s.passed,
+            ),
+          ),
+        // Kept unreachable only to preserve compatibility with older snapshots.
+        // ignore: dead_code
+        if (false) ...[
+          Text(
+            s.passed
+                ? 'PASS • Cable matches the selected standard'
+                : 'FAIL • Re-terminate the cable',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: s.passed ? Colors.green : Colors.red,
+            ),
+          ),
+          Text(
+            'Observed MAIN → REMOTE: ${s.wireMap.asMap().entries.map((e) => "${e.key + 1}→${e.value}").join("  ")}',
+          ),
+          Text(
+            'Expected: ${s.expectedMap.asMap().entries.map((e) => "${e.key + 1}→${e.value}").join("  ")}',
+          ),
+          if (!s.standardEnds)
+            const Text(
+              'Training inspection: nonstandard color/pair assignment. Even matching LED sequences can hide split pairs. Compare both ends with T568A/T568B before making new terminations.',
+            ),
+          for (var e = 0; e < 2; e++)
+            Text(
+              'End ${e == 0 ? "A" : "B"}: ${s.ends[e].pins.map((w) => Rj45Session.colors[w!]).join(" • ")}',
+            ),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (var e = 0; e < 2; e++)
+                OutlinedButton(
+                  onPressed: () => change(() {
+                    s.reterminate(e);
+                    active = e;
+                    tested = false;
+                    lit = -1;
+                  }),
+                  child: Text('Cut off plug ${e == 0 ? "A" : "B"} and retry'),
+                ),
+              FilledButton(
+                onPressed: () => widget.onComplete(
+                  s.rubric.score,
+                  Rj45RubricResult.total,
+                  s.passed,
+                ),
+                child: const Text('Submit result'),
+              ),
             ],
           ),
-          FilledButton(
-            onPressed: s.readyToTest && !testing && !tested ? testCable : null,
-            child: Text(
-              testing
-                  ? 'Testing pin ${lit + 2 > 8 ? 8 : lit + 2}…'
-                  : 'Run LAN test',
-            ),
-          ),
-          if (tested)
-            Rj45TestResult(
-              session: s,
-              onRetry: (end) => change(() {
-                s.reterminate(end);
-                active = end;
-                tested = false;
-                lit = -1;
-              }),
-              onSubmit: () => widget.onComplete(
-                s.rubric.score,
-                Rj45RubricResult.total,
-                s.passed,
-              ),
-            ),
-          // Kept unreachable only to preserve compatibility with older snapshots.
-          // ignore: dead_code
-          if (false) ...[
-            Text(
-              s.passed
-                  ? 'PASS • Cable matches the selected standard'
-                  : 'FAIL • Re-terminate the cable',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: s.passed ? Colors.green : Colors.red,
-              ),
-            ),
-            Text(
-              'Observed MAIN → REMOTE: ${s.wireMap.asMap().entries.map((e) => "${e.key + 1}→${e.value}").join("  ")}',
-            ),
-            Text(
-              'Expected: ${s.expectedMap.asMap().entries.map((e) => "${e.key + 1}→${e.value}").join("  ")}',
-            ),
-            if (!s.standardEnds)
-              const Text(
-                'Training inspection: nonstandard color/pair assignment. Even matching LED sequences can hide split pairs. Compare both ends with T568A/T568B before making new terminations.',
-              ),
-            for (var e = 0; e < 2; e++)
-              Text(
-                'End ${e == 0 ? "A" : "B"}: ${s.ends[e].pins.map((w) => Rj45Session.colors[w!]).join(" • ")}',
-              ),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (var e = 0; e < 2; e++)
-                  OutlinedButton(
-                    onPressed: () => change(() {
-                      s.reterminate(e);
-                      active = e;
-                      tested = false;
-                      lit = -1;
-                    }),
-                    child: Text('Cut off plug ${e == 0 ? "A" : "B"} and retry'),
-                  ),
-                FilledButton(
-                  onPressed: () => widget.onComplete(
-                    s.rubric.score,
-                    Rj45RubricResult.total,
-                    s.passed,
-                  ),
-                  child: const Text('Submit result'),
-                ),
-              ],
-            ),
-          ],
         ],
-      ),
+      ],
     );
   }
 
@@ -826,7 +723,14 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
 
   Widget cableArt(double value) {
     if (end.stage.index >= CableStage.arrange.index) {
-      return Rj45ConnectorDetail(end: end, progress: value);
+      return Rj45ConnectorDetail(
+        end: end,
+        progress: value,
+        onPlace: end.stage == CableStage.arrange
+            ? (wire, pin) => change(() => end.place(wire, pin))
+            : null,
+        onRemove: (pin) => change(() => end.pins[pin] = null),
+      );
     }
     String? photo;
     if (end.stage == CableStage.jacket) photo = 'cable_intact';
@@ -868,14 +772,24 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
   Widget draggable(String data, String label, IconData icon, {Color? color}) =>
       Draggable<String>(
         data: data,
-        feedback: Material(
-          elevation: 6,
-          borderRadius: BorderRadius.circular(8),
-          child: SizedBox(
-            width: 190,
-            child: toolChip(data, label, icon, color),
-          ),
-        ),
+        feedback: data.startsWith('wire:')
+            ? Material(
+                type: MaterialType.transparency,
+                child: Rj45Art.image(
+                  artFor(data),
+                  width: 150,
+                  height: 70,
+                  label: label,
+                ),
+              )
+            : Material(
+                elevation: 6,
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 190,
+                  child: toolChip(data, label, icon, color),
+                ),
+              ),
         childWhenDragging: Opacity(
           opacity: .3,
           child: toolChip(data, label, icon, color),

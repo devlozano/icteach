@@ -87,6 +87,10 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       );
       return;
     }
+    if (step.tool == PcBuildProcedure.driver && dropped != 'tool:phillips-2') {
+      _mistake('Drag the Phillips #2 screwdriver onto this fastener.');
+      return;
+    }
     if (_tool != step.tool) {
       _mistake('Use ${step.tool} for this operation.');
       return;
@@ -145,9 +149,14 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       _busy = true;
       _feedback = null;
     });
-    if (step.place) {
-      _motion.duration = PcBuildProcedure.installDuration(item.id);
-    }
+    _motion.duration =
+        !step.place &&
+            step.tool == PcBuildProcedure.hand &&
+            (item.id == 'cpu' || item.id == 'ram')
+        ? const Duration(milliseconds: 1800)
+        : step.place
+        ? PcBuildProcedure.installDuration(item.id)
+        : const Duration(milliseconds: 950);
     if (!MediaQuery.disableAnimationsOf(context)) {
       try {
         await _motion.forward(from: 0).orCancel;
@@ -336,9 +345,27 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
               Text(
                 step.place
                     ? 'Rotate the keyed connector until its notch and latch match, then drag it onto the highlighted port.'
-                    : 'Touch the highlighted fastener, latch or connector on the chassis.',
+                    : step.tool == PcBuildProcedure.driver
+                    ? 'Use the screwdriver on the required fastener.'
+                    : 'Touch the highlighted latch or connector on the chassis.',
                 style: const TextStyle(fontSize: 12),
               ),
+              if (step.tool == PcBuildProcedure.driver) ...[
+                const Text('Drag the Phillips #2 tip onto the fastener.'),
+                Draggable<String>(
+                  data: 'tool:phillips-2',
+                  maxSimultaneousDrags: _busy || widget.locked ? 0 : 1,
+                  dragAnchorStrategy: (_, _, _) => const Offset(27, 130.5),
+                  onDragStarted: () =>
+                      setState(() => _tool = PcBuildProcedure.driver),
+                  feedback: _driverAsset(),
+                  childWhenDragging: Opacity(
+                    opacity: .3,
+                    child: _driverAsset(),
+                  ),
+                  child: _driverAsset(),
+                ),
+              ],
               if (step.place) ...[
                 const SizedBox(height: 8),
                 Container(
@@ -691,6 +718,14 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     );
   }
 
+  Widget _driverAsset() => Image.asset(
+    'assets/simulations/phillips-2-screwdriver.png',
+    width: 54,
+    height: 135,
+    fit: BoxFit.fill,
+    semanticLabel: 'Phillips number 2 screwdriver',
+  );
+
   Widget _part(DraggableItem item, {double size = 100}) => SizedBox(
     width: size,
     height: size,
@@ -933,12 +968,9 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
         if (id == 'motherboard') {
           final boardPlaced =
               operation > PcBuildProcedure.placementOperation[id]!;
-          if (!boardPlaced && operation > i + 1) {
-            visible = true;
-            sprite = 2;
-          } else if (boardPlaced && operation > 11 + i) {
-            visible = true;
-          }
+          visible =
+              boardPlaced &&
+              operation > PcBuildProcedure.placementOperation[id]! + 1 + i;
         } else {
           final firstScrew = switch (id) {
             'cpu_fan' || 'gpu' => 4,
@@ -1038,6 +1070,15 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
 
   Widget _chassis(double w, double h) {
     final item = _current, step = _step;
+    final actionPoint = item?.id == 'cpu'
+        ? switch (_operation) {
+            0 => const Offset(.426, .397),
+            1 => const Offset(.394, .40),
+            3 => const Offset(.394, .23),
+            4 => const Offset(.444, .267),
+            _ => step?.point ?? Offset.zero,
+          }
+        : step?.point ?? Offset.zero;
     final mount = item == null || !PcBuildProcedure.rects.containsKey(item.id)
         ? null
         : PcBuildProcedure.targetRect(item.id);
@@ -1133,10 +1174,10 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
           Positioned(
             left: step.place && mount != null
                 ? mount.left * w
-                : (step.point.dx * w - 24).clamp(0, math.max(0, w - 48)),
+                : (actionPoint.dx * w - 24).clamp(0, math.max(0, w - 48)),
             top: step.place && mount != null
                 ? mount.top * h
-                : (step.point.dy * h - 24).clamp(0, math.max(0, h - 48)),
+                : (actionPoint.dy * h - 24).clamp(0, math.max(0, h - 48)),
             width: step.place && mount != null ? mount.width * w : 48,
             height: step.place && mount != null ? mount.height * h : 48,
             child: step.place
@@ -1157,6 +1198,64 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  )
+                : step.tool == PcBuildProcedure.driver
+                ? DragTarget<String>(
+                    onWillAcceptWithDetails: (d) =>
+                        !_busy && !widget.locked && d.data == 'tool:phillips-2',
+                    onAcceptWithDetails: (d) => _act(dropped: d.data),
+                    builder: (context, candidates, rejected) => Container(
+                      key: const ValueKey('build-screw-target'),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: candidates.isEmpty
+                              ? Colors.white54
+                              : Colors.amber,
+                          width: 2,
+                        ),
+                      ),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Center(
+                            child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: _FastenerSprite(index: 0),
+                            ),
+                          ),
+                          if (_busy)
+                            Positioned(
+                              left: -3,
+                              top: -106.5,
+                              child: IgnorePointer(
+                                child: Transform(
+                                  alignment: Alignment.bottomCenter,
+                                  transform: Matrix4.identity()
+                                    ..rotateY(t * math.pi * 4),
+                                  child: _driverAsset(),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  )
+                : step.tool == PcBuildProcedure.hand &&
+                      (item?.id == 'cpu' || item?.id == 'ram')
+                ? Semantics(
+                    label: step.label,
+                    button: true,
+                    child: Tooltip(
+                      message: step.label,
+                      child: GestureDetector(
+                        key: const ValueKey('build-hotspot'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _busy || widget.locked ? null : _act,
+                        child: const SizedBox.expand(),
                       ),
                     ),
                   )
@@ -1325,9 +1424,6 @@ class _BuildMechanicsPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     Offset p(double x, double y) => Offset(x * size.width, y * size.height);
-    final paint = Paint()
-      ..strokeWidth = 3
-      ..style = PaintingStyle.stroke;
     void fastener(Offset center, bool secured, {double radius = 5}) {
       // Screw heads are rendered by _FastenerSprite at the same calibrated
       // anchor. Drawing another generic circle here created a doubled screw.
@@ -1521,31 +1617,96 @@ class _BuildMechanicsPainter extends CustomPainter {
           installed.contains('motherboard') ||
           operation > PcBuildProcedure.placementOperation['motherboard']!;
       for (var i = 0; i < holes.length; i++) {
-        if (installed.contains('motherboard') || operation > i + 1) {
+        if (boardPlaced) {
           final center = p(holes[i].dx, holes[i].dy);
           final secured =
-              installed.contains('motherboard') || operation > 11 + i;
+              installed.contains('motherboard') ||
+              operation >
+                  PcBuildProcedure.placementOperation['motherboard']! + 1 + i;
           if (boardPlaced) {
             fastener(center, secured, radius: 4);
           }
         }
       }
     }
-    if (current == 'cpu' && operation > 0 && operation < 5) {
-      final progress = operation == 4 && busy ? 1 - motion : 1.0;
-      canvas.drawLine(
-        p(.43, .38),
-        p(.43 + progress * .035, .29),
-        paint
-          ..color = Colors.grey
-          ..strokeWidth = 3,
+    if (current == 'cpu') {
+      final leverOpen = operation == 0
+          ? (busy ? motion : 0.0)
+          : operation == 4
+          ? (busy ? 1 - motion : 1.0)
+          : 1.0;
+      final plateOpen = operation < 1
+          ? 0.0
+          : operation == 1
+          ? (busy ? motion : 0.0)
+          : operation == 3
+          ? (busy ? 1 - motion : 1.0)
+          : operation > 3
+          ? 0.0
+          : 1.0;
+      final outer = Rect.fromPoints(p(.364, .272), p(.424, .409));
+      final inner = Rect.fromPoints(p(.371, .294), p(.417, .388));
+      // Replace the photograph's static closed frame, preserving the socket/CPU center.
+      final mask = Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRect(outer.inflate(size.width * .003))
+        ..addRect(inner);
+      canvas.drawPath(mask, Paint()..color = const Color(0xff252a2e));
+      final plateBottom = .409 - .192 * plateOpen;
+      final plate = Rect.fromPoints(p(.365, .272), p(.423, plateBottom));
+      final rim = Path()
+        ..fillType = PathFillType.evenOdd
+        ..addRRect(RRect.fromRectAndRadius(plate, const Radius.circular(2)))
+        ..addRect(plate.deflate(math.min(plate.width, plate.height) * .16));
+      canvas.drawShadow(rim, Colors.black, 2, true);
+      canvas.drawPath(
+        rim,
+        Paint()
+          ..shader = const LinearGradient(
+            colors: [Color(0xff6f777c), Color(0xffedf0f1), Color(0xff8b949a)],
+          ).createShader(outer),
       );
-      if (operation >= 2 && operation < 4) {
-        canvas.drawRect(
-          Rect.fromPoints(p(.36, .21), p(.42, .28)),
-          paint..color = Colors.blueGrey,
-        );
-      }
+      // Hinge remains fixed while the load plate pivots up and away.
+      canvas.drawLine(
+        p(.366, .272),
+        p(.422, .272),
+        Paint()
+          ..color = const Color(0xffb9c0c4)
+          ..strokeWidth = size.width * .004,
+      );
+      // The lever releases sideways from its hook, then raises from its hinge.
+      final tip = p(.43 + .019 * leverOpen, .397 - .13 * leverOpen);
+      final lever = Path()
+        ..moveTo(.425 * size.width, .276 * size.height)
+        ..lineTo(
+          (.427 + .019 * leverOpen) * size.width,
+          (.382 - .12 * leverOpen) * size.height,
+        )
+        ..lineTo(tip.dx, tip.dy)
+        ..lineTo(tip.dx - .009 * size.width, tip.dy + .006 * size.height);
+      canvas.drawPath(
+        lever,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = size.width * .004
+          ..color = const Color(0xff61686e),
+      );
+      canvas.drawPath(
+        lever,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = size.width * .002
+          ..color = const Color(0xffe3e7e9),
+      );
+      canvas.drawLine(
+        p(.422, .401),
+        p(.432, .401),
+        Paint()
+          ..color = const Color(0xffa4adb3)
+          ..strokeWidth = 2,
+      );
     }
     if (current == 'cpu_fan' &&
         operation >= 2 &&
@@ -1555,22 +1716,56 @@ class _BuildMechanicsPainter extends CustomPainter {
         Paint()..color = Colors.grey.shade300,
       );
     }
-    if (current == 'ram' && operation < 3) {
+    if (current == 'ram' || installed.contains('ram')) {
       final seating = operation == 2 && busy ? 1 - motion : 1.0;
-      latch(
-        p(.456, .211),
-        operation > 0,
-        opening: operation == 0 ? (busy ? motion : 0) : seating,
-      );
-      latch(
-        p(.456, .474),
-        operation > 1,
-        opening: operation == 1
-            ? (busy ? motion : 0)
-            : operation > 1
+      for (var index = 0; index < 2; index++) {
+        final opening = current != 'ram' || operation > 2
+            ? 0.0
+            : operation == index
+            ? (busy ? motion : 0.0)
+            : operation > index
             ? seating
-            : 0,
-      );
+            : 0.0;
+        final center = p(.456, index == 0 ? .211 : .474);
+        final direction = index == 0 ? -1.0 : 1.0;
+        final width = size.width * .011;
+        final length = size.height * .017;
+        canvas.save();
+        canvas.translate(center.dx, center.dy);
+        canvas.scale(1.0, direction);
+        // A shaped retaining jaw swings away from the DIMM, on its fixed hinge.
+        final jaw = Path()
+          ..moveTo(-width / 2, 0)
+          ..lineTo(width / 2, 0)
+          ..lineTo(width * .65, length * (.4 + opening))
+          ..lineTo(width * .38, length * (.75 + opening))
+          ..lineTo(-width * .38, length * (.75 + opening))
+          ..lineTo(-width * .65, length * (.4 + opening))
+          ..close();
+        canvas.drawShadow(jaw, Colors.black, 1, true);
+        canvas.drawPath(
+          jaw,
+          Paint()
+            ..shader = const LinearGradient(
+              colors: [Color(0xff252c32), Color(0xff64717b), Color(0xff242b31)],
+            ).createShader(Rect.fromLTWH(-width, 0, width * 2, length * 2)),
+        );
+        canvas.drawLine(
+          Offset(-width * .4, 0),
+          Offset(width * .4, 0),
+          Paint()
+            ..color = const Color(0xff929ca3)
+            ..strokeWidth = 1.2,
+        );
+        canvas.drawLine(
+          Offset(-width * .3, length * (.4 + opening)),
+          Offset(width * .3, length * (.4 + opening)),
+          Paint()
+            ..color = const Color(0xffa2abb0)
+            ..strokeWidth = 1,
+        );
+        canvas.restore();
+      }
     }
     if ((current == 'gpu' && operation >= 2) || installed.contains('gpu')) {
       final seated = installed.contains('gpu') || operation >= 3;

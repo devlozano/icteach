@@ -141,7 +141,7 @@ class PcBuildProcedure {
   static Duration installDuration(String id) =>
       Duration(milliseconds: id == 'motherboard' || id == 'psu' ? 950 : 720);
   static const placementOperation = <String, int>{
-    'motherboard': 10,
+    'motherboard': 1,
     'cpu': 2,
     'cpu_fan': 2,
     'ram': 2,
@@ -206,50 +206,9 @@ class PcBuildProcedure {
   static const operations = <String, List<PcBuildOperation>>{
     'motherboard': [
       PcBuildOperation(
-        'Inspect the tray: remove any standoff without a matching board hole',
+        'Inspect the pre-fitted standoffs: each must match a motherboard hole',
         inspect,
         Offset(.42, .45),
-      ),
-      PcBuildOperation(
-        'Fit the upper-left standoff',
-        driver,
-        Offset(.309, .191),
-      ),
-      PcBuildOperation(
-        'Fit the lower-right standoff',
-        driver,
-        Offset(.509, .676),
-      ),
-      PcBuildOperation(
-        'Fit the upper-right standoff',
-        driver,
-        Offset(.509, .191),
-      ),
-      PcBuildOperation(
-        'Fit the lower-left standoff',
-        driver,
-        Offset(.281, .676),
-      ),
-      PcBuildOperation('Fit the center standoff', driver, Offset(.394, .489)),
-      PcBuildOperation(
-        'Fit the top-center standoff',
-        driver,
-        Offset(.438, .191),
-      ),
-      PcBuildOperation(
-        'Fit the bottom-center standoff',
-        driver,
-        Offset(.394, .688),
-      ),
-      PcBuildOperation(
-        'Fit the center-left standoff',
-        driver,
-        Offset(.281, .483),
-      ),
-      PcBuildOperation(
-        'Fit the center-right standoff',
-        driver,
-        Offset(.509, .483),
       ),
       PcBuildOperation(
         'Lower the board onto all nine standoffs; align rear I/O',

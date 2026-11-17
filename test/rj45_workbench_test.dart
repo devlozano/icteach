@@ -110,6 +110,25 @@ void main() {
         await tester.pumpAndSettle();
       }
       final order = e == 0 ? [1, 0, 2, 5, 4, 3, 6, 7] : Rj45Session.t568b;
+      final workArea = tester.getRect(
+        find.byKey(const ValueKey('cable-work-area')),
+      );
+      for (var pin = 0; pin < 8; pin++) {
+        expect(
+          workArea.contains(
+            tester.getCenter(find.byKey(ValueKey('wire-pin-$pin'))),
+          ),
+          isTrue,
+        );
+      }
+      expect(
+        tester
+            .widget<FilledButton>(
+              find.widgetWithText(FilledButton, 'Keep this order and trim'),
+            )
+            .onPressed,
+        isNull,
+      );
       for (var p = 0; p < 8; p++) {
         await drag('wire:${order[p]}', find.byKey(ValueKey('wire-pin-$p')));
       }

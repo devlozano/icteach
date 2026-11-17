@@ -49,6 +49,22 @@ void main() {
     }
   });
 
+  test('motherboard screws only follow board placement', () {
+    final steps = PcBuildProcedure.stepsFor('motherboard');
+    final placement = steps.indexWhere((step) => step.place);
+    expect(placement, PcBuildProcedure.placementOperation['motherboard']);
+    expect(
+      steps.take(placement).any((step) => step.tool == PcBuildProcedure.driver),
+      isFalse,
+    );
+    expect(
+      steps
+          .skip(placement + 1)
+          .where((step) => step.tool == PcBuildProcedure.driver),
+      hasLength(9),
+    );
+  });
+
   test('assembly seats every circuit before its functional test', () {
     final steps = PcBuildProcedure.stepsFor('assembly_test');
     final powerOn = steps.indexWhere((step) => step.result.isNotEmpty);
@@ -322,7 +338,30 @@ void main() {
                       ) -
                       tester.getCenter(source),
                 );
+              } else if (step.tool == PcBuildProcedure.driver) {
+                final driver = find.byWidgetPredicate(
+                  (w) => w is Draggable<String> && w.data == 'tool:phillips-2',
+                );
+                await tester.ensureVisible(driver);
+                await tester.pumpAndSettle();
+                await tester.drag(
+                  driver,
+                  tester.getCenter(
+                        find.byKey(const ValueKey('build-screw-target')),
+                      ) -
+                      tester.getCenter(driver),
+                );
               } else {
+                if (step.tool == PcBuildProcedure.hand &&
+                    (item.id == 'cpu' || item.id == 'ram')) {
+                  expect(
+                    find.descendant(
+                      of: find.byKey(const ValueKey('build-hotspot')),
+                      matching: find.byType(Icon),
+                    ),
+                    findsNothing,
+                  );
+                }
                 if (item.category == 'diagnostic' && n == steps.length - 1) {
                   await tester.tap(find.byKey(const ValueKey('build-hotspot')));
                   await tester.pump();
@@ -341,6 +380,32 @@ void main() {
               }
               await tester.pumpAndSettle();
               expect(tester.takeException(), isNull, reason: '${item.id}: $n');
+              if (const bool.fromEnvironment('CAPTURE_BUILD') &&
+                  (item.id == 'cpu' || item.id == 'ram') &&
+                  n == 1) {
+                await tester.runAsync(() async {
+                  for (final visual in tester.widgetList<Image>(
+                    find.byType(Image),
+                  )) {
+                    await precacheImage(
+                      visual.image,
+                      tester.element(find.byType(PcBuildWorkbench)),
+                    );
+                  }
+                  await tester.pump();
+                  final image =
+                      await (capture.currentContext!.findRenderObject()
+                              as RenderRepaintBoundary)
+                          .toImage();
+                  final bytes = await image.toByteData(
+                    format: ui.ImageByteFormat.png,
+                  );
+                  await File(
+                    'build/${item.id}-latch-open-${size.width.toInt()}.png',
+                  ).writeAsBytes(bytes!.buffer.asUint8List());
+                  image.dispose();
+                });
+              }
             }
             expect(completed, contains(item.id));
           }

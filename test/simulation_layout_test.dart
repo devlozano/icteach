@@ -146,6 +146,24 @@ void main() {
           await tester.pumpAndSettle();
           expect(find.textContaining('Strip outer jacket'), findsOneWidget);
           expect(find.byKey(const ValueKey('cable-work-area')), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('rj45-fixed-workbench')),
+            findsOneWidget,
+          );
+          final bench = tester.getRect(
+            find.byKey(const ValueKey('rj45-fixed-workbench')),
+          );
+          final cable = tester.getRect(
+            find.byKey(const ValueKey('cable-work-area')),
+          );
+          expect(bench.left, greaterThanOrEqualTo(0));
+          expect(bench.right, lessThanOrEqualTo(size.width));
+          expect(bench.bottom, lessThanOrEqualTo(size.height));
+          expect(cable.left, greaterThanOrEqualTo(bench.left));
+          expect(cable.right, lessThanOrEqualTo(bench.right + 1));
+          expect(cable.bottom, lessThanOrEqualTo(bench.bottom + 1));
+          expect(cable.width, greaterThan(size.width * .40));
+          expect(cable.height, greaterThan(bench.height * .45));
           expect(tester.takeException(), isNull);
           return;
         }

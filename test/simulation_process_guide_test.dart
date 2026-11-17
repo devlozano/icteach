@@ -4,7 +4,7 @@ import 'package:icteach/data/simulation_data.dart';
 import 'package:icteach/data/guided_setup_data.dart';
 import 'package:icteach/widgets/guided_setup_workbench.dart';
 import 'package:icteach/widgets/simulation_process_guide.dart';
-import 'package:icteach/widgets/rj45_workbench.dart';
+import 'package:icteach/widgets/rj45_procedure_demo.dart';
 
 void main() {
   for (final simulation in SimulationData.getAllSimulations()) {
@@ -35,14 +35,13 @@ void main() {
         return;
       }
       if (simulation.id == 'sim_coc2_crimping') {
-        expect(find.byType(Rj45Workbench), findsOneWidget);
-        expect(find.text('Straight-through'), findsOneWidget);
-        await tester.tap(find.text('Straight-through'));
-        await tester.pumpAndSettle();
+        expect(find.byType(Rj45ProcedureDemo), findsOneWidget);
         expect(
-          find.byKey(const ValueKey('strip-length-ruler')),
+          find.byKey(const ValueKey('rj45-procedure-motion')),
           findsOneWidget,
         );
+        expect(find.text('Measure and strip 30 mm of jacket'), findsOneWidget);
+        expect(find.byType(SingleChildScrollView), findsNothing);
         return;
       }
       await tester.scrollUntilVisible(find.text('Replay demonstration'), 80);
@@ -89,5 +88,30 @@ void main() {
     expect(find.byType(Dialog), findsNothing);
     await tester.tap(find.byTooltip('Close walkthrough'));
     expect(closed, isTrue);
+  });
+
+  testWidgets('RJ45 procedure advances slowly through the proper workflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 650);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: Rj45ProcedureDemo())),
+    );
+    expect(find.text('Measure and strip 30 mm of jacket'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    expect(find.text('Measure and strip 30 mm of jacket'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 3100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('Cut the plastic spline'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Pause demonstration'));
+    await tester.tap(find.byTooltip('Next procedure step'));
+    await tester.pump();
+    expect(find.text('Untwist only the required length'), findsOneWidget);
+    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

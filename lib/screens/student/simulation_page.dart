@@ -261,7 +261,12 @@ class _SimulationPageState extends State<_SimulationSession> {
 
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
-      appBar: _appBar(_simulation!.title),
+      appBar: _simulation!.id == 'sim_coc2_crimping'
+          ? AppBar(
+              toolbarHeight: 36,
+              title: const Text('RJ45', style: TextStyle(fontSize: 15)),
+            )
+          : _appBar(_simulation!.title),
       body: SafeArea(
         top: false,
         child: Padding(

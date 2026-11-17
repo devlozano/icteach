@@ -4,7 +4,7 @@ import '../data/simulation_step_detail.dart';
 import '../models/simulation_model.dart';
 import 'simulation_step_lab.dart';
 import 'guided_setup_workbench.dart';
-import 'rj45_workbench.dart';
+import 'rj45_procedure_demo.dart';
 import '../data/guided_setup_data.dart';
 
 /// Replayable reference; reviewed checkpoints never award assessment credit.
@@ -94,7 +94,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
               ),
             ],
           ),
-          Expanded(child: Rj45Workbench(onComplete: (_, _, _) {})),
+          const Expanded(child: Rj45ProcedureDemo()),
         ],
       );
       if (widget.embedded) return content;
