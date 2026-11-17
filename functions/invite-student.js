@@ -65,19 +65,39 @@ function makeInviteStudentHandler({auth, db, fieldValue, emailjs, logger = conso
       const now = new Date();
       const profileData = {uid: user.uid, email: address, role: 'student', ...names,
         displayName: existing.exists ? (stored.displayName || names.name) : names.name,
-        invitationStatus: 'pending', invitedAt: now, invitedBy: caller.uid};
+        invitationStatus: 'pending', invitedAt: now, invitedBy: caller.uid,
+        invitedClassId: classId, updatedAt: now};
       const batch = db.batch();
       // Uploads must never overwrite an existing school's student identity data.
       if (!existing.exists) {
-        batch.set(profile, profileData, {merge: true});
-        batch.set(db.collection('students').doc(user.uid), profileData, {merge: true});
+        profileData.createdAt = now;
       }
+      batch.set(profile, profileData, {merge: true});
+      batch.set(db.collection('students').doc(user.uid), profileData, {merge: true});
+      batch.set(profile.collection('classes').doc(classId), {
+        classId,
+        className: classSnapshot.data().name || 'Unnamed Class',
+        description: classSnapshot.data().description || '',
+        sectionCode: classSnapshot.data().sectionCode || '',
+        classCode: classSnapshot.data().classCode || '',
+        teacherId: classSnapshot.data().teacherId || '',
+        teacherName: classSnapshot.data().teacherName || 'Unknown Teacher',
+        teacherEmail: classSnapshot.data().teacherEmail || '',
+        schoolYear: classSnapshot.data().schoolYear || '',
+        joinedAt: now,
+        status: 'active',
+      }, {merge: true});
       await batch
         .set(member, {...profileData, classId, notificationSent: false}, {merge: true})
         .update(classroom, {enrolledStudentIds: fieldValue.arrayUnion(user.uid)})
         .commit();
       const setupLink = await auth.generatePasswordResetLink(address);
-      await emailjs.send({toEmail: address, studentName: names.name, setupLink});
+      try {
+        await emailjs.send({toEmail: address, studentName: names.name, setupLink});
+      } catch (error) {
+        logger.error('Student invitation email delivery failed', error);
+        return res.status(502).json({error: 'email-delivery-failed'});
+      }
       await member.set({invitationStatus: 'sent', notificationSent: true, notifiedAt: new Date()}, {merge: true});
       return res.status(200).json({uid: user.uid, email: address, created, notificationSent: true});
     } catch (error) {

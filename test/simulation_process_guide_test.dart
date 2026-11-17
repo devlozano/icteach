@@ -5,6 +5,7 @@ import 'package:icteach/data/guided_setup_data.dart';
 import 'package:icteach/widgets/guided_setup_workbench.dart';
 import 'package:icteach/widgets/simulation_process_guide.dart';
 import 'package:icteach/widgets/rj45_procedure_demo.dart';
+import 'package:icteach/widgets/pc_build_workbench.dart';
 
 void main() {
   for (final simulation in SimulationData.getAllSimulations()) {
@@ -26,6 +27,22 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      if (simulation.id == 'sim_coc1_assembly' ||
+          simulation.id == 'sim_coc1_cabling') {
+        expect(find.byType(PcBuildWorkbench), findsOneWidget);
+        final play = find.byKey(const ValueKey('demonstrate-build-operation'));
+        await tester.ensureVisible(play);
+        await tester.tap(play);
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        expect(
+          find.text(
+            'Operation 2 / ${simulation.id == 'sim_coc1_assembly' ? 11 : 4}',
+          ),
+          simulation.id == 'sim_coc1_assembly' ? findsOneWidget : findsNothing,
+        );
+        return;
+      }
       if (GuidedSetupData.kindForId(simulation.id) != null) {
         expect(find.byType(GuidedSetupWorkbench), findsOneWidget);
         expect(

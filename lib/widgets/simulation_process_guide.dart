@@ -4,6 +4,7 @@ import '../data/simulation_step_detail.dart';
 import '../models/simulation_model.dart';
 import 'simulation_step_lab.dart';
 import 'guided_setup_workbench.dart';
+import 'pc_build_workbench.dart';
 import 'rj45_procedure_demo.dart';
 import '../data/guided_setup_data.dart';
 
@@ -25,6 +26,7 @@ class SimulationProcessGuide extends StatefulWidget {
 class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
   int step = 0, replay = 0;
   final Set<int> checked = {};
+  final Set<String> _demonstratedParts = {};
   final ScrollController _scroll = ScrollController();
   @override
   void dispose() {
@@ -47,6 +49,51 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.simulation.id == 'sim_coc1_assembly' ||
+        widget.simulation.id == 'sim_coc1_cabling') {
+      final content = Column(
+        children: [
+          SizedBox(
+            height: 40,
+            child: Row(
+              children: [
+                const Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      'Guided process • watch one operation at a time • no assessment credit',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Close walkthrough',
+                  onPressed: _close,
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: PcBuildWorkbench(
+              demonstration: true,
+              items: widget.simulation.items,
+              completed: _demonstratedParts,
+              cabling: widget.simulation.id == 'sim_coc1_cabling',
+              onMistake: (_) {},
+              onCompleteStep: (id) {
+                setState(() => _demonstratedParts.add(id));
+                return true;
+              },
+            ),
+          ),
+        ],
+      );
+      return widget.embedded
+          ? content
+          : Dialog(insetPadding: const EdgeInsets.all(8), child: content);
+    }
     final kind = GuidedSetupData.kindForId(widget.simulation.id);
     if (kind != null) {
       final content = Column(

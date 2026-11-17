@@ -1,4 +1,3 @@
-import '../widgets/admin_delete_staff_button.dart';
 import 'create_staff_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -43,11 +42,6 @@ class ManageTeachersPage extends StatelessWidget {
               leading: const CircleAvatar(child: Icon(Icons.person)),
               title: Text(data['name'] ?? data['displayName'] ?? 'Teacher'),
               subtitle: Text(data['email'] ?? ''),
-              trailing: AdminDeleteStaffButton(
-                uid: docs[index].id,
-                role: 'teacher',
-                name: data['name'] ?? data['displayName'] ?? 'teacher',
-              ),
             );
           },
         );

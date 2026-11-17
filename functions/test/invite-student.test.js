@@ -101,6 +101,8 @@ test('CSV invitation creates and enrolls a student and records confirmed deliver
   assert.equal(result.body.notificationSent, true);
   assert.equal(f.created(), 1);
   assert.equal(f.sent[0].studentName, 'Ana Santos');
+  assert.equal(f.store.get('users/student').invitedClassId, 'class');
+  assert.equal(f.store.get('users/student/classes/class').status, 'active');
   assert.equal(f.store.get('classes/class/students/student').notificationSent, true);
   assert.deepEqual(f.store.get('classes/class').enrolledStudentIds, ['student']);
 });
@@ -119,7 +121,12 @@ test('new class invitation preserves existing school-managed identity', async ()
   const f = fixture({profile});
   const result = await f.request({firstName: 'Changed', lastName: 'Upload'});
   assert.equal(result.code, 200);
-  assert.deepEqual(f.store.get('users/student'), profile);
+  const stored = f.store.get('users/student');
+  assert.equal(stored.lrn, profile.lrn);
+  assert.equal(stored.firstName, profile.firstName);
+  assert.equal(stored.lastName, profile.lastName);
+  assert.equal(stored.name, profile.name);
+  assert.equal(stored.invitedClassId, 'class');
   assert.equal(f.sent[0].studentName, 'Existing Name');
   assert.equal(f.store.get('classes/class/students/student').firstName, 'Existing');
 });
@@ -134,7 +141,8 @@ test('existing ordinary class enrollment is skipped by CSV import', async () => 
 test('failed email delivery is not recorded as sent and can be retried', async () => {
   const f = fixture({sendFails: true});
   const failed = await f.request();
-  assert.equal(failed.code, 500);
+  assert.equal(failed.code, 502);
+  assert.equal(failed.body.error, 'email-delivery-failed');
   assert.equal(f.store.get('classes/class/students/student').notificationSent, false);
   f.recover();
   const retried = await f.request();

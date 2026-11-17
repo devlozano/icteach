@@ -151,7 +151,8 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     if (widget.simulation.id == 'sim_coc2_crimping') return;
     _missionTimer?.cancel();
     _missionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && !_isComplete) setState(() => _elapsedSeconds++);
+      if (mounted && !_isComplete && !_showProcedure)
+        setState(() => _elapsedSeconds++);
     });
   }
 
@@ -748,7 +749,9 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showProcedure) {
+    if (_showProcedure &&
+        !(widget.simulation.id == 'sim_coc1_assembly' && _preflightComplete ||
+            widget.simulation.id == 'sim_coc1_cabling')) {
       return SimulationProcessGuide(
         simulation: widget.simulation,
         embedded: true,
@@ -820,9 +823,17 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       );
     }
     if (widget.simulation.id == 'sim_coc1_assembly' && !_preflightComplete) {
-      return LayoutBuilder(
-        builder: (context, size) =>
-            size.maxHeight < 580 ? _compactReadiness(true) : _buildPreflight(),
+      return Column(
+        children: [
+          _buildStatusBar(),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, size) => size.maxHeight < 580
+                  ? _compactReadiness(true)
+                  : _buildPreflight(),
+            ),
+          ),
+        ],
       );
     }
     if (widget.simulation.id == 'sim_coc1_os_install' &&
@@ -838,27 +849,44 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
       return Column(
         children: [
           _buildStatusBar(),
-          const SizedBox(height: 8),
+
           Expanded(
-            child: PcBuildWorkbench(
-              key: ValueKey('build-$_disassemblySession'),
-              items: widget.simulation.items,
-              completed: _placements.keys.toSet(),
-              cabling: widget.simulation.id == 'sim_coc1_cabling',
-              locked: _isComplete,
-              onMistake: (message) => setState(() {
-                _mistakes++;
-                _streak = 0;
-                _errorLog.add('Physical operation: $message');
-              }),
-              onCompleteStep: (id) {
-                final item = widget.simulation.items.firstWhere(
-                  (i) => i.id == id,
-                );
-                _selectedResource = _resourceProfile(item).$1;
-                _handleDrop(id, item.correctSlot, verified: true);
-                return _placements.containsKey(id);
-              },
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: PcBuildWorkbench(
+                    key: ValueKey('build-$_disassemblySession'),
+                    items: widget.simulation.items,
+                    completed: _placements.keys.toSet(),
+                    cabling: widget.simulation.id == 'sim_coc1_cabling',
+                    locked: _isComplete,
+                    onMistake: (message) => setState(() {
+                      _mistakes++;
+                      _streak = 0;
+                      _errorLog.add('Physical operation: $message');
+                    }),
+                    onCompleteStep: (id) {
+                      final item = widget.simulation.items.firstWhere(
+                        (i) => i.id == id,
+                      );
+                      _selectedResource = _resourceProfile(item).$1;
+                      _handleDrop(id, item.correctSlot, verified: true);
+                      return _placements.containsKey(id);
+                    },
+                  ),
+                ),
+                if (_showProcedure)
+                  Positioned.fill(
+                    child: ColoredBox(
+                      color: const Color(0xffF8FAFC),
+                      child: SimulationProcessGuide(
+                        simulation: widget.simulation,
+                        embedded: true,
+                        onClose: () => setState(() => _showProcedure = false),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -1518,11 +1546,32 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
           data: const IconThemeData(color: Color(0xFFBAE6FD)),
           child: Row(
             children: [
-              const Icon(
-                Icons.task_alt_rounded,
-                size: 18,
-                color: Color(0xFF67E8F9),
-              ),
+              if (widget.simulation.id == 'sim_coc1_assembly' ||
+                  widget.simulation.id == 'sim_coc1_cabling') ...[
+                IconButton(
+                  tooltip: 'Back',
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.arrow_back, size: 20),
+                ),
+                if (MediaQuery.sizeOf(context).width >= 800)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: Text(
+                      widget.simulation.id == 'sim_coc1_assembly'
+                          ? 'PC Assembly • COC 1'
+                          : 'PC Wiring • COC 1',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ] else
+                const Icon(
+                  Icons.task_alt_rounded,
+                  size: 18,
+                  color: Color(0xFF67E8F9),
+                ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

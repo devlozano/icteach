@@ -261,16 +261,27 @@ class _SimulationPageState extends State<_SimulationSession> {
 
     return Scaffold(
       backgroundColor: const Color(0xffF8FAFC),
-      appBar: _simulation!.id == 'sim_coc2_crimping'
+      appBar:
+          _simulation!.id == 'sim_coc1_assembly' ||
+              _simulation!.id == 'sim_coc1_cabling'
+          ? null
+          : _simulation!.id == 'sim_coc2_crimping'
           ? AppBar(
               toolbarHeight: 36,
               title: const Text('RJ45', style: TextStyle(fontSize: 15)),
             )
           : _appBar(_simulation!.title),
       body: SafeArea(
-        top: false,
+        top:
+            _simulation!.id == 'sim_coc1_assembly' ||
+            _simulation!.id == 'sim_coc1_cabling',
         child: Padding(
-          padding: const EdgeInsets.all(6),
+          padding: EdgeInsets.all(
+            _simulation!.id == 'sim_coc1_assembly' ||
+                    _simulation!.id == 'sim_coc1_cabling'
+                ? 0
+                : 6,
+          ),
           child: DragDropSimulation(
             practice: widget.practice,
             onFeedback: (errors) => _attemptErrors = errors,

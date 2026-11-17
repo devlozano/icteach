@@ -21,6 +21,11 @@ void main() {
         'role': 'trainer',
         'isActive': false,
       });
+      await db.collection('users').doc('s').set({
+        'name': 'Student Dummy',
+        'role': 'student',
+        'isActive': true,
+      });
       tester.view.physicalSize = const Size(360, 740);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -37,6 +42,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Teacher One'), findsOneWidget);
       expect(find.text('Trainer Two'), findsOneWidget);
+      expect(find.text('Student Dummy'), findsOneWidget);
+      expect(find.byTooltip('Delete account'), findsNothing);
       expect(find.text('All'), findsNWidgets(2));
       await tester.enterText(find.byType(TextField), 'Trainer');
       await tester.pumpAndSettle();

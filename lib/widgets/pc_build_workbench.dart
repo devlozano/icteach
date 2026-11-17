@@ -17,12 +17,13 @@ class PcBuildWorkbench extends StatefulWidget {
     required this.onMistake,
     this.cabling = false,
     this.locked = false,
+    this.demonstration = false,
   });
   final List<DraggableItem> items;
   final Set<String> completed;
   final bool Function(String id) onCompleteStep;
   final ValueChanged<String> onMistake;
-  final bool cabling, locked;
+  final bool cabling, locked, demonstration;
   @override
   State<PcBuildWorkbench> createState() => _PcBuildWorkbenchState();
 }
@@ -149,10 +150,11 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       _busy = true;
       _feedback = null;
     });
-    _motion.duration =
-        !step.place &&
-            step.tool == PcBuildProcedure.hand &&
-            (item.id == 'cpu' || item.id == 'ram')
+    _motion.duration = widget.demonstration
+        ? const Duration(seconds: 3)
+        : !step.place &&
+              step.tool == PcBuildProcedure.hand &&
+              (item.id == 'cpu' || item.id == 'ram')
         ? const Duration(milliseconds: 1800)
         : step.place
         ? PcBuildProcedure.installDuration(item.id)
@@ -229,6 +231,28 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       );
     },
   );
+
+  Future<void> _demonstrate() async {
+    final step = _step;
+    final item = _current;
+    if (step == null || item == null || _busy) return;
+    setState(() {
+      _tool = step.tool;
+      _turns = step.requiredQuarterTurns ?? 0;
+      if (_diagnostic)
+        _record.text =
+            'Guided inspection: verify POST, memory, storage and cable clearance.';
+    });
+    await _act(
+      dropped: step.tool == PcBuildProcedure.driver
+          ? 'tool:phillips-2'
+          : step.dropToken ??
+                (item.id == 'front_panel'
+                    ? PcBuildProcedure.frontPanelDropTokens[_operation] ??
+                          item.id
+                    : item.id),
+    );
+  }
 
   Widget _controls() {
     final item = _current;
@@ -320,6 +344,15 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 12),
+              if (widget.demonstration)
+                FilledButton.icon(
+                  key: const ValueKey('demonstrate-build-operation'),
+                  onPressed: _busy ? null : _demonstrate,
+                  icon: const Icon(Icons.play_arrow),
+                  label: Text(
+                    _busy ? 'Observe the operation...' : 'Show this operation',
+                  ),
+                ),
               DropdownButtonFormField<String>(
                 key: ValueKey('build-tool-${item.id}'),
                 initialValue: _tool,
@@ -355,7 +388,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                 Draggable<String>(
                   data: 'tool:phillips-2',
                   maxSimultaneousDrags: _busy || widget.locked ? 0 : 1,
-                  dragAnchorStrategy: (_, _, _) => const Offset(27, 130.5),
+                  dragAnchorStrategy: (_, _, _) => const Offset(18, 88),
                   onDragStarted: () =>
                       setState(() => _tool = PcBuildProcedure.driver),
                   feedback: _driverAsset(),
@@ -718,14 +751,30 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     );
   }
 
-  Widget _driverAsset() => Image.asset(
-    'assets/simulations/phillips-2-screwdriver.png',
-    width: 54,
-    height: 135,
-    fit: BoxFit.fill,
-    semanticLabel: 'Phillips number 2 screwdriver',
+  Widget _driverAsset() => SizedBox(
+    width: 92,
+    height: 96,
+    child: Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned(
+          left: 0,
+          top: 0,
+          child: Transform.rotate(
+            angle: .55,
+            alignment: Alignment.bottomCenter,
+            child: Image.asset(
+              'assets/simulations/phillips-2-screwdriver.png',
+              width: 36,
+              height: 90,
+              fit: BoxFit.fill,
+              semanticLabel: 'Phillips number 2 screwdriver',
+            ),
+          ),
+        ),
+      ],
+    ),
   );
-
   Widget _part(DraggableItem item, {double size = 100}) => SizedBox(
     width: size,
     height: size,
@@ -766,72 +815,12 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
   }
 
   Widget _scene() => ClipRRect(
-    borderRadius: BorderRadius.circular(12),
+    borderRadius: BorderRadius.circular(8),
     child: ColoredBox(
       color: const Color(0xff101e2b),
-      child: Column(
+      child: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _rearView
-                        ? 'REAR PANEL • EXTERNAL PORTS AND PSU'
-                        : _powered
-                        ? widget.cabling
-                              ? 'WIRING CHECK COMPLETE'
-                              : 'POWER ON • POST MONITOR'
-                        : 'POWER ISOLATED • ESD WORKBENCH',
-                    style: TextStyle(
-                      color: _powered ? Colors.greenAccent : Colors.white70,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  key: const ValueKey('rotate-system-unit'),
-                  tooltip: _rearView
-                      ? 'Rotate to open side'
-                      : 'Rotate to rear panel',
-                  onPressed: _busy
-                      ? null
-                      : () => setState(() {
-                          _rearView = !_rearView;
-                          _zoom.value = Matrix4.identity();
-                        }),
-                  icon: Icon(
-                    _rearView ? Icons.rotate_left : Icons.rotate_right,
-                    color: Colors.cyanAccent,
-                    size: 22,
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Reset workbench zoom',
-                  onPressed: () => _zoom.value = Matrix4.identity(),
-                  icon: const Icon(
-                    Icons.center_focus_strong,
-                    color: Colors.white70,
-                    size: 20,
-                  ),
-                ),
-                IconButton(
-                  key: const ValueKey('workbench-zoom-out'),
-                  tooltip: 'Zoom out',
-                  onPressed: () => _changeZoom(1 / 1.25),
-                  icon: const Icon(Icons.zoom_out, color: Colors.white),
-                ),
-                IconButton(
-                  key: const ValueKey('workbench-zoom-in'),
-                  tooltip: 'Zoom in',
-                  onPressed: () => _changeZoom(1.25),
-                  icon: const Icon(Icons.zoom_in, color: Colors.white),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
+          Positioned.fill(
             child: InteractiveViewer(
               transformationController: _zoom,
               minScale: 1,
@@ -876,34 +865,79 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
               ),
             ),
           ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Material(
+              color: const Color(0xcc101e2b),
+              borderRadius: BorderRadius.circular(8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    key: const ValueKey('rotate-system-unit'),
+                    tooltip: _rearView
+                        ? 'Rotate to open side'
+                        : 'Rotate to rear panel',
+                    onPressed: _busy
+                        ? null
+                        : () => setState(() {
+                            _rearView = !_rearView;
+                            _zoom.value = Matrix4.identity();
+                          }),
+                    icon: Icon(
+                      _rearView ? Icons.rotate_left : Icons.rotate_right,
+                      color: Colors.white,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Reset workbench zoom',
+                    onPressed: () => _zoom.value = Matrix4.identity(),
+                    icon: const Icon(
+                      Icons.center_focus_strong,
+                      color: Colors.white,
+                    ),
+                  ),
+                  IconButton(
+                    key: const ValueKey('workbench-zoom-out'),
+                    tooltip: 'Zoom out',
+                    onPressed: () => _changeZoom(1 / 1.25),
+                    icon: const Icon(Icons.zoom_out, color: Colors.white),
+                  ),
+                  IconButton(
+                    key: const ValueKey('workbench-zoom-in'),
+                    tooltip: 'Zoom in',
+                    onPressed: () => _changeZoom(1.25),
+                    icon: const Icon(Icons.zoom_in, color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
           if (_powered)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(10),
-              color: const Color(0xff07120e),
-              child: Text(
-                _history.lastWhere(
-                  (s) => s.startsWith('POST:') || s.startsWith('CHECK:'),
-                ),
-                style: const TextStyle(
-                  fontFamily: 'monospace',
-                  color: Colors.greenAccent,
-                  fontSize: 12,
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                color: const Color(0xee07120e),
+                child: Text(
+                  _history.lastWhere(
+                    (s) => s.startsWith('POST:') || s.startsWith('CHECK:'),
+                  ),
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    color: Colors.greenAccent,
+                    fontSize: 12,
+                  ),
                 ),
               ),
             ),
-          const Padding(
-            padding: EdgeInsets.all(6),
-            child: Text(
-              'Pinch to inspect • rotate for rear panel • drag connectors to seat',
-              style: TextStyle(color: Colors.white60, fontSize: 10),
-            ),
-          ),
         ],
       ),
     ),
   );
-
   Widget _componentLayer(String id, double progress, bool installing) {
     final asset = 'assets/simulations/${PcBuildProcedure.assets[id]}';
     if (id == 'ssd') {
@@ -1229,8 +1263,8 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                           ),
                           if (_busy)
                             Positioned(
-                              left: -3,
-                              top: -106.5,
+                              left: 6,
+                              top: -64,
                               child: IgnorePointer(
                                 child: Transform(
                                   alignment: Alignment.bottomCenter,
