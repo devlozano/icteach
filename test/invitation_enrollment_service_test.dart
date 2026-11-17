@@ -3,6 +3,31 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/services/invitation_enrollment_service.dart';
 
 void main() {
+  test('removed student does not regain class membership on sign in', () async {
+    final db = FakeFirebaseFirestore();
+    await db.collection('users').doc('student').set({
+      'role': 'student',
+      'email': 'student@gmail.com',
+      'invitedClassId': 'old-class',
+    });
+    await db.collection('classes').doc('old-class').set({
+      'status': 'active',
+      'enrolledStudentIds': <String>[],
+    });
+    expect(
+      await InvitationEnrollmentService.reconcile(
+        firestore: db,
+        uid: 'student',
+        authEmail: 'student@gmail.com',
+      ),
+      false,
+    );
+    expect(
+      (await db.collection('users').doc('student').collection('classes').get())
+          .docs,
+      isEmpty,
+    );
+  });
   test(
     'invited student automatically receives dashboard class membership',
     () async {

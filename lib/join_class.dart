@@ -133,6 +133,7 @@ class _JoinClassPageState extends State<JoinClassPage> {
   }
 
   Future<void> _joinClass() async {
+    if (_isLoading) return;
     final classCode = _classCodeController.text.trim().toUpperCase();
 
     if (classCode.isEmpty) {
@@ -182,80 +183,26 @@ class _JoinClassPageState extends State<JoinClassPage> {
         return;
       }
 
-      // ✅ Get user role from users collection
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      // ✅ If user doesn't exist in users collection, try students collection
-      Map<String, dynamic> userData = {};
-      String userRole = 'student';
-      String userName = user.displayName ?? 'User';
-      String userEmail = user.email ?? '';
-
-      if (userDoc.exists) {
-        userData = userDoc.data() ?? {};
-        userRole = userData['role']?.toString() ?? 'student';
-        userName =
-            userData['name']?.toString() ??
-            userData['displayName']?.toString() ??
-            user.displayName ??
-            'User';
-        userEmail = userData['email']?.toString() ?? user.email ?? '';
-      } else {
-        // ✅ Check if user exists in students collection
-        final studentDoc = await FirebaseFirestore.instance
-            .collection('students')
-            .doc(user.uid)
-            .get();
-
-        if (studentDoc.exists) {
-          final studentData = studentDoc.data() ?? {};
-          userRole = studentData['role']?.toString() ?? 'student';
-          userName =
-              studentData['name']?.toString() ??
-              studentData['displayName']?.toString() ??
-              user.displayName ??
-              'User';
-          userEmail = studentData['email']?.toString() ?? user.email ?? '';
-
-          // ✅ Create user document in users collection
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .set({
-                'uid': user.uid,
-                'name': userName,
-                'displayName': userName,
-                'email': userEmail,
-                'role': userRole,
-                'firstName': studentData['firstName'] ?? '',
-                'middleName': studentData['middleName'] ?? '',
-                'lastName': studentData['lastName'] ?? '',
-                'extension': studentData['extension'] ?? '',
-                'createdAt': FieldValue.serverTimestamp(),
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
-          debugPrint('✅ Created user document from students collection');
-        } else {
-          // ✅ Create minimal user document
-          await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .set({
-                'uid': user.uid,
-                'name': user.displayName ?? 'Student',
-                'displayName': user.displayName ?? 'Student',
-                'email': user.email ?? '',
-                'role': 'student',
-                'createdAt': FieldValue.serverTimestamp(),
-                'updatedAt': FieldValue.serverTimestamp(),
-              });
-          debugPrint('✅ Created minimal user document');
-        }
+      // Profiles are provisioned by teachers; joining never creates an identity.
+      final userData = account.data();
+      if (userData == null || userData['role'] != 'student') {
+        _showMessage(
+          'Ask your teacher to set up your student account before joining.',
+        );
+        return;
       }
-
+      if (userData['isActive'] == false) {
+        _showMessage('Your account is inactive. Please contact your teacher.');
+        return;
+      }
+      const userRole = 'student';
+      final userName =
+          (userData['name'] ??
+                  userData['displayName'] ??
+                  user.displayName ??
+                  'Student')
+              .toString();
+      final userEmail = (userData['email'] ?? user.email ?? '').toString();
       // ✅ Check if user already has a class (only for students, not trainers)
       if (userRole != 'trainer') {
         final existingClasses = await FirebaseFirestore.instance
@@ -270,8 +217,13 @@ class _JoinClassPageState extends State<JoinClassPage> {
               .collection('classes')
               .doc(membership.id)
               .get();
-          if (previous.exists && previous.data()?['status'] != 'archived')
+          if (previous.exists &&
+              previous.data()?['status'] != 'archived' &&
+              (previous.data()?['enrolledStudentIds'] as List? ?? []).contains(
+                user.uid,
+              )) {
             hasActiveClass = true;
+          }
         }
         if (hasActiveClass) {
           _showMessage(
@@ -302,64 +254,56 @@ class _JoinClassPageState extends State<JoinClassPage> {
       debugPrint('👤 User role: $userRole');
       debugPrint('📚 Class: $className');
 
-      // ✅ STEP 1: Add user to class's students subcollection
-      await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(classId)
-          .collection('students')
-          .doc(user.uid)
-          .set({
-            'uid': user.uid,
-            'name': userName,
-            'email': userEmail,
-            'role': userRole,
-            'joinedAt': FieldValue.serverTimestamp(),
-            'status': 'active',
-          });
-
-      debugPrint('✅ Added user to class subcollection with role: $userRole');
+      final db = FirebaseFirestore.instance;
+      final batch = db.batch();
+      // STEP 1: Add user to class's students subcollection
+      batch.set(
+        db
+            .collection('classes')
+            .doc(classId)
+            .collection('students')
+            .doc(user.uid),
+        {
+          'uid': user.uid,
+          'name': userName,
+          'email': userEmail,
+          'role': userRole,
+          'joinedAt': FieldValue.serverTimestamp(),
+          'status': 'active',
+        },
+      );
 
       // ✅ STEP 2: Update enrolledStudentIds array in class document
-      await classDoc.reference.update({
+      batch.update(classDoc.reference, {
         'enrolledStudentIds': FieldValue.arrayUnion([user.uid]),
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
-      debugPrint('✅ Updated enrolledStudentIds array');
-
       // ✅ STEP 3: Store ALL class data in user's subcollection
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('classes')
-          .doc(classId)
-          .set({
-            'classId': classId,
-            'className': className,
-            'description': description,
-            'sectionCode': sectionCode,
-            'classCode': classCodeValue,
-            'teacherId': teacherId,
-            'teacherName': teacherName,
-            'teacherEmail': teacherEmail,
-            'schoolYear': schoolYear,
-            'joinedAt': FieldValue.serverTimestamp(),
-            'status': 'active',
-          });
-
-      debugPrint('✅ Added class to user\'s subcollection');
+      batch.set(
+        db.collection('users').doc(user.uid).collection('classes').doc(classId),
+        {
+          'classId': classId,
+          'className': className,
+          'description': description,
+          'sectionCode': sectionCode,
+          'classCode': classCodeValue,
+          'teacherId': teacherId,
+          'teacherName': teacherName,
+          'teacherEmail': teacherEmail,
+          'schoolYear': schoolYear,
+          'joinedAt': FieldValue.serverTimestamp(),
+          'status': 'active',
+        },
+      );
 
       // ✅ STEP 4: Update the user's main document with class info
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .update({
-            'currentClassId': classId,
-            'currentClassName': className,
-            'currentTeacherName': teacherName,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-      debugPrint('✅ Updated user main document');
+      batch.update(db.collection('users').doc(user.uid), {
+        'currentClassId': classId,
+        'currentClassName': className,
+        'currentTeacherName': teacherName,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
 
       // ✅ STEP 5: Also update students collection if it exists
       final studentDocCheck = await FirebaseFirestore.instance
@@ -368,17 +312,16 @@ class _JoinClassPageState extends State<JoinClassPage> {
           .get();
 
       if (studentDocCheck.exists) {
-        await FirebaseFirestore.instance
-            .collection('students')
-            .doc(user.uid)
-            .update({
-              'currentClassId': classId,
-              'currentClassName': className,
-              'currentTeacherName': teacherName,
-              'updatedAt': FieldValue.serverTimestamp(),
-            });
-        debugPrint('✅ Updated students collection');
+        batch.update(db.collection('students').doc(user.uid), {
+          'currentClassId': classId,
+          'currentClassName': className,
+          'currentTeacherName': teacherName,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
       }
+
+      await batch.commit();
+      debugPrint('Class enrollment committed successfully.');
 
       if (!mounted) return;
 

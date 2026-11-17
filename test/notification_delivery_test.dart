@@ -167,8 +167,19 @@ void main() {
 
   test('legacy forum notification resolves class through its post', () async {
     final db = FakeFirebaseFirestore();
+    await db.collection('users').doc('student').set({'role': 'student'});
+    await db.collection('classes').doc('unrelated').set({
+      'enrolledStudentIds': [],
+    });
+    await db
+        .collection('classes')
+        .doc('unrelated')
+        .collection('forum_posts')
+        .doc('other-post')
+        .set({'title': 'Old post', 'classId': 'unrelated'});
     await db.collection('classes').doc('legacy-class').set({
       'name': 'Legacy Class',
+      'enrolledStudentIds': ['student'],
     });
     await db
         .collection('classes')
@@ -182,12 +193,19 @@ void main() {
       'title': 'New Forum Post: Old post',
       'referenceId': '',
     });
-    final service = NotificationService(firestore: db);
+    final service = NotificationService(
+      firestore: db,
+      currentUserId: () => 'student',
+    );
     final notification = NotificationModel.fromFirestore(
       await db.collection('notifications').doc('legacy-forum').get(),
     );
 
     expect(await service.resolveClassId(notification), 'legacy-class');
+    await db.collection('classes').doc('legacy-class').update({
+      'enrolledStudentIds': [],
+    });
+    expect(await service.resolveClassId(notification), isNull);
   });
   test('delivery splits large classes into batches', () async {
     final db = FakeFirebaseFirestore();

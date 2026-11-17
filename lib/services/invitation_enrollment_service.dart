@@ -50,9 +50,7 @@ class InvitationEnrollmentService {
 
     final classroom = firestore.collection('classes').doc(classId);
     final member = classroom.collection('students').doc(uid);
-    final snapshots = await Future.wait([classroom.get(), member.get()]);
-    final classSnapshot = snapshots[0];
-    final memberSnapshot = snapshots[1];
+    final classSnapshot = await classroom.get();
     final classData = classSnapshot.data();
     if (classData == null || classData['status'] == 'archived') {
       throw const InvitationEnrollmentException(
@@ -62,7 +60,10 @@ class InvitationEnrollmentService {
     final enrolledIds = List<String>.from(
       classData['enrolledStudentIds'] ?? const <String>[],
     );
-    if (!memberSnapshot.exists || !enrolledIds.contains(uid)) {
+    // A removed student cannot read the private roster anymore.
+    if (!enrolledIds.contains(uid)) return false;
+    final memberSnapshot = await member.get();
+    if (!memberSnapshot.exists) {
       throw const InvitationEnrollmentException(
         'Your invitation is incomplete. Ask your teacher to resend it.',
       );

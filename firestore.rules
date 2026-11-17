@@ -266,6 +266,7 @@ service cloud.firestore {
       let before = resource.data.get('enrolledStudentIds', []);
       let after = request.resource.data.enrolledStudentIds;
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true
         && resource.data.status == 'active'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledStudentIds', 'updatedAt'])
         && after is list && after.size() <= 1000
@@ -284,6 +285,26 @@ service cloud.firestore {
             'description', 'enrolledStudentIds', 'studentCount', 'pendingReviews', 'updatedAt']))
         || studentJoinsSelf());
       allow delete: if canAdmin();
+      match /students/{studentId} {
+        allow create, update: if request.auth != null
+          && request.auth.uid == studentId
+          && get(/databases/$(database)/documents/users/$(studentId)).data.role == 'student'
+          && get(/databases/$(database)/documents/users/$(studentId)).data.get('isActive', true) == true
+          && get(/databases/$(database)/documents/classes/$(classId)).data.status == 'active'
+          && studentId in getAfter(/databases/$(database)/documents/classes/$(classId)).data.enrolledStudentIds
+          && getAfter(/databases/$(database)/documents/users/$(studentId)/classes/$(classId)).data.classCode
+            == get(/databases/$(database)/documents/classes/$(classId)).data.classCode
+          && request.resource.data.keys().hasOnly(['uid', 'name', 'email', 'role', 'joinedAt', 'status'])
+          && request.resource.data.uid == studentId
+          && request.resource.data.role == 'student'
+          && request.resource.data.name is string && request.resource.data.name.size() <= 200
+          && request.resource.data.email == get(/databases/$(database)/documents/users/$(studentId)).data.email
+          && request.resource.data.status == 'active'
+          && request.resource.data.joinedAt == request.time;
+        allow delete: if request.auth != null && request.auth.uid == studentId
+          && get(/databases/$(database)/documents/users/$(studentId)).data.role == 'student'
+          && !(studentId in getAfter(/databases/$(database)/documents/classes/$(classId)).data.enrolledStudentIds);
+      }
       match /forum_posts/{document=**} {
         allow read, write: if classParticipant(classId);
       }

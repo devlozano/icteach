@@ -27,6 +27,7 @@ class ClassRosterPage extends StatefulWidget {
 class _ClassRosterPageState extends State<ClassRosterPage> {
   String _classCode = '';
   bool _canInvite = false;
+  bool _canEditAccounts = false;
   String _teacherName = '';
   bool _isLoading = true;
   List<Map<String, dynamic>> _students = [];
@@ -57,6 +58,9 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                   .get();
         if (data != null && mounted) {
           setState(() {
+            _canEditAccounts =
+                profile?.data()?['role'] == 'admin' &&
+                profile?.data()?['isActive'] != false;
             _canInvite =
                 uid != null &&
                 data['teacherId'] == uid &&
@@ -942,38 +946,46 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
           overflow: TextOverflow.ellipsis,
           style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
         ),
-        trailing: PopupMenuButton(
-          icon: const Icon(Icons.more_vert),
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: "edit",
-              child: Row(
-                children: [
-                  Icon(Icons.edit, size: 18, color: Color(0xFF428DEB)),
-                  SizedBox(width: 8),
-                  Text("Edit"),
+        trailing: !_canEditAccounts && (!_canInvite || isTrainer)
+            ? null
+            : PopupMenuButton(
+                icon: const Icon(Icons.more_vert),
+                itemBuilder: (context) => [
+                  if (_canEditAccounts)
+                    const PopupMenuItem(
+                      value: "edit",
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18, color: Color(0xFF428DEB)),
+                          SizedBox(width: 8),
+                          Text("Edit"),
+                        ],
+                      ),
+                    ),
+                  if (!isTrainer && (_canInvite || _canEditAccounts))
+                    const PopupMenuItem(
+                      value: "delete",
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: Colors.red,
+                          ),
+                          SizedBox(width: 8),
+                          Text("Remove"),
+                        ],
+                      ),
+                    ),
                 ],
+                onSelected: (value) {
+                  if (value == "edit") {
+                    editStudent(context, userId, data);
+                  } else if (value == "delete") {
+                    deleteStudent(context, userId);
+                  }
+                },
               ),
-            ),
-            const PopupMenuItem(
-              value: "delete",
-              child: Row(
-                children: [
-                  Icon(Icons.delete_outline, size: 18, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text("Remove"),
-                ],
-              ),
-            ),
-          ],
-          onSelected: (value) {
-            if (value == "edit") {
-              editStudent(context, userId, data);
-            } else if (value == "delete") {
-              deleteStudent(context, userId);
-            }
-          },
-        ),
       ),
     );
   }

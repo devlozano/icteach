@@ -564,19 +564,21 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
     if (user == null || _userRole != 'student') return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(widget.classId)
-          .update({
-            'enrolledStudentIds': FieldValue.arrayRemove([user.uid]),
-          });
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .collection('classes')
-          .doc(widget.classId)
-          .delete();
+      final db = FirebaseFirestore.instance;
+      final batch = db.batch();
+      final classroom = db.collection('classes').doc(widget.classId);
+      batch.update(classroom, {
+        'enrolledStudentIds': FieldValue.arrayRemove([user.uid]),
+      });
+      batch.delete(classroom.collection('students').doc(user.uid));
+      batch.delete(
+        db
+            .collection('users')
+            .doc(user.uid)
+            .collection('classes')
+            .doc(widget.classId),
+      );
+      await batch.commit();
 
       if (!mounted) return;
 

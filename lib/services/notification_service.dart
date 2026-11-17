@@ -265,8 +265,20 @@ class NotificationService {
         : notification.title.substring(separator + 1).trim();
     if (postTitle.isEmpty) return null;
 
+    final uid = _currentUserId();
+    if (uid == null) return null;
+    final profile = (await _firestore.collection('users').doc(uid).get())
+        .data();
+    if (profile == null || profile['isActive'] == false) return null;
     final classes = await _firestore.collection('classes').get();
     for (final classroom in classes.docs) {
+      final data = classroom.data();
+      if (profile['role'] != 'admin' &&
+          data['teacherId'] != uid &&
+          !(data['trainerIds'] as List? ?? []).contains(uid) &&
+          !(data['enrolledStudentIds'] as List? ?? []).contains(uid)) {
+        continue;
+      }
       final posts = await classroom.reference
           .collection('forum_posts')
           .where('title', isEqualTo: postTitle)
