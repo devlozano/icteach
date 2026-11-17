@@ -258,7 +258,11 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
 
       if (enrolledIds.isEmpty) {
         print('⚠️ No enrolled users found');
-        setState(() => _isLoading = false);
+        setState(() {
+          _students = [];
+          _trainers = [];
+          _isLoading = false;
+        });
         return;
       }
 
