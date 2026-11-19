@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../data/simulation_data.dart';
+import '../../data/interactive_quizzes.dart';
+import '../../models/quiz_model.dart';
 import '../../models/simulation_model.dart' as simulation_models;
 import '../../services/content_access_service.dart';
 import '../../services/learning_path_service.dart';
@@ -32,18 +34,33 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                   .where('isPublished', isEqualTo: true)
                   .get())
               .docs;
+      final quizDocs = await root.collection('quizzes').get();
       final quizzes =
-          (await root
-                  .collection('quizzes')
-                  .where('isPublished', isEqualTo: true)
-                  .get())
-              .docs
-              .where((q) => (q.data()['questions'] as List? ?? []).isNotEmpty)
+          InteractiveQuizzes.merge(
+                widget.classId,
+                quizDocs.docs.map((doc) => QuizModel.fromFirestore(doc)),
+              )
+              .where(
+                (q) =>
+                    q.isPublished &&
+                    (q.questions.isNotEmpty ||
+                        InteractiveQuizzes.activity(widget.classId, q.id) !=
+                            null),
+              )
               .toList();
       final ref = root
           .collection('learning_paths')
           .doc(LearningPathService.key(type, id));
-      final old = (await ref.get()).data();
+      var old = (await ref.get()).data();
+      final migrated = InteractiveQuizzes.activity(widget.classId, id);
+      if (old == null && migrated != null) {
+        old =
+            (await root
+                    .collection('learning_paths')
+                    .doc(LearningPathService.key('simulation', migrated.id))
+                    .get())
+                .data();
+      }
       String? moduleId = old?['moduleId'];
       String? quizId = old?['quizId'];
       if (!modules.any((m) => m.id == moduleId)) moduleId = null;
@@ -99,7 +116,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                               (q) => DropdownMenuItem(
                                 value: q.id,
                                 child: Text(
-                                  q.data()['title'] ?? q.id,
+                                  q.title,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
@@ -228,6 +245,21 @@ class _LearningPathManagerState extends State<LearningPathManager> {
               ),
               const SizedBox(height: 12),
             ],
+            _PathSection(
+              title: 'Interactive quiz lesson references',
+              icon: Icons.touch_app_outlined,
+              count: 4,
+              children: [
+                for (final quiz in InteractiveQuizzes.forClass(widget.classId))
+                  _PathItem(
+                    icon: Icons.quiz_outlined,
+                    title: quiz.title,
+                    subtitle: 'Portrait procedure quiz',
+                    actionLabel: 'Assign module',
+                    onTap: () => _edit('quiz', quiz.id, quiz.title),
+                  ),
+              ],
+            ),
             StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
               stream: FirebaseFirestore.instance
                   .collection('classes')
@@ -248,7 +280,13 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                     loading: true,
                   );
                 }
-                final quizzes = snapshot.data!.docs;
+                final quizzes = snapshot.data!.docs
+                    .where(
+                      (q) =>
+                          InteractiveQuizzes.activity(widget.classId, q.id) ==
+                          null,
+                    )
+                    .toList();
                 return _PathSection(
                   title: 'Quiz lesson references',
                   icon: Icons.quiz_outlined,

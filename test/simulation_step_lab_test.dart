@@ -12,7 +12,7 @@ void main() {
       final catalog = SimulationData.getAllSimulations();
       final ids = catalog.map((s) => s.id).toSet();
       expect(ids.length, catalog.length);
-      expect(ids, hasLength(10));
+      expect(ids, hasLength(6));
       expect(ids, isNot(contains('sim_coc1_identification')));
       expect(ids, isNot(contains('sim_coc1_motherboard')));
       expect(

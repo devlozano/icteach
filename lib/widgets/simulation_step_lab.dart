@@ -12,10 +12,12 @@ class SimulationStepLab extends StatefulWidget {
     required this.simulation,
     required this.item,
     this.onMistake,
+    this.onComplete,
   });
   final Simulation simulation;
   final DraggableItem item;
   final ValueChanged<String>? onMistake;
+  final VoidCallback? onComplete;
   @override
   State<SimulationStepLab> createState() => _SimulationStepLabState();
 }
@@ -126,256 +128,264 @@ class _SimulationStepLabState extends State<SimulationStepLab>
             'Fault identified. Repeat the final operation and inspect the new result.';
       });
     } else {
-      Navigator.pop(context, true);
+      if (widget.onComplete != null) {
+        widget.onComplete!();
+      } else {
+        Navigator.pop(context, true);
+      }
     }
   }
 
   @override
-  Widget build(BuildContext context) => Dialog(
-    insetPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 820),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.item.name,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+  Widget build(BuildContext context) => widget.onComplete != null
+      ? _body(context)
+      : Dialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
+          child: _body(context),
+        );
+
+  Widget _body(BuildContext context) => ConstrainedBox(
+    constraints: const BoxConstraints(maxWidth: 820),
+    child: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.item.name,
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
+              ),
+              if (widget.onComplete == null)
                 IconButton(
                   tooltip: 'Cancel operation',
                   onPressed: () => Navigator.pop(context, false),
                   icon: const Icon(Icons.close),
                 ),
-              ],
-            ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Training workbench • Perform, observe, then verify.'),
+              const SizedBox(height: 8),
+              LinearProgressIndicator(value: _action / _detail.actions.length),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Training workbench • Perform, observe, then verify.',
+                SimulationOperationScene(
+                  simulation: widget.simulation,
+                  item: widget.item,
+                  motion: _motion,
+                  action: _action,
+                  total: _detail.actions.length,
+                  fault: _finished && _fault,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _finished
+                      ? 'Inspect the result'
+                      : 'Operation ${_action + 1} of ${_detail.actions.length}',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: _action / _detail.actions.length,
+                SimulationDescriptionSection(
+                  title: _finished ? 'Verification' : 'What to do',
+                  text: _finished
+                      ? 'Acceptance criterion: ${_detail.expected}'
+                      : _detail.actions[_action],
+                ),
+                if (_action == 0 && _decision != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Service evidence',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(_decision!.evidence),
+                  const SizedBox(height: 8),
+                  for (
+                    var index = 0;
+                    index < _decision!.options.length;
+                    index++
+                  )
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: OutlinedButton.icon(
+                        key: ValueKey('service-choice-$index'),
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() => _decisionChoice = index),
+                        icon: Icon(
+                          _decisionChoice == index
+                              ? Icons.radio_button_checked
+                              : Icons.radio_button_unchecked,
+                        ),
+                        label: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(_decision!.options[index]),
+                        ),
+                      ),
+                    ),
+                ],
+                if (_alignsHardware && _action == 2) ...[
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Align the component key with the center marker before seating.',
+                  ),
+                  Center(
+                    child: Transform.rotate(
+                      angle: (_alignment - .5) * 1.8,
+                      child: const Icon(Icons.memory, size: 42),
+                    ),
+                  ),
+                  Slider(
+                    key: const ValueKey('component-alignment'),
+                    value: _alignment,
+                    divisions: 20,
+                    label: '${(_alignment * 100).round()}%',
+                    onChanged: _busy
+                        ? null
+                        : (value) => setState(() => _alignment = value),
+                  ),
+                  const Center(
+                    child: Text(
+                      '▲ Correct alignment',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ],
+                if (_ip && _action == 1) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const ValueKey('ipv4-address'),
+                    controller: _address,
+                    enabled: !_busy,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'IPv4 address',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const ValueKey('ipv4-mask'),
+                    controller: _mask,
+                    enabled: !_busy,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Subnet mask',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+                if (_finished) ...[
+                  const SizedBox(height: 12),
+                  Semantics(
+                    liveRegion: true,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        'Observed in this training run: ${_fault ? _detail.fault : _detail.expected}',
+                      ),
+                    ),
+                  ),
+                ],
+                if (_feedback != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(
+                        _feedback!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 12),
+                if (!_finished)
+                  FilledButton.icon(
+                    key: const ValueKey('perform-operation'),
+                    onPressed: _busy ? null : _perform,
+                    icon: Icon(_busy ? Icons.hourglass_top : Icons.touch_app),
+                    label: Text(
+                      _busy
+                          ? 'Operation in progress…'
+                          : _ip && _action == 1
+                          ? 'Apply configuration'
+                          : 'Perform operation',
+                    ),
+                  ),
+                if (_finished)
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(
+                        key: const ValueKey('rework-operation'),
+                        onPressed: () => _verify(false),
+                        icon: const Icon(Icons.build_outlined),
+                        label: const Text('Fault found • rework'),
+                      ),
+                      FilledButton.icon(
+                        key: const ValueKey('accept-operation'),
+                        onPressed: () => _verify(true),
+                        icon: const Icon(Icons.fact_check_outlined),
+                        label: const Text('Check passes • complete step'),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 16),
+                ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: const Text('Procedure and operation log'),
+                  children: [
+                    for (var i = 0; i < _detail.actions.length; i++)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          i < _action
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          color: i < _action ? Colors.green : null,
+                        ),
+                        title: Text('${i + 1}. ${_detail.actions[i]}'),
+                      ),
+                  ],
                 ),
               ],
             ),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SimulationOperationScene(
-                    simulation: widget.simulation,
-                    item: widget.item,
-                    motion: _motion,
-                    action: _action,
-                    total: _detail.actions.length,
-                    fault: _finished && _fault,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    _finished
-                        ? 'Inspect the result'
-                        : 'Operation ${_action + 1} of ${_detail.actions.length}',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  SimulationDescriptionSection(
-                    title: _finished ? 'Verification' : 'What to do',
-                    text: _finished
-                        ? 'Acceptance criterion: ${_detail.expected}'
-                        : _detail.actions[_action],
-                  ),
-                  if (_action == 0 && _decision != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      'Service evidence',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(_decision!.evidence),
-                    const SizedBox(height: 8),
-                    for (
-                      var index = 0;
-                      index < _decision!.options.length;
-                      index++
-                    )
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: OutlinedButton.icon(
-                          key: ValueKey('service-choice-$index'),
-                          onPressed: _busy
-                              ? null
-                              : () => setState(() => _decisionChoice = index),
-                          icon: Icon(
-                            _decisionChoice == index
-                                ? Icons.radio_button_checked
-                                : Icons.radio_button_unchecked,
-                          ),
-                          label: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(_decision!.options[index]),
-                          ),
-                        ),
-                      ),
-                  ],
-                  if (_alignsHardware && _action == 2) ...[
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Align the component key with the center marker before seating.',
-                    ),
-                    Center(
-                      child: Transform.rotate(
-                        angle: (_alignment - .5) * 1.8,
-                        child: const Icon(Icons.memory, size: 42),
-                      ),
-                    ),
-                    Slider(
-                      key: const ValueKey('component-alignment'),
-                      value: _alignment,
-                      divisions: 20,
-                      label: '${(_alignment * 100).round()}%',
-                      onChanged: _busy
-                          ? null
-                          : (value) => setState(() => _alignment = value),
-                    ),
-                    const Center(
-                      child: Text(
-                        '▲ Correct alignment',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ],
-                  if (_ip && _action == 1) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      key: const ValueKey('ipv4-address'),
-                      controller: _address,
-                      enabled: !_busy,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'IPv4 address',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextField(
-                      key: const ValueKey('ipv4-mask'),
-                      controller: _mask,
-                      enabled: !_busy,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: const InputDecoration(
-                        labelText: 'Subnet mask',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ],
-                  if (_finished) ...[
-                    const SizedBox(height: 12),
-                    Semantics(
-                      liveRegion: true,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'Observed in this training run: ${_fault ? _detail.fault : _detail.expected}',
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (_feedback != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Semantics(
-                        liveRegion: true,
-                        child: Text(
-                          _feedback!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  const SizedBox(height: 12),
-                  if (!_finished)
-                    FilledButton.icon(
-                      key: const ValueKey('perform-operation'),
-                      onPressed: _busy ? null : _perform,
-                      icon: Icon(_busy ? Icons.hourglass_top : Icons.touch_app),
-                      label: Text(
-                        _busy
-                            ? 'Operation in progress…'
-                            : _ip && _action == 1
-                            ? 'Apply configuration'
-                            : 'Perform operation',
-                      ),
-                    ),
-                  if (_finished)
-                    Wrap(
-                      spacing: 12,
-                      runSpacing: 8,
-                      children: [
-                        OutlinedButton.icon(
-                          key: const ValueKey('rework-operation'),
-                          onPressed: () => _verify(false),
-                          icon: const Icon(Icons.build_outlined),
-                          label: const Text('Fault found • rework'),
-                        ),
-                        FilledButton.icon(
-                          key: const ValueKey('accept-operation'),
-                          onPressed: () => _verify(true),
-                          icon: const Icon(Icons.fact_check_outlined),
-                          label: const Text('Check passes • complete step'),
-                        ),
-                      ],
-                    ),
-                  const SizedBox(height: 16),
-                  ExpansionTile(
-                    tilePadding: EdgeInsets.zero,
-                    title: const Text('Procedure and operation log'),
-                    children: [
-                      for (var i = 0; i < _detail.actions.length; i++)
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: Icon(
-                            i < _action
-                                ? Icons.check_circle
-                                : Icons.radio_button_unchecked,
-                            color: i < _action ? Colors.green : null,
-                          ),
-                          title: Text('${i + 1}. ${_detail.actions[i]}'),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     ),
   );
 }

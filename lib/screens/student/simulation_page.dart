@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../data/simulation_data.dart';
+import '../../data/interactive_quizzes.dart';
+import 'interactive_quiz_page.dart';
 import '../../models/simulation_model.dart' as sim_models;
 import '../../widgets/drag_drop_simulation.dart';
 import '../../widgets/content_access_gate.dart';
@@ -30,6 +32,13 @@ class SimulationPage extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
+    if (SimulationData.quizActivityIds.contains(simulationId)) {
+      return InteractiveQuizPage(
+        quiz: InteractiveQuizzes.forClass(classId).firstWhere(
+          (quiz) => quiz.id == InteractiveQuizzes.idFor(classId, simulationId),
+        ),
+      );
+    }
     if (SimulationData.retiredSimulationIds.contains(simulationId)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Simulation unavailable')),

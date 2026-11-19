@@ -9,8 +9,10 @@ class GuidedSetupWorkbench extends StatefulWidget {
     required this.kind,
     required this.onComplete,
     this.onFeedback,
+    this.quiz = false,
   });
   final SetupLabKind kind;
+  final bool quiz;
   final void Function(int score, int total, bool passed) onComplete;
   final ValueChanged<List<String>>? onFeedback;
   @override
@@ -1163,7 +1165,7 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
                   const SizedBox(height: 6),
                   Text(
                     _done
-                        ? 'Practical complete • ${_log.length} operations verified'
+                        ? '${widget.quiz ? "Quiz" : "Practical"} complete • ${_log.length} operations verified'
                         : 'Step ${_step + 1} of ${_steps.length} • ${_steps[_step].$1}',
                     style: const TextStyle(
                       fontSize: 16,

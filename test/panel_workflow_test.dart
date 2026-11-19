@@ -8,7 +8,10 @@ import 'package:icteach/screens/teacher/learning_path_manager.dart';
 
 void main() {
   test('active practical labs are available for lesson linking', () {
-    final ids = SimulationData.getAllSimulations().map((s) => s.id).toSet();
+    final ids = [
+      ...SimulationData.getAllSimulations(),
+      ...SimulationData.getQuizActivities(),
+    ].map((s) => s.id).toSet();
     for (final keyword in [
       'assembly',
       'cabling',

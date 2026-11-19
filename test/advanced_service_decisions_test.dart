@@ -17,6 +17,7 @@ void main() {
         // Keep legacy decision coverage alongside the newer guided setup tests.
         final simulation = [
           ...SimulationData.getAllSimulations(),
+          SimulationData.getConnectivityDiagnostics(),
           SimulationData.getLegacyOperatingSystemInstallation(),
           SimulationData.getLegacySoftwareConfiguration(),
         ].singleWhere((s) => s.items.any((i) => i.correctSlot == slot));

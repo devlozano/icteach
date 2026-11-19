@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/interactive_quizzes.dart';
 import '../../models/quiz_model.dart';
 import '../../services/quiz_service.dart';
 import 'create_quiz_page.dart';
@@ -397,7 +398,10 @@ class _QuizCard extends StatelessWidget {
                       runSpacing: 2,
                       children: [
                         Text(
-                          '${quiz.questions.length} Qs',
+                          InteractiveQuizzes.activity(quiz.classId, quiz.id) !=
+                                  null
+                              ? 'Interactive • Portrait'
+                              : '${quiz.questions.length} Qs',
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontSize: 12,
@@ -516,29 +520,33 @@ class _QuizCard extends StatelessWidget {
                     ),
                     visualDensity: VisualDensity.compact,
                   ),
-                  IconButton(
-                    onPressed: onEdit,
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    tooltip: 'Edit',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
+                  if (InteractiveQuizzes.activity(quiz.classId, quiz.id) ==
+                      null)
+                    IconButton(
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      tooltip: 'Edit',
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      visualDensity: VisualDensity.compact,
                     ),
-                    visualDensity: VisualDensity.compact,
-                  ),
-                  IconButton(
-                    onPressed: onDelete,
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    tooltip: 'Delete',
-                    color: Colors.red,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 28,
-                      minHeight: 28,
+                  if (InteractiveQuizzes.activity(quiz.classId, quiz.id) ==
+                      null)
+                    IconButton(
+                      onPressed: onDelete,
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      tooltip: 'Delete',
+                      color: Colors.red,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 28,
+                        minHeight: 28,
+                      ),
+                      visualDensity: VisualDensity.compact,
                     ),
-                    visualDensity: VisualDensity.compact,
-                  ),
                 ],
               ),
             ],

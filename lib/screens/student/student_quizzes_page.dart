@@ -7,6 +7,8 @@ import '../../services/quiz_service.dart';
 import 'take_quiz_page.dart';
 import 'quiz_results_page.dart';
 import '../../widgets/motherboard_identification.dart';
+import '../../data/interactive_quizzes.dart';
+import 'interactive_quiz_page.dart';
 
 class StudentQuizzesPage extends StatefulWidget {
   final String classId;
@@ -116,7 +118,10 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TakeQuizPage(classId: widget.classId, quiz: quiz),
+        builder: (context) =>
+            InteractiveQuizzes.activity(widget.classId, quiz.id) != null
+            ? InteractiveQuizPage(quiz: quiz)
+            : TakeQuizPage(classId: widget.classId, quiz: quiz),
       ),
     );
   }
@@ -484,7 +489,13 @@ class _QuizCardState extends State<_QuizCard> {
                       ],
                     ),
                     Text(
-                      '${widget.quiz.questions.length} questions • ${widget.quiz.totalPoints} points',
+                      InteractiveQuizzes.activity(
+                                widget.quiz.classId,
+                                widget.quiz.id,
+                              ) !=
+                              null
+                          ? 'Interactive procedure • Portrait • ${widget.quiz.totalPoints} points'
+                          : '${widget.quiz.questions.length} questions • ${widget.quiz.totalPoints} points',
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 13,

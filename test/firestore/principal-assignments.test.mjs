@@ -6,7 +6,7 @@ let env;
 before(async()=>{env=await initializeTestEnvironment({projectId:'demo-icteach-principal',firestore:{host:'127.0.0.1',port:8188,rules:readFileSync(new URL('../../firestore.rules',import.meta.url),'utf8')}})});
 after(async()=>{await env?.cleanup()});
 const user=id=>env.authenticatedContext(id).firestore();
-const classroom=()=>({name:'CSS',sectionCode:'A',teacherId:'teacher',schoolYear:'2026-2027',status:'active',enrolledStudentIds:['student'],trainerIds:[],createdBy:'principal'});
+const classroom=()=>({name:'CSS',sectionCode:'A',classCode:'ABC123',teacherId:'teacher',schoolYear:'2026-2027',status:'active',enrolledStudentIds:['student'],trainerIds:[],createdBy:'principal'});
 beforeEach(async()=>{await env.clearFirestore();await env.withSecurityRulesDisabled(async c=>{
  for(const [id,role] of Object.entries({principal:'admin',teacher:'teacher',other:'teacher',trainer:'trainer',student:'student',outsider:'student'})) await setDoc(doc(c.firestore(),'users',id),{role,isActive:true});
  await setDoc(doc(c.firestore(),'classes/class'),classroom());
@@ -30,8 +30,8 @@ test('trainer memberships are principal-only even for own account',async()=>{
 });
 test('teacher roster and invited student memberships continue working',async()=>{
  await assertSucceeds(updateDoc(doc(user('teacher'),'classes/class'),{enrolledStudentIds:['student','outsider']}));
- await assertSucceeds(setDoc(doc(user('student'),'users/student/classes/class'),{classId:'class',teacherId:'teacher'}));
- await assertFails(setDoc(doc(user('outsider'),'users/student/classes/class'),{classId:'class',teacherId:'teacher'}));
+ await assertSucceeds(setDoc(doc(user('student'),'users/student/classes/class'),{classId:'class',classCode:'ABC123',teacherId:'teacher'}));
+ await assertFails(setDoc(doc(user('outsider'),'users/student/classes/class'),{classId:'class',classCode:'ABC123',teacherId:'teacher'}));
 });
 test('unauthorized class participant access is blocked',async()=>{
  await assertFails(setDoc(doc(user('outsider'),'classes/class/modules/new'),{title:'Unassigned'}));
@@ -57,4 +57,10 @@ test('invalid principal class data is rejected',async()=>{
 test('self profile cannot grant principal role or reactivate an account',async()=>{
  await assertFails(updateDoc(doc(user('teacher'),'users/teacher'),{role:'admin'}));
  await assertFails(updateDoc(doc(user('teacher'),'users/teacher'),{isActive:false}));
+});
+test('only principal can change global school settings',async()=>{
+ await assertSucceeds(setDoc(doc(user('principal'),'system_settings/academic_year'),{startYear:2026,endYear:2027}));
+ await assertSucceeds(setDoc(doc(user('principal'),'settings/school_profile'),{name:'Cuyapo National High School'}));
+ await assertFails(setDoc(doc(user('student'),'system_settings/academic_year'),{startYear:2099,endYear:2100}));
+ await assertFails(setDoc(doc(user('teacher'),'settings/school_profile'),{name:'Hijacked'}));
 });

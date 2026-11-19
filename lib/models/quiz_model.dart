@@ -189,6 +189,7 @@ class Question {
 
 // Quiz Result Model
 class QuizResult {
+  final double passingPercentage;
   final String quizId;
   final String classId; // ✅ ADDED
   final String studentId;
@@ -200,6 +201,7 @@ class QuizResult {
   final int timeSpent; // in seconds
 
   QuizResult({
+    this.passingPercentage = 60,
     required this.quizId,
     required this.classId, // ✅ ADDED
     required this.studentId,
@@ -214,6 +216,7 @@ class QuizResult {
   factory QuizResult.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data()!;
     return QuizResult(
+      passingPercentage: (data['passingPercentage'] as num?)?.toDouble() ?? 60,
       quizId: data['quizId'] ?? '',
       classId: data['classId'] ?? '', // ✅ ADDED
       studentId: data['studentId'] ?? '',
@@ -234,6 +237,7 @@ class QuizResult {
   Map<String, dynamic> toFirestore() {
     return {
       'quizId': quizId,
+      if (passingPercentage != 60) 'passingPercentage': passingPercentage,
       'classId': classId, // ✅ ADDED
       'studentId': studentId,
       'studentName': studentName,
@@ -257,7 +261,7 @@ class QuizResult {
   }
 
   double get percentage => totalPoints > 0 ? (score / totalPoints) * 100 : 0;
-  bool get isPassed => percentage >= 60;
+  bool get isPassed => percentage >= passingPercentage;
 }
 
 class UserAnswer {

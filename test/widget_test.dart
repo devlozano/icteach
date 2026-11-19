@@ -15,6 +15,6 @@ void main() {
     expect(simulations.any((sim) => sim.id == 'sim_coc1_assembly'), isTrue);
     expect(simulations.any((sim) => sim.id == 'sim_coc1_disassembly'), isTrue);
     expect(simulations.any((sim) => sim.id == 'sim_coc2_crimping'), isTrue);
-    expect(simulations.any((sim) => sim.id == 'sim_coc2_ipconfig'), isTrue);
+    expect(simulations.any((sim) => sim.id == 'sim_coc2_ipconfig'), isFalse);
   });
 }

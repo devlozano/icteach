@@ -1,4 +1,5 @@
 import 'workspace_data.dart';
+import '../data/interactive_quizzes.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'learning_path_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -20,9 +21,10 @@ class QuizService {
             includeMetadataChanges: true,
           ) // ✅ Include metadata for offline
           .map((snapshot) {
-            final quizzes = snapshot.docs
-                .map((doc) => QuizModel.fromFirestore(doc))
-                .toList();
+            final quizzes = InteractiveQuizzes.merge(
+              classId,
+              snapshot.docs.map((doc) => QuizModel.fromFirestore(doc)).toList(),
+            );
             quizzes.sort((a, b) => b.createdAt.compareTo(a.createdAt));
             return quizzes;
           }),
@@ -37,14 +39,14 @@ class QuizService {
           .collection('classes')
           .doc(classId)
           .collection('quizzes')
-          .where('isPublished', isEqualTo: true)
           .snapshots(
             includeMetadataChanges: true,
           ) // ✅ Include metadata for offline
           .map((snapshot) {
-            final quizzes = snapshot.docs
-                .map((doc) => QuizModel.fromFirestore(doc))
-                .toList();
+            final quizzes = InteractiveQuizzes.merge(
+              classId,
+              snapshot.docs.map((doc) => QuizModel.fromFirestore(doc)).toList(),
+            ).where((quiz) => quiz.isPublished).toList();
             quizzes.sort((a, b) => a.createdAt.compareTo(b.createdAt));
             return quizzes;
           }),
@@ -103,6 +105,13 @@ class QuizService {
         .doc(quizId)
         .get();
 
+    final builtIn = InteractiveQuizzes.forClass(
+      classId,
+    ).where((q) => q.id == quizId).firstOrNull;
+    if (builtIn != null)
+      return builtIn.copyWith(
+        isPublished: doc.data()?['isPublished'] as bool? ?? true,
+      );
     if (doc.exists) {
       return QuizModel.fromFirestore(doc);
     }
@@ -118,7 +127,9 @@ class QuizService {
     await LearningPathService.requireActive(classId);
     if (isPublished) {
       final quiz = await getQuiz(classId, quizId);
-      if (quiz == null || quiz.questions.isEmpty) {
+      if (quiz == null ||
+          (quiz.questions.isEmpty &&
+              InteractiveQuizzes.activity(classId, quizId) == null)) {
         throw StateError('Add questions before publishing a quiz.');
       }
     }
@@ -127,10 +138,10 @@ class QuizService {
         .doc(classId)
         .collection('quizzes')
         .doc(quizId)
-        .update({
+        .set({
           'isPublished': isPublished,
           'updatedAt': FieldValue.serverTimestamp(),
-        });
+        }, SetOptions(merge: true));
   }
 
   // Check if student has already taken a quiz

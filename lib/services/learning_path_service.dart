@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../data/interactive_quizzes.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 /// Practice records deliberately never enter quiz_results or simulation_progress.
@@ -117,7 +118,11 @@ class LearningPathService {
         firestore: db,
         studentId: FirebaseAuth.instance.currentUser!.uid,
       );
-      if (quiz?['isPublished'] != true || !theoryDone) {
+      if ((quiz?['isPublished'] ??
+                  (InteractiveQuizzes.activity(classId, path['quizId']) !=
+                      null)) !=
+              true ||
+          !theoryDone) {
         throw StateError('Complete the published theory quiz first.');
       }
     }
@@ -133,6 +138,7 @@ class LearningPathService {
   }) async {
     final db = firestore ?? FirebaseFirestore.instance;
     await requireActive(classId, firestore: db, userId: studentId);
+    final interactive = InteractiveQuizzes.activity(classId, quizId);
     final quiz =
         (await db
                 .collection('classes')
@@ -141,20 +147,28 @@ class LearningPathService {
                 .doc(quizId)
                 .get())
             .data();
-    if (quiz?['isPublished'] != true) {
+    if ((quiz?['isPublished'] ?? (interactive != null)) != true) {
       throw StateError(
         'This quiz is not published. Ask your teacher to publish it.',
       );
     }
-    if ((quiz?['questions'] as List? ?? []).isEmpty) {
+    if (interactive == null && (quiz?['questions'] as List? ?? []).isEmpty) {
       throw StateError(
         'This quiz has no questions yet. Ask your teacher to add questions.',
       );
     }
     final root = db.collection('classes').doc(classId);
-    final path =
+    var path =
         (await root.collection('learning_paths').doc(key('quiz', quizId)).get())
             .data();
+    if (path == null && interactive != null) {
+      path =
+          (await root
+                  .collection('learning_paths')
+                  .doc(key('simulation', interactive.id))
+                  .get())
+              .data();
+    }
     final moduleId = path?['moduleId']?.toString();
     if (moduleId == null || moduleId.isEmpty) {
       throw StateError(
@@ -186,8 +200,12 @@ class LearningPathService {
       if (lock['isLocked'] == true &&
           (lock['contentType'] == 'quiz' ||
               lock['contentType'] == 'practice' ||
+              (interactive != null &&
+                  lock['contentType'] == 'simulation' &&
+                  lock['contentId'] == interactive.id) ||
               lock['contentType'] == 'module') &&
           (lock['contentId'] == quizId ||
+              (interactive != null && lock['contentId'] == interactive.id) ||
               lock['contentId'] == moduleId ||
               lock['contentId'] == '*')) {
         throw StateError('Your teacher/trainer has locked this quiz.');

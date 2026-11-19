@@ -3,6 +3,19 @@ import 'motherboard_parts.dart';
 import 'guided_setup_data.dart';
 
 class SimulationData {
+  static const quizActivityIds = {
+    'sim_coc2_ipconfig',
+    'sim_coc2_diagnostics',
+    'sim_coc1_os_install',
+    'sim_coc1_software_config',
+  };
+
+  static List<Simulation> getQuizActivities() => [
+    getIpConfiguration(),
+    getConnectivityDiagnostics(),
+    getOperatingSystemInstallation(),
+    getSoftwareConfiguration(),
+  ];
   // Retired from this project's COC1–COC2 scope. Historical results are retained.
   static const retiredSimulationIds = {
     'sim_coc1_maintenance',
@@ -969,13 +982,9 @@ class SimulationData {
     getPcAssembly(),
     getPcDisassembly(),
     getCableManagement(),
-    getOperatingSystemInstallation(),
-    getSoftwareConfiguration(),
     getNetworkConfiguration(),
     getNetworkTopology(),
     getRj45Crimping(),
-    getIpConfiguration(),
-    getConnectivityDiagnostics(),
   ];
 
   static Simulation getMotherboardIdentification() => _simulation(
@@ -1007,6 +1016,9 @@ class SimulationData {
       getAllSimulations().where((sim) => sim.competency == competency).toList();
 
   static Simulation? getSimulationById(String id) {
+    for (final activity in getQuizActivities()) {
+      if (activity.id == id) return activity;
+    }
     // Historical links remain readable; the redundant activity is retired from the catalog.
     if (id == 'sim_coc1_motherboard') return getMotherboardIdentification();
     if (id == 'sim_coc1_identification') return getHardwareIdentification();

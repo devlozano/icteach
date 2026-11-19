@@ -83,6 +83,30 @@ test('student cannot write roster without final enrollment and matching membersh
     uid: 'student', name: 'student', email: 'student@example.test', role: 'student', status: 'active', joinedAt: serverTimestamp(),
   }));
 });
+test('student cannot add themselves by changing only the public class roster', async () => {
+  await assertFails(updateDoc(doc(dbFor('student'), 'classes/class'), {
+    enrolledStudentIds: arrayUnion('student'), updatedAt: serverTimestamp(),
+  }));
+});
+test('student cannot forge another user membership or nested progress', async () => {
+  await assertFails(setDoc(doc(dbFor('student'), 'users/other/classes/class'), {
+    classId: 'class', classCode: 'ABC123', status: 'active',
+  }));
+  await assertFails(setDoc(doc(dbFor('student'), 'users/other/module_progress/lesson'), {
+    classId: 'class', completed: true,
+  }));
+  await assertFails(setDoc(doc(dbFor('student'), 'students/other/progress/lesson'), {
+    completed: true,
+  }));
+});
+test('quiz results are owner-only and immutable', async () => {
+  const result = {quizId: 'quiz', classId: 'class', studentId: 'student', score: 8, totalPoints: 10};
+  await assertSucceeds(setDoc(doc(dbFor('student'), 'users/student/quiz_results/quiz'), result));
+  await assertSucceeds(setDoc(doc(dbFor('student'), 'quiz_results/quiz_student'), result));
+  await assertFails(updateDoc(doc(dbFor('student'), 'users/student/quiz_results/quiz'), {score: 10}));
+  await assertFails(updateDoc(doc(dbFor('student'), 'quiz_results/quiz_student'), {score: 10}));
+  await assertFails(setDoc(doc(dbFor('other'), 'quiz_results/quiz_student'), {...result, score: 10}));
+});
 test('teacher/trainer content management and principal read-only content remain supported', async () => {
   for (const uid of ['teacher', 'trainer']) {
     for (const type of ['modules', 'quizzes', 'assignments']) {

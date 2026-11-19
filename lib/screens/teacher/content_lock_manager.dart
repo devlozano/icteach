@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../data/interactive_quizzes.dart';
 import '../../data/simulation_data.dart';
 import '../../services/content_access_service.dart';
 
@@ -200,6 +201,11 @@ class _ContentLockManagerState extends State<ContentLockManager> {
                     'quiz' => 'All quizzes & assessments',
                     _ => 'All practical simulations',
                   }, records),
+                  if (type == 'quiz')
+                    for (final quiz in InteractiveQuizzes.forClass(
+                      widget.classId,
+                    ))
+                      _tile(type, quiz.id, quiz.title, records),
                   if (type == 'simulation')
                     for (final sim in SimulationData.getAllSimulations())
                       _tile(
@@ -233,6 +239,15 @@ class _ContentLockManagerState extends State<ContentLockManager> {
                         }
                         return Column(
                           children: content.data!.docs
+                              .where(
+                                (d) =>
+                                    type != 'quiz' ||
+                                    InteractiveQuizzes.activity(
+                                          widget.classId,
+                                          d.id,
+                                        ) ==
+                                        null,
+                              )
                               .map(
                                 (d) => _tile(
                                   type,

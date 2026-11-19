@@ -1,4 +1,6 @@
 import '../../services/assessment_order.dart';
+import '../../data/interactive_quizzes.dart';
+import 'interactive_quiz_page.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -15,18 +17,21 @@ class TakeQuizPage extends StatelessWidget {
   final QuizModel quiz;
   const TakeQuizPage({super.key, required this.classId, required this.quiz});
   @override
-  Widget build(BuildContext context) => ContentAccessGate(
-    classId: classId,
-    contentType: 'quiz',
-    contentId: quiz.id,
-    builder: (_) => ActivityPreparationGate(
-      classId: classId,
-      type: 'quiz',
-      contentId: quiz.id,
-      title: quiz.title,
-      sessionBuilder: (_) => _QuizSession(classId: classId, quiz: quiz),
-    ),
-  );
+  Widget build(BuildContext context) =>
+      InteractiveQuizzes.activity(classId, quiz.id) != null
+      ? InteractiveQuizPage(quiz: quiz)
+      : ContentAccessGate(
+          classId: classId,
+          contentType: 'quiz',
+          contentId: quiz.id,
+          builder: (_) => ActivityPreparationGate(
+            classId: classId,
+            type: 'quiz',
+            contentId: quiz.id,
+            title: quiz.title,
+            sessionBuilder: (_) => _QuizSession(classId: classId, quiz: quiz),
+          ),
+        );
 }
 
 class _QuizSession extends StatefulWidget {

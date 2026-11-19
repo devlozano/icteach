@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../models/quiz_model.dart';
+import '../data/interactive_quizzes.dart';
 import '../screens/student/module_view_page.dart';
 import '../screens/student/take_quiz_page.dart';
 import '../services/learning_path_service.dart';
@@ -129,8 +130,13 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
     var theoryDone = widget.type != 'simulation';
     if (widget.type == 'simulation' && path['quizId'] != null) {
       final doc = await root.collection('quizzes').doc(path['quizId']).get();
+      final builtIn = InteractiveQuizzes.forClass(
+        widget.classId,
+      ).where((q) => q.id == path['quizId']).firstOrNull;
+      if (builtIn != null && doc.data()?['isPublished'] != false)
+        quiz = builtIn;
       if (doc.exists && doc.data()?['isPublished'] == true) {
-        quiz = QuizModel.fromFirestore(doc);
+        quiz ??= QuizModel.fromFirestore(doc);
       }
       theoryDone = await LearningPathService.hasCompletedQuiz(
         widget.classId,
@@ -142,7 +148,10 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
     return {
       'configured':
           widget.type != 'simulation' ||
-          (quiz != null && quiz.questions.isNotEmpty),
+          (quiz != null &&
+              (quiz.questions.isNotEmpty ||
+                  InteractiveQuizzes.activity(widget.classId, quiz.id) !=
+                      null)),
       'module': module.data()?['title'] ?? 'Required lesson',
       'learned': learned,
       'practiced': practiced,
