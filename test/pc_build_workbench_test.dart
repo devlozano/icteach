@@ -65,18 +65,16 @@ void main() {
     );
   });
 
-  test('assembly seats every circuit before its functional test', () {
-    final steps = PcBuildProcedure.stepsFor('assembly_test');
-    final powerOn = steps.indexWhere((step) => step.result.isNotEmpty);
-    final seated = steps
-        .take(powerOn)
-        .where((step) => step.place)
-        .map((step) => step.dropToken)
-        .toSet();
+  test('wiring procedure seats every circuit before final verification', () {
+    final seated = {
+      for (final id in PcBuildProcedure.connectionSequence)
+        for (final step in PcBuildProcedure.stepsFor(id))
+          if (step.place) step.dropToken,
+    };
     expect(seated, containsAll(PcBuildProcedure.requiredConnections));
     expect(seated, hasLength(13));
     expect(
-      steps.where((step) => step.dropToken?.startsWith('front_') == true),
+      seated.where((token) => token?.startsWith('front_') == true),
       hasLength(4),
     );
   });
@@ -141,8 +139,8 @@ void main() {
     );
   });
 
-  test('final cable test requires external leads before power-on', () {
-    final operations = PcBuildProcedure.operations['cable_inspection']!;
+  test('final functional test connects external leads before power-on', () {
+    final operations = PcBuildProcedure.operations['assembly_test']!;
     expect(
       operations
           .where((operation) => operation.place)
@@ -156,6 +154,27 @@ void main() {
             operation.label.contains('case power button'),
       ),
       isTrue,
+    );
+  });
+
+  test('final assembly verification does not repeat installed wiring', () {
+    final operations = PcBuildProcedure.stepsFor('assembly_test');
+    expect(operations, hasLength(6));
+    expect(
+      operations
+          .where((operation) => operation.place)
+          .map((operation) => operation.dropToken),
+      orderedEquals(['test_display', 'test_keyboard', 'test_mains']),
+    );
+    expect(
+      operations.map((operation) => operation.label).join(' ').toLowerCase(),
+      isNot(contains('seat the')),
+    );
+    expect(
+      PcBuildProcedure.stepsFor(
+        'cable_inspection',
+      ).where((operation) => operation.dropToken != null),
+      isEmpty,
     );
   });
 
@@ -362,7 +381,9 @@ void main() {
                     findsNothing,
                   );
                 }
-                if (item.category == 'diagnostic' && n == steps.length - 1) {
+                if (item.category == 'diagnostic' &&
+                    n == steps.length - 1 &&
+                    step.label.toLowerCase().startsWith('record')) {
                   await tester.tap(find.byKey(const ValueKey('build-hotspot')));
                   await tester.pump();
                   expect(completed, isNot(contains(item.id)));

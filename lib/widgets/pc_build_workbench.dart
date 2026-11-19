@@ -140,6 +140,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     }
     if (_diagnostic &&
         _operation == _steps.length - 1 &&
+        step.label.toLowerCase().startsWith('record') &&
         _record.text.trim().length < 12) {
       _mistake(
         'Enter a service record describing the observed POST and inspection result.',
@@ -187,7 +188,9 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
           'POST: CPU and memory detected; CPU fan running; SATA SSD detected; display and keyboard responding; POWER SW, RESET SW, HDD LED and POWER LED circuits passed.',
         );
       }
-      if (_diagnostic && _operation == _steps.length - 1) {
+      if (_diagnostic &&
+          _operation == _steps.length - 1 &&
+          step.label.toLowerCase().startsWith('record')) {
         _history.add('Service record: ${_record.text.trim()}');
       }
       _operation++;
@@ -518,7 +521,9 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                     ),
                   ),
               ],
-              if (_diagnostic && _powered) ...[
+              if (_diagnostic &&
+                  (_powered ||
+                      step.label.toLowerCase().startsWith('record'))) ...[
                 const SizedBox(height: 8),
                 TextField(
                   key: const ValueKey('build-service-record'),
@@ -641,7 +646,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       const Text(
-        'F_PANEL LEADS â€” match label, wire color and pin pair',
+        'F_PANEL LEADS — match label, wire color and pin pair',
         style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
       ),
       const SizedBox(height: 6),
@@ -794,6 +799,24 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       ],
     ),
   );
+
+  /// Keep the bit seated on the screw while the handle turns under pressure.
+  /// A slight axial press and changing handle width reads as a wrist turn in
+  /// 2D without spinning the entire screwdriver photograph like a flat card.
+  Widget _driverAction(double progress) {
+    final cycle = math.sin(progress * math.pi * 8);
+    final press = (1 - math.cos(progress * math.pi * 8)) / 2;
+    return Transform.translate(
+      key: const ValueKey('driver-action'),
+      offset: Offset(2.6 * press, 4.3 * press),
+      child: Transform(
+        alignment: Alignment.bottomCenter,
+        transform: Matrix4.diagonal3Values(1 - cycle.abs() * .07, 1, 1),
+        child: _driverAsset(),
+      ),
+    );
+  }
+
   Widget _part(DraggableItem item, {double size = 100}) => SizedBox(
     width: size,
     height: size,
@@ -1253,25 +1276,21 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
-                          const Center(
+                          Center(
                             child: SizedBox(
                               width: 18,
                               height: 18,
-                              child: _FastenerSprite(index: 0),
+                              child: Transform.rotate(
+                                angle: _busy ? t * math.pi * 4 : 0,
+                                child: const _FastenerSprite(index: 0),
+                              ),
                             ),
                           ),
                           if (_busy)
                             Positioned(
                               left: 6,
                               top: -64,
-                              child: IgnorePointer(
-                                child: Transform(
-                                  alignment: Alignment.bottomCenter,
-                                  transform: Matrix4.identity()
-                                    ..rotateY(t * math.pi * 4),
-                                  child: _driverAsset(),
-                                ),
-                              ),
+                              child: IgnorePointer(child: _driverAction(t)),
                             ),
                         ],
                       ),

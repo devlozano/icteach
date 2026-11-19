@@ -31,10 +31,10 @@ class PcBuildProcedure {
     5: 'front_power_led',
   };
   static const frontPanelLeadNames = <String, String>{
-    'front_power_sw': 'POWER SW â€¢ blue/white â€¢ pins 6/8',
-    'front_reset_sw': 'RESET SW â€¢ orange/white â€¢ pins 5/7',
-    'front_hdd_led': 'HDD LED â€¢ red + / white âˆ’ â€¢ pins 1/3',
-    'front_power_led': 'POWER LED â€¢ green + / white âˆ’ â€¢ pins 2/4',
+    'front_power_sw': 'POWER SW • blue/white • pins 6/8',
+    'front_reset_sw': 'RESET SW • orange/white • pins 5/7',
+    'front_hdd_led': 'HDD LED • red + / white − • pins 1/3',
+    'front_power_led': 'POWER LED • green + / white − • pins 2/4',
   };
   static const connectorNames = <String, String>{
     'atx_24pin_plug': '24-pin ATX plug • motherboard main power',
@@ -195,11 +195,11 @@ class PcBuildProcedure {
     'front_panel',
     'cable_inspection',
   ];
-  static List<PcBuildOperation> stepsFor(String? id) => id == 'assembly_test'
-      ? [for (final key in wiringSequence) ...operations[key]!]
-      : operations[id] ?? const [];
+  static const connectionSequence = [...wiringSequence, 'assembly_test'];
+  static List<PcBuildOperation> stepsFor(String? id) =>
+      operations[id] ?? const [];
   static Set<String> get requiredConnections => {
-    for (final key in wiringSequence)
+    for (final key in connectionSequence)
       for (final step in operations[key]!)
         if (step.dropToken != null) step.dropToken!,
   };
@@ -449,54 +449,43 @@ class PcBuildProcedure {
     ],
     'assembly_test': [
       PcBuildOperation(
-        'Seat the keyed 24-pin ATX motherboard lead',
+        'Drag the display cable into the graphics output',
         hand,
-        Offset(.501, .338),
+        Offset(.785, .26),
+        place: true,
+        dropToken: 'test_display',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
-        'Seat the EPS 4+4 CPU lead; never substitute PCIe 6+2',
+        'Drag the keyboard USB plug into a rear USB port',
         hand,
-        Offset(.326, .187),
+        Offset(.785, .32),
+        place: true,
+        dropToken: 'test_keyboard',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
-        'Seat the PCIe 6+2 lead on the graphics card',
+        'Connect the IEC mains lead to the PSU inlet',
         hand,
-        Offset(.455, .58),
+        Offset(.785, .82),
+        place: true,
+        dropToken: 'test_mains',
+        requiredQuarterTurns: 0,
       ),
       PcBuildOperation(
-        'Connect the SSD SATA data lead to the motherboard',
-        hand,
-        Offset(.635, .315),
-      ),
-      PcBuildOperation(
-        'Connect the separate 15-pin SATA power lead to the SSD',
-        hand,
-        Offset(.675, .315),
-      ),
-      PcBuildOperation(
-        'Connect PWR_SW to the kit header pins 6 and 8',
-        hand,
-        Offset(.49, .68),
-      ),
-      PcBuildOperation(
-        'Inspect for loose screws, open latches and cables touching fans',
-        inspect,
-        Offset(.42, .45),
-      ),
-      PcBuildOperation(
-        'Connect the monitor to the GPU and attach the keyboard',
-        hand,
-        Offset(.24, .62),
-      ),
-      PcBuildOperation(
-        'Connect mains, switch PSU ON, then press the case power button',
+        'Switch the PSU ON and press the case power button',
         hand,
         Offset(.77, .14),
         result:
-            'POST: CPU detected • DDR4 memory detected • SATA SSD detected • CPU fan running',
+            'CHECK: power and reset switches respond • fans unobstructed • SSD detected',
       ),
       PcBuildOperation(
-        'Read firmware hardware detection and record the test result',
+        'Open firmware hardware information and verify CPU, DDR4 memory, and SATA SSD detection',
+        hand,
+        Offset(.74, .29),
+      ),
+      PcBuildOperation(
+        'Record the final POST and hardware-detection result',
         inspect,
         Offset(.42, .45),
       ),
@@ -631,7 +620,7 @@ class PcBuildProcedure {
     ],
     'front_panel': [
       PcBuildOperation(
-        'Read the training board header: HDD_LED 1+/3−, PWR_LED 2+/4−, RESET 5/7, PWR_SW 6/8',
+        'Read the training board header: HDD LED 1+/3−, POWER LED 2+/4−, RESET SW 5/7, POWER SW 6/8',
         inspect,
         Offset(.49, .68),
       ),
@@ -688,38 +677,7 @@ class PcBuildProcedure {
         Offset(.40, .34),
       ),
       PcBuildOperation(
-        'Drag the display cable into the graphics output',
-        hand,
-        Offset(.785, .26),
-        place: true,
-        dropToken: 'test_display',
-        requiredQuarterTurns: 0,
-      ),
-      PcBuildOperation(
-        'Drag the keyboard USB plug into a rear USB port',
-        hand,
-        Offset(.785, .32),
-        place: true,
-        dropToken: 'test_keyboard',
-        requiredQuarterTurns: 0,
-      ),
-      PcBuildOperation(
-        'Connect the IEC mains lead to the PSU inlet',
-        hand,
-        Offset(.785, .82),
-        place: true,
-        dropToken: 'test_mains',
-        requiredQuarterTurns: 0,
-      ),
-      PcBuildOperation(
-        'Switch the PSU ON and press the case power button',
-        hand,
-        Offset(.77, .14),
-        result:
-            'CHECK: power and reset switches respond • fans unobstructed • SSD detected',
-      ),
-      PcBuildOperation(
-        'Record the inspection and functional-test result',
+        'Confirm front-panel polarity and close the side panel without pinching a cable',
         inspect,
         Offset(.42, .45),
       ),
