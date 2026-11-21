@@ -151,8 +151,9 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     if (widget.simulation.id == 'sim_coc2_crimping') return;
     _missionTimer?.cancel();
     _missionTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && !_isComplete && !_showProcedure)
+      if (mounted && !_isComplete && !_showProcedure) {
         setState(() => _elapsedSeconds++);
+      }
     });
   }
 
@@ -751,7 +752,8 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   Widget build(BuildContext context) {
     if (_showProcedure &&
         !(widget.simulation.id == 'sim_coc1_assembly' && _preflightComplete ||
-            widget.simulation.id == 'sim_coc1_cabling')) {
+            widget.simulation.id == 'sim_coc1_cabling' ||
+            widget.simulation.id == 'sim_coc2_crimping')) {
       return SimulationProcessGuide(
         simulation: widget.simulation,
         embedded: true,
@@ -779,17 +781,20 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
             child: Rj45Workbench(
               onComplete: widget.onComplete,
               onFeedback: widget.onFeedback,
+              onShowGuide: () => setState(() => _showProcedure = true),
             ),
           ),
-          Positioned(
-            top: 0,
-            right: 144,
-            child: IconButton(
-              tooltip: 'Animated procedure',
-              icon: const Icon(Icons.play_circle_outline),
-              onPressed: () => setState(() => _showProcedure = true),
+          if (_showProcedure)
+            Positioned.fill(
+              child: ColoredBox(
+                color: const Color(0xFFF3F7FA),
+                child: SimulationProcessGuide(
+                  simulation: widget.simulation,
+                  embedded: true,
+                  onClose: () => setState(() => _showProcedure = false),
+                ),
+              ),
             ),
-          ),
         ],
       );
     }

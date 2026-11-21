@@ -6,8 +6,8 @@ import 'package:icteach/widgets/rj45_art.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   test('every RJ45 asset exists and decodes at usable resolution', () async {
-    expect(Rj45Art.paths.length, 20);
-    expect(Rj45Art.paths.toSet().length, 20);
+    expect(Rj45Art.paths.length, 22);
+    expect(Rj45Art.paths.toSet().length, 22);
     for (final path in Rj45Art.paths) {
       final file = File(path);
       expect(file.existsSync(), isTrue, reason: path);

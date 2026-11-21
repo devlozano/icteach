@@ -10,7 +10,13 @@ import 'rj45_test_result.dart';
 class Rj45Workbench extends StatefulWidget {
   final void Function(int, int, bool) onComplete;
   final ValueChanged<List<String>>? onFeedback;
-  const Rj45Workbench({super.key, required this.onComplete, this.onFeedback});
+  final VoidCallback? onShowGuide;
+  const Rj45Workbench({
+    super.key,
+    required this.onComplete,
+    this.onFeedback,
+    this.onShowGuide,
+  });
   @override
   State<Rj45Workbench> createState() => _Rj45WorkbenchState();
 }
@@ -86,62 +92,267 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
       ],
     ),
   );
-  @override
-  Widget build(BuildContext context) {
-    if (session == null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'RJ45 cable workshop',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Prepare and terminate both ends. Test your own wiring.',
-              ),
-              const SizedBox(height: 16),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
+
+  Widget _landscapeLanding(bool compact) => ColoredBox(
+    color: const Color(0xFFE8F0F5),
+    child: LayoutBuilder(
+      builder: (context, bounds) {
+        if (bounds.maxWidth < bounds.maxHeight) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final kind in CableKind.values)
-                    FilledButton(
-                      onPressed: () =>
-                          setState(() => session = Rj45Session(kind)),
-                      child: Text(
-                        kind == CableKind.straight
-                            ? 'Straight-through'
-                            : 'Crossover (10/100)',
-                      ),
+                  Icon(
+                    Icons.screen_rotation_rounded,
+                    size: 48,
+                    color: Color(0xFF0E7490),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Rotate to landscape',
+                    style: TextStyle(
+                      color: Color(0xFF10283F),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
                     ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'The wider workbench gives the cable, tools, and RJ45 channels enough space.',
+                    textAlign: TextAlign.center,
+                  ),
                 ],
+              ),
+            ),
+          );
+        }
+        final choices = [
+          _cableChoice(
+            CableKind.straight,
+            'Straight-through',
+            'Same wiring standard on both ends',
+            'T568A → T568A  or  T568B → T568B',
+            Icons.sync_alt_rounded,
+            compact: compact,
+          ),
+          _cableChoice(
+            CableKind.crossover,
+            'Crossover (10/100)',
+            'Different wiring standard on each end',
+            'T568A → T568B',
+            Icons.compare_arrows_rounded,
+            compact: compact,
+          ),
+        ];
+        return Padding(
+          padding: EdgeInsets.all(compact ? 8 : 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                flex: 4,
+                child: Container(
+                  padding: EdgeInsets.all(compact ? 16 : 24),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0B2539), Color(0xFF0E6670)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x26102D49),
+                        blurRadius: 22,
+                        offset: Offset(0, 10),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: compact ? 42 : 54,
+                        height: compact ? 42 : 54,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: .12),
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: const Icon(
+                          Icons.cable_rounded,
+                          color: Color(0xFF67E8F9),
+                          size: 30,
+                        ),
+                      ),
+                      SizedBox(height: compact ? 10 : 16),
+                      Text(
+                        'RJ45 CABLE\nWORKSHOP',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: compact ? 21 : 28,
+                          height: .98,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: .4,
+                        ),
+                      ),
+                      SizedBox(height: compact ? 7 : 12),
+                      const Text(
+                        'Terminate both ends, inspect all eight conductors, then prove the cable on a LAN tester.',
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Color(0xFFC9E3E7),
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                      ),
+                      if (!compact) ...[
+                        const SizedBox(height: 18),
+                        const Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          children: [
+                            _DarkFeature(
+                              icon: Icons.straighten_rounded,
+                              label: 'Measure',
+                            ),
+                            _DarkFeature(
+                              icon: Icons.content_cut_rounded,
+                              label: 'Terminate',
+                            ),
+                            _DarkFeature(
+                              icon: Icons.electrical_services_rounded,
+                              label: 'Test',
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(width: compact ? 8 : 14),
+              Expanded(
+                flex: 6,
+                child: Container(
+                  padding: EdgeInsets.all(compact ? 14 : 22),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(color: const Color(0xFFD4E1E8)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'Select a cable task',
+                        style: TextStyle(
+                          color: const Color(0xFF10283F),
+                          fontSize: compact ? 16 : 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      if (!compact)
+                        const Text(
+                          'You will prepare End A and End B before testing continuity.',
+                          style: TextStyle(color: Color(0xFF627987)),
+                        ),
+                      SizedBox(height: compact ? 9 : 16),
+                      if (compact) ...[
+                        choices[0],
+                        const SizedBox(height: 8),
+                        choices[1],
+                      ] else
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(child: choices[0]),
+                            const SizedBox(width: 12),
+                            Expanded(child: choices[1]),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-        ),
-      );
-    }
+        );
+      },
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final compactLanding = MediaQuery.sizeOf(context).height < 400;
+    if (session == null) return _landscapeLanding(compactLanding);
     final s = session!;
     return ColoredBox(
       color: const Color(0xFFF1F6FA),
       child: Column(
         children: [
-          SizedBox(
-            height: 44,
+          Container(
+            height: MediaQuery.sizeOf(context).height < 400 ? 52 : 62,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF10283F), Color(0xFF174D62)],
+              ),
+              boxShadow: [BoxShadow(color: Color(0x24000000), blurRadius: 8)],
+            ),
             child: Row(
               children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: const Icon(Icons.cable_rounded, color: Colors.white),
+                ),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    s.kind == CableKind.straight
-                        ? 'Straight-through • A/A or B/B'
-                        : 'Crossover • A/B or B/A',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'RJ45 CABLE WORKSHOP',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        s.prepared
+                            ? '${s.kind == CableKind.straight ? "Straight-through" : "Crossover"} • Final LAN tester check'
+                            : '${s.kind == CableKind.straight ? "Straight-through" : "Crossover"} • End ${active == 0 ? "A" : "B"} • Step ${math.min(end.stage.index + 1, 7)} of 7',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFFC7DDE6),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Animated procedure',
+                  onPressed: widget.onShowGuide,
+                  icon: const Icon(
+                    Icons.play_circle_outline_rounded,
+                    color: Color(0xFF67E8F9),
                   ),
                 ),
                 IconButton(
@@ -170,12 +381,15 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                       ],
                     ),
                   ),
-                  icon: const Icon(Icons.zoom_in),
+                  icon: const Icon(Icons.zoom_in, color: Colors.white),
                 ),
                 IconButton(
                   tooltip: 'Wiring reference',
                   onPressed: showReference,
-                  icon: const Icon(Icons.menu_book_outlined),
+                  icon: const Icon(
+                    Icons.menu_book_outlined,
+                    color: Colors.white,
+                  ),
                 ),
                 IconButton(
                   tooltip: 'Start a new cable',
@@ -187,7 +401,7 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                           tested = false;
                           lit = -1;
                         }),
-                  icon: const Icon(Icons.restart_alt),
+                  icon: const Icon(Icons.restart_alt, color: Colors.white),
                 ),
               ],
             ),
@@ -208,6 +422,77 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
       ),
     );
   }
+
+  Widget _cableChoice(
+    CableKind kind,
+    String title,
+    String subtitle,
+    String wiring,
+    IconData icon, {
+    bool compact = false,
+  }) => Material(
+    color: Colors.transparent,
+    child: InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => setState(() => session = Rj45Session(kind)),
+      child: Ink(
+        padding: EdgeInsets.all(compact ? 10 : 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF4F8FB),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFD3E1E9)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: const Color(0xFFDBF2F0),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(icon, color: const Color(0xFF08766F), size: 27),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Color(0xFF10283F),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  if (!compact) ...[
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Color(0xFF5A7180),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 7),
+                  Text(
+                    wiring,
+                    style: const TextStyle(
+                      color: Color(0xFF08766F),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Color(0xFF66808E)),
+          ],
+        ),
+      ),
+    ),
+  );
 
   Widget preparationPanel() => LayoutBuilder(
     builder: (context, bounds) {
@@ -503,13 +788,43 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
     final s = session!;
     return Column(
       children: [
-        const Text(
-          'LAN cable tester',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF12334E), Color(0xFF0D6370)],
+            ),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.cable_rounded, color: Colors.white, size: 30),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'LAN cable tester',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Connect End A to MAIN and End B to REMOTE, then verify pins 1–8.',
+                      style: TextStyle(color: Color(0xFFD5EDF0), height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        const Text(
-          'Drag one cable end into MAIN and the other into REMOTE. Then run the test.',
-        ),
+        const SizedBox(height: 10),
         Row(
           children: [
             for (var e = 0; e < 2; e++)
@@ -548,45 +863,94 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                       color: hover.isEmpty
                           ? const Color(0xff10283f)
                           : const Color(0xff24536a),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: s.ports[p] == null
+                            ? const Color(0xFF31566F)
+                            : const Color(0xFF45D4C2),
+                        width: s.ports[p] == null ? 1 : 2,
+                      ),
                     ),
                     child: Column(
                       children: [
-                        Text(
-                          p == 0 ? 'MAIN' : 'REMOTE',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: s.ports[p] == null
+                                ? const Color(0xFF24475F)
+                                : const Color(0xFF14796E),
+                            borderRadius: BorderRadius.circular(99),
+                          ),
+                          child: Text(
+                            p == 0 ? 'MAIN UNIT' : 'REMOTE UNIT',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: .7,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         SizedBox(
-                          height: 110,
-                          child: Stack(
-                            alignment: Alignment.center,
+                          height: 150,
+                          child: AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 280),
+                            child: Rj45Art.image(
+                              s.ports[p] == null
+                                  ? p == 0
+                                        ? 'tester_main'
+                                        : 'tester_remote'
+                                  : p == 0
+                                  ? 'tester_main_connected'
+                                  : 'tester_remote_connected',
+                              key: ValueKey('tester-$p-${s.ports[p]}'),
+                              height: 150,
+                              label: s.ports[p] == null
+                                  ? '${p == 0 ? "Main" : "Remote"} tester with empty RJ45 socket'
+                                  : 'Cable End ${s.ports[p] == 0 ? "A" : "B"} fully seated in ${p == 0 ? "Main" : "Remote"} tester',
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: s.ports[p] == null
+                                ? Colors.white.withValues(alpha: .08)
+                                : const Color(0xFF0C514A),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Rj45Art.image(
-                                p == 0 ? 'tester_main' : 'tester_remote',
-                                height: 110,
+                              Icon(
+                                s.ports[p] == null
+                                    ? Icons.input_rounded
+                                    : Icons.check_circle_rounded,
+                                color: s.ports[p] == null
+                                    ? const Color(0xFFB8CAD7)
+                                    : const Color(0xFF65E6D5),
+                                size: 17,
                               ),
-                              if (s.ports[p] != null)
-                                Positioned(
-                                  right: 0,
-                                  top: 0,
-                                  child: Rj45Art.image(
-                                    'cable_plug',
-                                    width: 70,
-                                    height: 55,
-                                  ),
+                              const SizedBox(width: 6),
+                              Text(
+                                s.ports[p] == null
+                                    ? 'Drop cable end here'
+                                    : 'End ${s.ports[p] == 0 ? "A" : "B"} fully seated',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
                                 ),
+                              ),
                             ],
                           ),
-                        ),
-                        Text(
-                          s.ports[p] == null
-                              ? 'Empty socket'
-                              : 'End ${s.ports[p] == 0 ? "A" : "B"} plugged in',
-                          style: const TextStyle(color: Colors.white),
                         ),
                         if (s.ports[p] != null && !testing && !tested)
                           TextButton(
@@ -846,6 +1210,29 @@ Color wireColor(int w) => [
   Colors.brown,
   Colors.brown,
 ][w];
+
+class _DarkFeature extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _DarkFeature({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 16, color: const Color(0xFF67E8F9)),
+      const SizedBox(width: 6),
+      Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFFD3E9EC),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    ],
+  );
+}
 
 class _CablePainter extends CustomPainter {
   final CableEnd end;

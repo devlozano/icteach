@@ -6,6 +6,7 @@ import 'package:icteach/widgets/guided_setup_workbench.dart';
 import 'package:icteach/widgets/simulation_process_guide.dart';
 import 'package:icteach/widgets/rj45_procedure_demo.dart';
 import 'package:icteach/widgets/pc_build_workbench.dart';
+import 'package:icteach/widgets/drag_drop_simulation.dart';
 
 void main() {
   for (final simulation in SimulationData.getAllSimulations()) {
@@ -129,6 +130,42 @@ void main() {
     await tester.pump();
     expect(find.text('Untwist only the required length'), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('closing the RJ45 guide preserves the active cable session', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(844, 390);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final simulation = SimulationData.getAllSimulations().firstWhere(
+      (item) => item.id == 'sim_coc2_crimping',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: DragDropSimulation(
+            simulation: simulation,
+            onComplete: (_, _, _) {},
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Straight-through'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('strip-length-ruler')), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Animated procedure'));
+    await tester.pump();
+    expect(find.byType(Rj45ProcedureDemo), findsOneWidget);
+    await tester.tap(find.byTooltip('Close walkthrough'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('strip-length-ruler')), findsOneWidget);
+    expect(find.text('Select a cable task'), findsNothing);
+    expect(find.text('RJ45 CABLE WORKSHOP'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -75,6 +75,34 @@ void main() {
       );
     }
   }
+  testWidgets('quiz preparation UI fits a narrow Android screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ActivityPreparationGate(
+          classId: 'class',
+          type: 'quiz',
+          contentId: 'quiz',
+          title: 'Computer Hardware Fundamentals',
+          stateLoader: () async => {'configured': true},
+          sessionBuilder: (_) => const SizedBox(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ready to take the quiz'), findsOneWidget);
+    expect(find.text('KNOWLEDGE CHECK'), findsOneWidget);
+    expect(find.text('Before you begin'), findsOneWidget);
+    expect(find.text('Start scored quiz (one attempt)'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   for (final learned in [false, true]) {
     for (final practiced in [false, true]) {
       testWidgets(
@@ -175,6 +203,8 @@ void main() {
         await tester.pumpAndSettle();
       }
       expect(find.text('Start practice mode'), findsOneWidget);
+      expect(find.text('PRACTICAL ASSESSMENT'), findsOneWidget);
+      expect(find.text('Preparation checklist'), findsOneWidget);
       expect(
         find.text('Part B: start graded simulation assessment'),
         findsOneWidget,

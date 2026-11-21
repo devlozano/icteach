@@ -155,7 +155,7 @@ void main() {
       }
     }
     await screenshot('rj45-tester-unplugged');
-    expect(find.text('Empty socket'), findsNWidgets(2));
+    expect(find.text('Drop cable end here'), findsNWidgets(2));
     expect(
       tester
           .widget<FilledButton>(

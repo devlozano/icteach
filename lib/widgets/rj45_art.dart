@@ -16,6 +16,8 @@ class Rj45Art {
     'cable_plug',
     'tester_main',
     'tester_remote',
+    'tester_main_connected',
+    'tester_remote_connected',
   ];
   static const wires = [
     'white-orange',
@@ -34,11 +36,13 @@ class Rj45Art {
   static String wire(int index) => 'wire_${wires[index]}';
   static Widget image(
     String id, {
+    Key? key,
     double? width,
     double? height,
     String? label,
   }) => Image.asset(
     '$root$id.png',
+    key: key,
     width: width,
     height: height,
     fit: BoxFit.contain,
