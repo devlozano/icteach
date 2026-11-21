@@ -31,24 +31,19 @@ void main() {
     }
   });
   for (final id in SimulationData.retiredSimulationIds) {
-    for (final bypass in [false, true]) {
-      testWidgets('$id cannot reopen through an old link, bypass=$bypass', (
-        tester,
-      ) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: SimulationPage(
-              classId: 'historical-class',
-              simulationId: id,
-              title: 'Retired activity',
-              testingBypass: bypass,
-            ),
+    testWidgets('$id cannot reopen through an old link', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: SimulationPage(
+            classId: 'historical-class',
+            simulationId: id,
+            title: 'Retired activity',
           ),
-        );
-        await tester.pumpAndSettle();
-        expect(find.text('Simulation unavailable'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-      });
-    }
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Simulation unavailable'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   }
 }

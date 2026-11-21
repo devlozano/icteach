@@ -55,7 +55,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('Show results'));
       await tester.pumpAndSettle();
-      expect(find.text('Continue to Simulation'), findsOneWidget);
+      expect(find.text('Continue to assigned simulation'), findsOneWidget);
       await tester.ensureVisible(find.text('Done'));
       await tester.tap(find.text('Done'));
       await tester.pumpAndSettle();

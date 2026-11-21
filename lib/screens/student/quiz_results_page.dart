@@ -1,6 +1,7 @@
 import 'learning_continuation_page.dart';
 import 'package:flutter/material.dart';
 import '../../models/quiz_model.dart';
+import '../../widgets/learning_flow_indicator.dart';
 
 class QuizResultsPage extends StatelessWidget {
   final QuizResult result;
@@ -29,6 +30,11 @@ class QuizResultsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const LearningFlowIndicator(
+              current: LearningFlowStage.quiz,
+              compact: true,
+            ),
+            const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Text(
@@ -141,7 +147,7 @@ class QuizResultsPage extends StatelessWidget {
                     ),
                   ),
                   icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Continue to Simulation'),
+                  label: const Text('Continue to assigned simulation'),
                 ),
               ),
               const SizedBox(height: 12),

@@ -1,6 +1,7 @@
 import 'learning_continuation_page.dart';
 import '../../services/module_access_service.dart';
 import '../../widgets/module_resource_actions.dart';
+import '../../widgets/learning_flow_indicator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -604,6 +605,11 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const LearningFlowIndicator(
+                    current: LearningFlowStage.module,
+                    compact: true,
+                  ),
+                  const SizedBox(height: 20),
                   // Overview Section
                   const Text(
                     'Overview',

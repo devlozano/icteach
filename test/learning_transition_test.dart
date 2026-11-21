@@ -9,6 +9,81 @@ const other = LearningDestination('two', 'Second activity');
 Widget app(LearningContinuationPage page) => MaterialApp(home: page);
 
 void main() {
+  testWidgets('quiz and simulation handoff UI fits a narrow Android screen', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        LearningContinuationPage(
+          classId: 'class',
+          moduleId: 'module',
+          loadDestinations: () async => [],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Continue to Quiz'), findsWidgets);
+    expect(find.text('STEP 2 OF 3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(
+      app(
+        LearningContinuationPage(
+          classId: 'class',
+          quizId: 'quiz',
+          loadDestinations: () async => [],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Continue to Simulation'), findsWidgets);
+    expect(find.text('STEP 3 OF 3'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('automatic forwarding preserves student home for Android Back', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => LearningContinuationPage(
+                    classId: 'class',
+                    moduleId: 'lesson',
+                    loadDestinations: () async => [item],
+                    destinationBuilder: (_) async => Scaffold(
+                      appBar: AppBar(title: const Text('Assigned quiz')),
+                      body: const Text('Quiz screen'),
+                    ),
+                  ),
+                ),
+              ),
+              child: const Text('Open learning flow'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open learning flow'));
+    await tester.pumpAndSettle();
+    expect(find.text('Quiz screen'), findsOneWidget);
+
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(find.text('Open learning flow'), findsOneWidget);
+    expect(find.text('Quiz screen'), findsNothing);
+  });
+
   testWidgets('single activity shows loading and forwards automatically', (
     tester,
   ) async {
@@ -25,7 +100,10 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Opening your next activity...'), findsOneWidget);
-    expect(find.text('Module → Lesson → Quiz → Simulation'), findsOneWidget);
+    expect(find.text('Module complete'), findsOneWidget);
+    expect(find.text('Module'), findsOneWidget);
+    expect(find.text('Quiz'), findsOneWidget);
+    expect(find.text('Simulation'), findsOneWidget);
     pending.complete(const Scaffold(body: Text('Next screen')));
     await tester.pumpAndSettle();
     expect(find.text('Next screen'), findsOneWidget);
@@ -78,6 +156,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('First activity'));
     await tester.tap(find.text('First activity'));
     await tester.tap(find.text('First activity'));
     expect(opens, 1);
@@ -87,6 +166,7 @@ void main() {
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(find.text('Activity locked'), findsNothing);
+    await tester.ensureVisible(find.text('First activity'));
     await tester.tap(find.text('First activity'));
     await tester.pumpAndSettle();
     expect(find.text('Ready'), findsOneWidget);
