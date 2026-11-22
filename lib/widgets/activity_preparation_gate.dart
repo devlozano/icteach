@@ -693,7 +693,7 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
                           icon: Icons.quiz_rounded,
                           title: 'Part A: terminology quiz',
                           detail:
-                              '${quiz.title} Â· Check your understanding before the practical task.',
+                              '${quiz.title} - Check your understanding before the practical task.',
                           complete: theoryDone,
                           available: learned,
                           actionLabel: theoryDone

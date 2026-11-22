@@ -73,7 +73,7 @@ class ModuleAccessService {
       // Same-tab navigation remains usable after the asynchronous access check;
       // browsers can block a new popup once the original click has expired.
       final launched = await launchUrl(
-        ModuleResourceLink.download(uri),
+        ModuleResourceLink.download(uri, fileName: module.fileName),
         webOnlyWindowName: '_self',
       );
       if (!launched)
@@ -120,16 +120,13 @@ class ModuleAccessService {
     } finally {
       client.close();
     }
-    final suggested =
-        (module.fileName?.isNotEmpty == true
-                ? module.fileName!
-                : (uri.pathSegments.isEmpty
-                      ? 'module.pdf'
-                      : uri.pathSegments.last))
-            .replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final suggested = ModuleResourceLink.suggestedFileName(
+      module.fileName,
+      uri,
+    );
     final path = await FilePicker.saveFile(
       dialogTitle: 'Save module',
-      fileName: suggested.isEmpty ? 'module.pdf' : suggested,
+      fileName: suggested,
       bytes: bytes,
     );
     if (!kIsWeb && path == null) return 'Download cancelled.';

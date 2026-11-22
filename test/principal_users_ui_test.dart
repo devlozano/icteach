@@ -56,11 +56,14 @@ void main() {
     'Add User starts at role selection and Teacher reveals section fields',
     (tester) async {
       await tester.pumpWidget(const MaterialApp(home: CreateStaffPage()));
+      expect(find.text('Add User'), findsOneWidget);
       expect(find.byType(TextFormField), findsNothing);
       await tester.tap(find.byType(DropdownButtonFormField<String>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Teacher').last);
       await tester.pumpAndSettle();
+      expect(find.text('Add Teacher'), findsNWidgets(2));
+      expect(find.text('Add User'), findsNothing);
       expect(find.byKey(const ValueKey('section-count')), findsOneWidget);
       await tester.ensureVisible(find.byKey(const ValueKey('section-count')));
       await tester.enterText(find.byKey(const ValueKey('section-count')), '2');

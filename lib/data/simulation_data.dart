@@ -4,6 +4,7 @@ import 'guided_setup_data.dart';
 
 class SimulationData {
   static const quizActivityIds = {
+    'sim_coc1_motherboard',
     'sim_coc2_ipconfig',
     'sim_coc2_diagnostics',
     'sim_coc1_os_install',
@@ -11,6 +12,7 @@ class SimulationData {
   };
 
   static List<Simulation> getQuizActivities() => [
+    getMotherboardIdentification(),
     getIpConfiguration(),
     getConnectivityDiagnostics(),
     getOperatingSystemInstallation(),

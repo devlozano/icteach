@@ -78,6 +78,7 @@ void main() {
                     padding: const EdgeInsets.all(6),
                     child: DragDropSimulation(
                       simulation: simulation,
+                      practice: true,
                       onComplete: (_, _, _) {},
                     ),
                   ),

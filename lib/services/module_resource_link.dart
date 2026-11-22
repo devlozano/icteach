@@ -13,7 +13,7 @@ class ModuleResourceLink {
     return uri;
   }
 
-  static Uri download(Uri uri) {
+  static Uri download(Uri uri, {String? fileName}) {
     // Do not rewrite signed delivery URLs: doing so invalidates their signature.
     if (uri.host == 'res.cloudinary.com' && uri.query.isEmpty) {
       final segments = uri.pathSegments;
@@ -22,16 +22,32 @@ class ModuleResourceLink {
           segments[2] == 'upload' &&
           !segments.any((s) => s.startsWith('s--')) &&
           !segments.any((s) => s.contains('fl_attachment'))) {
+        final attachmentName = suggestedFileName(fileName, uri);
         return uri.replace(
           pathSegments: [
             ...segments.take(3),
-            'fl_attachment',
+            'fl_attachment:$attachmentName',
             ...segments.skip(3),
           ],
         );
       }
     }
     return uri;
+  }
+
+  static String suggestedFileName(String? preferred, Uri uri) {
+    var candidate = preferred?.trim() ?? '';
+    if (candidate.isEmpty && uri.pathSegments.isNotEmpty) {
+      candidate = uri.pathSegments.last.trim();
+    }
+    candidate = candidate.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    if (candidate.isEmpty || candidate.toLowerCase() == 'download') {
+      return 'module.pdf';
+    }
+    // Cloudinary raw delivery URLs can omit the original extension. Modules
+    // uploaded without a usable extension are PDFs in the current workflow.
+    if (!candidate.contains('.')) return '$candidate.pdf';
+    return candidate;
   }
 
   static String responseError(Uri uri, int status) {

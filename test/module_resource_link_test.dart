@@ -25,13 +25,33 @@ void main() {
       final original = Uri.parse(
         'https://res.cloudinary.com/demo/$type/upload/v123/folder/lesson%20one.pdf',
       );
-      final download = ModuleResourceLink.download(original);
+      final download = ModuleResourceLink.download(
+        original,
+        fileName: 'CSS Module 1.pdf',
+      );
       expect(
         download.path,
-        '/demo/$type/upload/fl_attachment/v123/folder/lesson%20one.pdf',
+        '/demo/$type/upload/fl_attachment:CSS%20Module%201.pdf/v123/folder/lesson%20one.pdf',
       );
       expect(ModuleResourceLink.download(download), download);
     }
+  });
+
+  test('suggests a PDF name when the host path has no extension', () {
+    expect(
+      ModuleResourceLink.suggestedFileName(
+        null,
+        Uri.parse('https://res.cloudinary.com/demo/raw/upload/module-file'),
+      ),
+      'module-file.pdf',
+    );
+    expect(
+      ModuleResourceLink.suggestedFileName(
+        'Lesson 2.pdf',
+        Uri.parse('https://example.org/download'),
+      ),
+      'Lesson 2.pdf',
+    );
   });
 
   test('signed and third party URLs retain their exact tokens and paths', () {

@@ -14,6 +14,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'admin/content_overview_page.dart';
 import 'package:flutter/services.dart';
+import 'utils/academic_year_validation.dart';
 import 'package:intl/intl.dart';
 import 'admin/create_staff_page.dart';
 import 'admin/principal_archives_page.dart';
@@ -23,7 +24,6 @@ import 'package:icteach/services/quiz_service.dart';
 import 'admin_login.dart';
 import 'services/workspace_preferences.dart';
 
-// â”€â”€â”€ Color constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const _kNavColor = Color(0xFF0F172A);
 const _kAccentBlue = Color(0xFF0891B2);
 const _kCardBorder = Color(0xFFDCE4EC);
@@ -143,7 +143,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
                                       SummaryPrintButton(
                                         title:
                                             _currentSelectedLabel + ' summary',
-                                        load: AdminSummaryService.load,
+                                        load: () =>
+                                            AdminSummaryService.loadForPage(
+                                              _currentSelectedLabel,
+                                            ),
                                       ),
                                     _buildActivePanelContent(),
                                     const SizedBox(height: 40),
@@ -236,7 +239,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
     }
   }
 
-  // â”€â”€ Manage Users â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   Widget _ManageUsersContent() => const PrincipalUsersPanel();
   String _adminName(Map<String, dynamic>? profile, User user) {
     final firstName = (profile?['firstName'] as String?)?.trim() ?? '';
@@ -265,9 +267,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SIDE NAVIGATION
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
@@ -830,7 +830,6 @@ class _ClassCard extends StatelessWidget {
   }
 }
 
-// â”€â”€ Recent Activity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _RecentActivityCard extends StatelessWidget {
   const _RecentActivityCard();
 
@@ -990,7 +989,6 @@ class _RecentActivityCard extends StatelessWidget {
   }
 }
 
-// â”€â”€ Quick Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 class _QuickActionsCard extends StatelessWidget {
   const _QuickActionsCard();
 
@@ -1122,9 +1120,7 @@ class _ActionItem {
   });
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // MANAGE CLASSES CONTENT (NEW)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _ManageClassesContent extends StatefulWidget {
   const _ManageClassesContent();
 
@@ -1778,9 +1774,7 @@ class _MiniStat extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // PERFORMANCE CONTENT
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _PerformanceContent extends StatefulWidget {
   const _PerformanceContent();
 
@@ -1830,9 +1824,7 @@ class _PerformanceContentState extends State<_PerformanceContent> {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // REPORTS CONTENT (NEW)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _ReportsContent extends StatefulWidget {
   const _ReportsContent();
 
@@ -2382,9 +2374,7 @@ class _CountBadge extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SETTINGS CONTENT (NEW)
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _SettingsContent extends StatefulWidget {
   const _SettingsContent();
 
@@ -2408,7 +2398,7 @@ class _SettingsContentState extends State<_SettingsContent> {
 
   String _automaticAcademicYear() {
     final now = DateTime.now();
-    final start = now.month >= 6 ? now.year : now.year - 1;
+    final start = now.year;
     return '$start-${start + 1}';
   }
 
@@ -2440,15 +2430,13 @@ class _SettingsContentState extends State<_SettingsContent> {
   }
 
   String? _validatedAcademicYear() {
-    final start = int.tryParse(_startYearController.text.trim());
-    if (start == null || _startYearController.text.trim().length != 4) {
-      _showSnack('Enter a valid four-digit start year.', Colors.red);
+    final value = _startYearController.text.trim();
+    final error = AcademicYearValidation.startYearError(value);
+    if (error != null) {
+      _showSnack(error, Colors.red);
       return null;
     }
-    if (start < 1900 || start >= 9999) {
-      _showSnack('Start year must be between 1900 and 9998.', Colors.red);
-      return null;
-    }
+    final start = int.parse(value);
     final schoolYear = '$start-${start + 1}';
     _endYearController.text = (start + 1).toString();
     _selectedAcademicYear = schoolYear;
@@ -2473,11 +2461,14 @@ class _SettingsContentState extends State<_SettingsContent> {
   Future<void> _saveAcademicYear({required bool archivePrevious}) async {
     final academicYear = _validatedAcademicYear();
     if (academicYear == null) return;
+    final startYear = int.parse(_startYearController.text.trim());
     setState(() => _isSavingAcademicYear = true);
     try {
       final db = FirebaseFirestore.instance;
       await db.collection('system_settings').doc('academic_year').set({
         'activeSchoolYear': academicYear,
+        'startYear': startYear,
+        'endYear': startYear + 1,
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': FirebaseAuth.instance.currentUser?.uid,
       }, SetOptions(merge: true));
@@ -2673,6 +2664,10 @@ class _SettingsContentState extends State<_SettingsContent> {
                         builder: (context, constraints) {
                           final stackFields = constraints.maxWidth < 420;
 
+                          final startYearError =
+                              AcademicYearValidation.startYearError(
+                                _startYearController.text,
+                              );
                           final startYearField = TextFormField(
                             controller: _startYearController,
                             enabled: !_isSavingAcademicYear,
@@ -2681,12 +2676,15 @@ class _SettingsContentState extends State<_SettingsContent> {
                               FilteringTextInputFormatter.digitsOnly,
                               LengthLimitingTextInputFormatter(4),
                             ],
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'START YEAR',
-                              hintText: '2026',
+                              hintText: DateTime.now().year.toString(),
+                              helperText:
+                                  '${DateTime.now().year} or a future year',
+                              errorText: startYearError,
                               filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(),
+                              fillColor: const Color(0xFFFFFFFF),
+                              border: const OutlineInputBorder(),
                             ),
                             onChanged: _updateEndYear,
                           );
@@ -2781,7 +2779,12 @@ class _SettingsContentState extends State<_SettingsContent> {
                       runSpacing: 10,
                       children: [
                         ElevatedButton.icon(
-                          onPressed: _isSavingAcademicYear
+                          onPressed:
+                              _isSavingAcademicYear ||
+                                  AcademicYearValidation.startYearError(
+                                        _startYearController.text,
+                                      ) !=
+                                      null
                               ? null
                               : () => _saveAcademicYear(archivePrevious: false),
                           icon: const Icon(Icons.save_rounded, size: 18),
@@ -2791,7 +2794,12 @@ class _SettingsContentState extends State<_SettingsContent> {
                           ),
                         ),
                         OutlinedButton.icon(
-                          onPressed: _isSavingAcademicYear
+                          onPressed:
+                              _isSavingAcademicYear ||
+                                  AcademicYearValidation.startYearError(
+                                        _startYearController.text,
+                                      ) !=
+                                      null
                               ? null
                               : _confirmAcademicYearRollover,
                           icon: const Icon(Icons.archive_rounded, size: 18),
@@ -3081,9 +3089,7 @@ class _SettingRow extends StatelessWidget {
   }
 }
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // SHARED WIDGETS
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.isActive});
   final bool isActive;

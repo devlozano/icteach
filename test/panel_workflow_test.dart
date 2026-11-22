@@ -24,9 +24,13 @@ void main() {
       expect(ids.any((id) => id.contains(keyword)), isTrue, reason: keyword);
     }
     expect(
-      ids.any((id) => id.contains('motherboard')),
-      isFalse,
+      SimulationData.getAllSimulations().map((item) => item.id),
+      isNot(contains('sim_coc1_motherboard')),
       reason: 'Motherboard identification belongs in quizzes, not simulations',
+    );
+    expect(
+      SimulationData.getQuizActivities().map((item) => item.id),
+      contains('sim_coc1_motherboard'),
     );
   });
   test('teacher can link PC disassembly to a lesson and assessment', () {

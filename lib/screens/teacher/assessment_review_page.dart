@@ -161,8 +161,11 @@ class _AssessmentReviewPageState extends State<AssessmentReviewPage> {
       ),
       actions: [
         SummaryPrintButton(
-          title: 'Assessment summary - ${widget.className}',
-          load: () => ClassSummaryService.load(widget.classId),
+          title: 'Grade summary - ${widget.className}',
+          load: () => ClassSummaryService.loadForPrint(
+            widget.classId,
+            ClassSummaryPrintPurpose.grades,
+          ),
         ),
       ],
     ),

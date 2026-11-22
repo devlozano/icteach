@@ -33,11 +33,11 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
   bool _assignmentsSaved = false;
   int _formRevision = 0;
 
-  String get _accountLabel => _selectedRole == 'trainer'
-      ? 'Trainer Account'
-      : _selectedRole == 'teacher'
-      ? 'Teacher Account'
-      : 'User';
+  String get _addUserLabel => switch (_selectedRole) {
+    'teacher' => 'Add Teacher',
+    'trainer' => 'Add Trainer',
+    _ => 'Add User',
+  };
 
   @override
   void initState() {
@@ -288,7 +288,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
   @override
   Widget build(BuildContext context) {
     return PrincipalDetailScaffold(
-      title: 'Add user',
+      title: _addUserLabel,
       subtitle: 'Create a teacher or trainer account and assign their work.',
       icon: Icons.person_add_alt_1_rounded,
       maxWidth: 860,
@@ -429,7 +429,7 @@ class _CreateStaffPageState extends State<CreateStaffPage> {
                               ),
                             )
                           : Text(
-                              'Create $_accountLabel',
+                              _addUserLabel,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,

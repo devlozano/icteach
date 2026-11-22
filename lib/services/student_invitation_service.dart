@@ -27,7 +27,9 @@ class StudentInvitationService {
     required String classId,
     required String email,
     String firstName = '',
+    String middleName = '',
     String lastName = '',
+    String extension = '',
     bool skipIfAlreadyInvited = false,
   }) async {
     final teacher = FirebaseAuth.instance.currentUser;

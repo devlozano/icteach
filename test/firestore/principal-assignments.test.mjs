@@ -59,8 +59,12 @@ test('self profile cannot grant principal role or reactivate an account',async()
  await assertFails(updateDoc(doc(user('teacher'),'users/teacher'),{isActive:false}));
 });
 test('only principal can change global school settings',async()=>{
- await assertSucceeds(setDoc(doc(user('principal'),'system_settings/academic_year'),{startYear:2026,endYear:2027}));
+ const currentYear=new Date().getFullYear();
+ const academicYear=year=>({activeSchoolYear:`${year}-${year+1}`,startYear:year,endYear:year+1});
+ await assertSucceeds(setDoc(doc(user('principal'),'system_settings/academic_year'),academicYear(currentYear)));
+ await assertFails(setDoc(doc(user('principal'),'system_settings/academic_year'),academicYear(currentYear-1)));
+ await assertFails(setDoc(doc(user('principal'),'system_settings/academic_year'),{...academicYear(currentYear),endYear:currentYear+2}));
  await assertSucceeds(setDoc(doc(user('principal'),'settings/school_profile'),{name:'Cuyapo National High School'}));
- await assertFails(setDoc(doc(user('student'),'system_settings/academic_year'),{startYear:2099,endYear:2100}));
+ await assertFails(setDoc(doc(user('student'),'system_settings/academic_year'),academicYear(currentYear+1)));
  await assertFails(setDoc(doc(user('teacher'),'settings/school_profile'),{name:'Hijacked'}));
 });

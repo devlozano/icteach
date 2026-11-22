@@ -3,7 +3,34 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'summary_pdf_service.dart';
 import 'module_access_service.dart';
 
+enum ClassSummaryPrintPurpose { grades, progress, modules }
+
 class ClassSummaryService {
+  static List<SummarySection> sectionsForPrint(
+    ClassSummaryPrintPurpose purpose,
+    List<SummarySection> sections,
+  ) {
+    final titles = switch (purpose) {
+      ClassSummaryPrintPurpose.grades => const {
+        'Learning progress summary',
+        'Trainer practical validation',
+      },
+      ClassSummaryPrintPurpose.progress => const {'Learning progress summary'},
+      ClassSummaryPrintPurpose.modules => const {'Module access'},
+    };
+    return sections.where((section) => titles.contains(section.title)).toList();
+  }
+
+  static Future<List<SummarySection>> loadForPrint(
+    String classId,
+    ClassSummaryPrintPurpose purpose, {
+    String? role,
+    String? userId,
+  }) async => sectionsForPrint(
+    purpose,
+    await load(classId, role: role, userId: userId),
+  );
+
   static List<SummarySection> sectionsForRole(
     String role,
     List<SummarySection> sections,

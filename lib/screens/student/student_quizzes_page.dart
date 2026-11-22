@@ -189,19 +189,9 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
 
           return ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: quizzes.length + 1,
+            itemCount: quizzes.length,
             itemBuilder: (context, index) {
-              if (index == 0) {
-                return _MotherboardQuizCard(
-                  onOpen: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const MotherboardIdentificationQuizPage(),
-                    ),
-                  ),
-                );
-              }
-              final quiz = quizzes[index - 1];
+              final quiz = quizzes[index];
               return _QuizCard(
                 key: ValueKey(quiz.id),
                 quiz: quiz,
@@ -215,72 +205,6 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
       ),
     );
   }
-}
-
-class _MotherboardQuizCard extends StatelessWidget {
-  const _MotherboardQuizCard({required this.onOpen});
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.all(16),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(12),
-      border: Border.all(color: const Color(0xFFBFDBFE)),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x0A0F172A),
-          blurRadius: 8,
-          offset: Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: Color(0xFFDBEAFE),
-              child: Icon(Icons.memory_rounded, color: Color(0xFF1D4ED8)),
-            ),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Motherboard Parts Identification',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                  ),
-                  Text(
-                    'Built-in visual quiz • Portrait orientation',
-                    style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        const Text(
-          'Locate sockets, slots, power connectors, ports, and the chipset on an actual motherboard image.',
-          style: TextStyle(color: Color(0xFF475569), height: 1.4),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: onOpen,
-            icon: const Icon(Icons.play_arrow_rounded),
-            label: const Text('Take identification quiz'),
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 class MotherboardIdentificationQuizPage extends StatefulWidget {
@@ -320,7 +244,11 @@ class _MotherboardIdentificationQuizPageState
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: const Color(0xFFF8FAFC),
     appBar: AppBar(
-      title: const Text('Motherboard Identification Quiz'),
+      title: const Text(
+        'Motherboard Identification Quiz',
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+      ),
       backgroundColor: const Color(0xFF0B2B4A),
       foregroundColor: Colors.white,
     ),
@@ -345,7 +273,7 @@ class _MotherboardIdentificationQuizPageState
                 child: MotherboardIdentification(
                   onComplete: (score, total, passed) => setState(() {
                     _result =
-                        'Quiz complete: $score/$total • ${passed ? "Passed" : "Review and try again"}';
+                        'Quiz complete: $score/$total - ${passed ? "Passed" : "Review and try again"}';
                   }),
                 ),
               ),
@@ -357,7 +285,7 @@ class _MotherboardIdentificationQuizPageState
   );
 }
 
-// ✅ Enhanced Quiz Card with Status Badge
+// Quiz card with status badge.
 class _QuizCard extends StatefulWidget {
   final QuizModel quiz;
   final VoidCallback onTakeQuiz;
@@ -462,7 +390,7 @@ class _QuizCardState extends State<_QuizCard> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // ✅ NEW: Status Badge
+                        // Result status badge.
                         if (_hasTaken == true && _result != null)
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -476,7 +404,7 @@ class _QuizCardState extends State<_QuizCard> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              _result!.isPassed ? 'Passed ✅' : 'Failed ❌',
+                              _result!.isPassed ? 'Passed' : 'Failed',
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
@@ -494,8 +422,8 @@ class _QuizCardState extends State<_QuizCard> {
                                 widget.quiz.id,
                               ) !=
                               null
-                          ? 'Interactive procedure • Portrait • ${widget.quiz.totalPoints} points'
-                          : '${widget.quiz.questions.length} questions • ${widget.quiz.totalPoints} points',
+                          ? 'Interactive procedure - Portrait - ${widget.quiz.totalPoints} points'
+                          : '${widget.quiz.questions.length} questions - ${widget.quiz.totalPoints} points',
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 13,
@@ -503,7 +431,7 @@ class _QuizCardState extends State<_QuizCard> {
                     ),
                     if (widget.quiz.timeLimit > 0)
                       Text(
-                        '⏱ ${widget.quiz.timeLimit} minutes',
+                        'Time: ${widget.quiz.timeLimit} minutes',
                         style: TextStyle(
                           color: Colors.grey.shade600,
                           fontSize: 12,

@@ -40,4 +40,17 @@ void main() {
     expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('achievement count shows unlocked and total values', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(body: AchievementUnlockCount(unlocked: 4, total: 11)),
+      ),
+    );
+
+    expect(find.text('4 of 11 unlocked'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../data/motherboard_parts.dart';
-import 'simulation_description.dart';
 
 class MotherboardIdentification extends StatefulWidget {
   const MotherboardIdentification({super.key, required this.onComplete});
@@ -15,18 +14,39 @@ class _MotherboardIdentificationState extends State<MotherboardIdentification> {
   bool _located = false, _finished = false;
   String? _feedback;
 
-  void _locate(Offset point) {
+  Future<void> _locate(Offset point) async {
     if (_located || _finished) return;
     final part = MotherboardParts.entries[_index];
+    final correct = part.$3.contains(point);
     setState(() {
-      _located = part.$3.contains(point);
+      _located = correct;
       if (_located) {
-        _feedback = part.$4;
+        _feedback = 'Correct. Loading the next part...';
       } else {
         _mistakes++;
-        _feedback =
-            'That is not the ${part.$2}. Inspect the board and try again.';
+        _feedback = 'Incorrect location. Inspect the board and try again.';
       }
+    });
+    if (!correct) return;
+    await Future<void>.delayed(const Duration(milliseconds: 750));
+    if (!mounted) return;
+    if (_index == MotherboardParts.entries.length - 1) {
+      final score = (MotherboardParts.entries.length - _mistakes).clamp(
+        0,
+        MotherboardParts.entries.length,
+      );
+      setState(() => _finished = true);
+      widget.onComplete(
+        score,
+        MotherboardParts.entries.length,
+        score / MotherboardParts.entries.length >= .8,
+      );
+      return;
+    }
+    setState(() {
+      _index++;
+      _located = false;
+      _feedback = null;
     });
   }
 
@@ -40,39 +60,100 @@ class _MotherboardIdentificationState extends State<MotherboardIdentification> {
           padding: const EdgeInsets.all(12),
           child: Column(
             children: [
-              Text(
-                _finished
-                    ? 'Motherboard inspection complete'
-                    : 'Locate: ${part.$2}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDBEAFE),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'PART ${_index + 1} OF ${parts.length}',
+                      style: const TextStyle(
+                        color: Color(0xFF1D4ED8),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: .5,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.touch_app_rounded,
+                    size: 18,
+                    color: Color(0xFF64748B),
+                  ),
+                  const SizedBox(width: 5),
+                  const Flexible(
+                    child: Text(
+                      'Tap the exact part',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  value: (_index + 1) / parts.length,
+                  minHeight: 7,
+                  backgroundColor: const Color(0xFFE2E8F0),
+                  color: const Color(0xFF2563EB),
                 ),
               ),
+              const SizedBox(height: 12),
               Text(
-                'Part ${_index + 1} of ${parts.length} • Pinch to zoom, drag to pan, tap the actual part.',
+                _finished ? 'Quiz complete' : 'Find the ${part.$2}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF0F172A),
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Pinch to zoom and drag to inspect the motherboard.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
               ),
               if (_feedback != null)
-                _located
-                    ? SimulationDescriptionSection(
-                        title: 'Part description',
-                        text: _feedback!,
-                      )
-                    : Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.only(top: 8),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFE8E5),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFF2B8B5)),
-                        ),
-                        child: Text(
-                          _feedback!,
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(color: Color(0xFF8C2020)),
-                        ),
-                      ),
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _located
+                        ? const Color(0xFFEFF6FF)
+                        : const Color(0xFFFFE8E5),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _located
+                          ? const Color(0xFF93C5FD)
+                          : const Color(0xFFF2B8B5),
+                    ),
+                  ),
+                  child: Text(
+                    _feedback!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: _located
+                          ? const Color(0xFF1E40AF)
+                          : const Color(0xFF8C2020),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -91,65 +172,13 @@ class _MotherboardIdentificationState extends State<MotherboardIdentification> {
                         details.localPosition.dy / size.maxHeight,
                       ),
                     ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Image.asset(MotherboardParts.asset, fit: BoxFit.fill),
-                        if (_located)
-                          Positioned.fromRect(
-                            rect: Rect.fromLTWH(
-                              part.$3.left * size.maxWidth,
-                              part.$3.top * size.maxHeight,
-                              part.$3.width * size.maxWidth,
-                              part.$3.height * size.maxHeight,
-                            ),
-                            child: IgnorePointer(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withValues(alpha: .25),
-                                  border: Border.all(
-                                    color: Colors.greenAccent,
-                                    width: 3,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                    child: Image.asset(
+                      MotherboardParts.asset,
+                      fit: BoxFit.fill,
                     ),
                   ),
                 ),
               ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(12),
-          child: FilledButton(
-            onPressed: !_located || _finished
-                ? null
-                : () {
-                    if (_index == parts.length - 1) {
-                      setState(() => _finished = true);
-                      final score = (parts.length - _mistakes).clamp(
-                        0,
-                        parts.length,
-                      );
-                      widget.onComplete(
-                        score,
-                        parts.length,
-                        score / parts.length >= .8,
-                      );
-                    } else {
-                      setState(() {
-                        _index++;
-                        _located = false;
-                        _feedback = null;
-                      });
-                    }
-                  },
-            child: Text(
-              _index == parts.length - 1 ? 'Finish inspection' : 'Next part',
             ),
           ),
         ),

@@ -93,10 +93,10 @@ void main() {
     });
   }
   test(
-    'four migrated activities are quizzes with distinct class-scoped results',
+    'five migrated activities are quizzes with distinct class-scoped results',
     () {
       final quizzes = InteractiveQuizzes.forClass('c');
-      expect(quizzes, hasLength(4));
+      expect(quizzes, hasLength(5));
       for (final quiz in quizzes) {
         final activity = InteractiveQuizzes.activity('c', quiz.id)!;
         expect(
@@ -109,7 +109,7 @@ void main() {
       }
       final unpublished = quizzes.first.copyWith(isPublished: false);
       final merged = InteractiveQuizzes.merge('c', [unpublished]);
-      expect(merged, hasLength(4));
+      expect(merged, hasLength(5));
       expect(merged.first.isPublished, false);
     },
   );

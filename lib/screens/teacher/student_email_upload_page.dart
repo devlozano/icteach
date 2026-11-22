@@ -80,7 +80,9 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
               classId: widget.classId,
               email: student.email,
               firstName: student.firstName,
+              middleName: student.middleName,
               lastName: student.lastName,
+              extension: student.extension,
               skipIfAlreadyInvited: true,
             ),
       );

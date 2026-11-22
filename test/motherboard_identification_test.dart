@@ -46,18 +46,11 @@ void main() {
         bounds.topLeft +
             Offset(center.dx * bounds.width, center.dy * bounds.height),
       );
-      await tester.pump();
-      expect(find.text(MotherboardParts.entries[i].$4), findsOneWidget);
-      await tester.tap(
-        find.text(
-          i == MotherboardParts.entries.length - 1
-              ? 'Finish inspection'
-              : 'Next part',
-        ),
-      );
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
     }
     expect(result, MotherboardParts.entries.length - 1);
+    expect(find.text('Finish inspection'), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
   });
 
   testWidgets('motherboard identification quiz is portrait and fits a phone', (

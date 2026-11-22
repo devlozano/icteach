@@ -238,9 +238,12 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
                           const SizedBox(width: 12),
 
                           SummaryPrintButton(
-                            title: 'Class summary - ${widget.className}',
-                            load: () =>
-                                ClassSummaryService.load(widget.classId),
+                            title:
+                                'Learning progress summary - ${widget.className}',
+                            load: () => ClassSummaryService.loadForPrint(
+                              widget.classId,
+                              ClassSummaryPrintPurpose.progress,
+                            ),
                           ),
                           IconButton(
                             tooltip: 'Student activity timeline',

@@ -82,6 +82,27 @@ class PersonalSummaryService {
 }
 
 class AdminSummaryService {
+  static List<SummarySection> sectionsForPage(
+    String page,
+    List<SummarySection> sections,
+  ) {
+    final titles = switch (page) {
+      'Performance' => const {'Assessment summary'},
+      'Content Overview' => const {'Module publishing'},
+      'Manage Classes' => const {'Class enrollment'},
+      _ => const {
+        'Students',
+        'Class enrollment',
+        'Module publishing',
+        'Assessment summary',
+      },
+    };
+    return sections.where((section) => titles.contains(section.title)).toList();
+  }
+
+  static Future<List<SummarySection>> loadForPage(String page) async =>
+      sectionsForPage(page, await load());
+
   static Future<List<SummarySection>> load() async {
     final db = FirebaseFirestore.instance;
     final data = await Future.wait([
@@ -139,20 +160,33 @@ class AdminSummaryService {
         'Published',
       ], moduleRows),
       SummarySection(
-        'Quiz performance',
-        ['Student', 'Quiz', 'Score', 'Total'],
+        'Assessment summary',
+        ['Quiz submissions', 'Average score (%)'],
         [
-          for (final q in quizzes.where(
-            (q) => ids.contains(q.data()['studentId']),
-          ))
-            [
-              q.data()['studentName'],
-              q.data()['quizTitle'] ?? q.data()['quizId'],
-              q.data()['score'],
-              q.data()['totalPoints'],
-            ],
+          [
+            quizzes.where((q) => ids.contains(q.data()['studentId'])).length,
+            _quizAverage(
+              quizzes.where((q) => ids.contains(q.data()['studentId'])),
+            ).toStringAsFixed(1),
+          ],
         ],
       ),
     ];
+  }
+
+  static double _quizAverage(
+    Iterable<QueryDocumentSnapshot<Map<String, dynamic>>> quizzes,
+  ) {
+    var total = 0.0;
+    var count = 0;
+    for (final quiz in quizzes) {
+      final score = quiz.data()['score'];
+      final possible = quiz.data()['totalPoints'];
+      if (score is num && possible is num && possible > 0) {
+        total += score / possible * 100;
+        count++;
+      }
+    }
+    return count == 0 ? 0 : total / count;
   }
 }

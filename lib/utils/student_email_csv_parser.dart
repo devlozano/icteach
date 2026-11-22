@@ -5,13 +5,19 @@ class StudentEmailRecord {
   const StudentEmailRecord({
     required this.email,
     this.firstName = '',
+    this.middleName = '',
     this.lastName = '',
+    this.extension = '',
     required this.row,
   });
-  final String email, firstName, lastName;
+  final String email, firstName, middleName, lastName, extension;
   final int row;
-  String get displayName =>
-      [firstName, lastName].where((s) => s.isNotEmpty).join(' ');
+  String get displayName => [
+    firstName,
+    middleName,
+    lastName,
+    extension,
+  ].where((s) => s.isNotEmpty).join(' ');
 }
 
 class StudentEmailCsv {
@@ -23,7 +29,8 @@ class StudentEmailCsv {
 class StudentEmailCsvParser {
   static const maxBytes = 1024 * 1024;
   static const maxRecords = 100;
-  static const template = 'Gmail,First Name,Last Name\r\n';
+  static const template =
+      'Gmail,First Name,Middle Name,Surname,Extension\r\n';
   static final _email = RegExp(
     r'^[a-z0-9.!#$%&\x27*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$',
   );
@@ -57,19 +64,34 @@ class StudentEmailCsvParser {
         'gmailaddress' ||
         'emailaddress' ||
         'studentemail' => 'email',
+        'lastname' || 'surname' => 'lastname',
+        'middlename' || 'middleinitial' || 'mi' => 'middlename',
+        'extension' || 'suffix' => 'extension',
         _ => key,
       };
     }
 
     final headers = rows.first.map(header).toList();
     final hasHeader = headers.contains('email');
-    var columns = <String, int>{'email': 0, 'firstname': 1, 'lastname': 2};
+    var columns = <String, int>{
+      'email': 0,
+      'firstname': 1,
+      'middlename': 2,
+      'lastname': 3,
+      'extension': 4,
+    };
     if (hasHeader) {
       columns = {};
       for (var i = 0; i < headers.length; i++) {
-        if (!['email', 'firstname', 'lastname'].contains(headers[i])) {
+        if (![
+          'email',
+          'firstname',
+          'middlename',
+          'lastname',
+          'extension',
+        ].contains(headers[i])) {
           throw FormatException(
-            'Unknown column "${rows.first[i]}". Use Gmail, First Name, Last Name. Names are optional; no LRN is needed.',
+            'Unknown column "${rows.first[i]}". Use Gmail, First Name, Middle Name, Surname, Extension. Names are optional; no LRN is needed.',
           );
         }
         if (columns.containsKey(headers[i])) {
@@ -85,7 +107,7 @@ class StudentEmailCsvParser {
       final row = rows[index];
       final number = index + 1;
       if ((hasHeader && row.length != headers.length) ||
-          (!hasHeader && (row.isEmpty || row.length > 3))) {
+          (!hasHeader && (row.isEmpty || row.length > 5))) {
         throw FormatException(
           'Row $number: incorrect number of columns. Put names containing commas inside double quotes.',
         );
@@ -110,10 +132,17 @@ class StudentEmailCsvParser {
         );
       }
       final first = field('firstname').replaceAll(RegExp(r'\s+'), ' ');
+      final middle = field('middlename').replaceAll(RegExp(r'\s+'), ' ');
       final last = field('lastname').replaceAll(RegExp(r'\s+'), ' ');
-      if (first.length > 80 || last.length > 80) {
+      final extension = field('extension').replaceAll(RegExp(r'\s+'), ' ');
+      if (first.length > 80 || middle.length > 80 || last.length > 80) {
         throw FormatException(
           'Row $number: names must be 80 characters or fewer.',
+        );
+      }
+      if (extension.length > 30) {
+        throw FormatException(
+          'Row $number: extensions must be 30 characters or fewer.',
         );
       }
       if (seen.add(address)) {
@@ -121,7 +150,9 @@ class StudentEmailCsvParser {
           StudentEmailRecord(
             email: address,
             firstName: first,
+            middleName: middle,
             lastName: last,
+            extension: extension,
             row: number,
           ),
         );

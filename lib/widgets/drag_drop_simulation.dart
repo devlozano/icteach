@@ -781,7 +781,9 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
             child: Rj45Workbench(
               onComplete: widget.onComplete,
               onFeedback: widget.onFeedback,
-              onShowGuide: () => setState(() => _showProcedure = true),
+              onShowGuide: widget.practice
+                  ? () => setState(() => _showProcedure = true)
+                  : null,
             ),
           ),
           if (_showProcedure)
@@ -865,6 +867,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                     completed: _placements.keys.toSet(),
                     cabling: widget.simulation.id == 'sim_coc1_cabling',
                     locked: _isComplete,
+                    showGuidance: widget.practice,
                     onMistake: (message) => setState(() {
                       _mistakes++;
                       _streak = 0;
@@ -963,48 +966,53 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   int _trayPage = 0;
   int _readinessIndex = 0;
 
-  Widget _specializedWorkbench(Widget child) => Column(
-    children: [
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF102D49), Color(0xFF164665)],
-          ),
-        ),
-        child: Row(
+  Widget _specializedWorkbench(Widget child) => widget.practice
+      ? Column(
           children: [
-            const Icon(
-              Icons.animation_rounded,
-              color: Color(0xFF67E8F9),
-              size: 20,
-            ),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Observe the proper procedure before performing the task.',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF102D49), Color(0xFF164665)],
                 ),
               ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.animation_rounded,
+                    color: Color(0xFF67E8F9),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Observe the proper procedure before performing the task.',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonalIcon(
+                    onPressed: () => setState(() => _showProcedure = true),
+                    icon: const Icon(
+                      Icons.play_circle_outline_rounded,
+                      size: 18,
+                    ),
+                    label: const Text('Animated procedure'),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(width: 8),
-            FilledButton.tonalIcon(
-              onPressed: () => setState(() => _showProcedure = true),
-              icon: const Icon(Icons.play_circle_outline_rounded, size: 18),
-              label: const Text('Animated procedure'),
-            ),
+            Expanded(child: child),
           ],
-        ),
-      ),
-      Expanded(child: child),
-    ],
-  );
+        )
+      : child;
 
   Widget _compactReadiness(bool assembly) {
     final checks = assembly
@@ -1590,16 +1598,18 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                   ),
                 ),
               ),
-              IconButton(
-                tooltip: 'Observe proper procedure',
-                onPressed: () => setState(() => _showProcedure = true),
-                icon: const Icon(Icons.play_circle_outline, size: 20),
-              ),
-              IconButton(
-                tooltip: 'Workbench guide',
-                onPressed: _showWorkbenchGuide,
-                icon: const Icon(Icons.help_outline_rounded, size: 20),
-              ),
+              if (widget.practice) ...[
+                IconButton(
+                  tooltip: 'Observe proper procedure',
+                  onPressed: () => setState(() => _showProcedure = true),
+                  icon: const Icon(Icons.play_circle_outline, size: 20),
+                ),
+                IconButton(
+                  tooltip: 'Workbench guide',
+                  onPressed: _showWorkbenchGuide,
+                  icon: const Icon(Icons.help_outline_rounded, size: 20),
+                ),
+              ],
               if (widget.simulation.type == 'identification')
                 IconButton(
                   tooltip: 'Identification confidence',
@@ -1616,21 +1626,22 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                   size: 20,
                 ),
               ),
-              IconButton(
-                tooltip: _voiceEnabled
-                    ? 'Mute voice guidance'
-                    : 'Enable voice guidance',
-                onPressed: () {
-                  setState(() => _voiceEnabled = !_voiceEnabled);
-                  if (!_voiceEnabled) _tts.stop();
-                },
-                icon: Icon(
-                  _voiceEnabled
-                      ? Icons.volume_up_outlined
-                      : Icons.volume_off_outlined,
-                  size: 20,
+              if (widget.practice)
+                IconButton(
+                  tooltip: _voiceEnabled
+                      ? 'Mute voice guidance'
+                      : 'Enable voice guidance',
+                  onPressed: () {
+                    setState(() => _voiceEnabled = !_voiceEnabled);
+                    if (!_voiceEnabled) _tts.stop();
+                  },
+                  icon: Icon(
+                    _voiceEnabled
+                        ? Icons.volume_up_outlined
+                        : Icons.volume_off_outlined,
+                    size: 20,
+                  ),
                 ),
-              ),
               IconButton(
                 tooltip: 'Reset activity',
                 onPressed: _resetSimulation,

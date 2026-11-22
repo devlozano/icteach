@@ -358,9 +358,19 @@ service cloud.firestore {
     }
     // Academic-year and school-profile settings affect every account. They
     // are readable in reports, but only the principal may change them.
-    match /system_settings/{document=**} {
+    function validAcademicYear() {
+      return request.resource.data.startYear is int
+        && request.resource.data.endYear is int
+        && request.resource.data.activeSchoolYear is string
+        && request.resource.data.activeSchoolYear.matches('^[0-9]{4}-[0-9]{4}$')
+        && request.resource.data.startYear >= request.time.year()
+        && request.resource.data.startYear < 9999
+        && request.resource.data.endYear == request.resource.data.startYear + 1;
+    }
+    match /system_settings/{documentId} {
       allow read: if request.auth != null;
-      allow write: if canAdmin();
+      allow write: if canAdmin()
+        && (documentId != 'academic_year' || validAcademicYear());
     }
     match /settings/{document=**} {
       allow read: if request.auth != null;

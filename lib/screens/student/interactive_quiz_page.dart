@@ -10,6 +10,7 @@ import '../../services/quiz_service.dart';
 import '../../widgets/activity_preparation_gate.dart';
 import '../../widgets/content_access_gate.dart';
 import '../../widgets/guided_setup_workbench.dart';
+import '../../widgets/motherboard_identification.dart';
 import '../../widgets/simulation_step_lab.dart';
 import 'learning_continuation_page.dart';
 
@@ -225,6 +226,9 @@ class _WorkbenchState extends State<InteractiveQuizWorkbench> {
   bool _complete = false;
   @override
   Widget build(BuildContext context) {
+    if (widget.activity.id == 'sim_coc1_motherboard') {
+      return MotherboardIdentification(onComplete: widget.onComplete);
+    }
     final kind = GuidedSetupData.kindForId(widget.activity.id);
     if (kind != null)
       return GuidedSetupWorkbench(

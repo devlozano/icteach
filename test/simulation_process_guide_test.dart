@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/data/simulation_data.dart';
 import 'package:icteach/data/guided_setup_data.dart';
+import 'package:icteach/data/simulation_tutorials.dart';
 import 'package:icteach/widgets/guided_setup_workbench.dart';
 import 'package:icteach/widgets/simulation_process_guide.dart';
 import 'package:icteach/widgets/rj45_procedure_demo.dart';
@@ -9,6 +10,15 @@ import 'package:icteach/widgets/pc_build_workbench.dart';
 import 'package:icteach/widgets/drag_drop_simulation.dart';
 
 void main() {
+  test('every active simulation has a YouTube practice tutorial', () {
+    for (final simulation in SimulationData.getAllSimulations()) {
+      final tutorial = SimulationTutorials.forId(simulation.id);
+      expect(tutorial, isNotNull, reason: simulation.id);
+      expect(Uri.parse(tutorial!.url).host, 'www.youtube.com');
+      expect(Uri.parse(tutorial.url).queryParameters['v'], isNotEmpty);
+    }
+  });
+
   for (final simulation in SimulationData.getAllSimulations()) {
     testWidgets('${simulation.id} has a bounded animated walkthrough', (
       tester,
@@ -28,6 +38,10 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+      expect(
+        find.byKey(const ValueKey('practice-video-tutorial')),
+        findsOneWidget,
+      );
       if (simulation.id == 'sim_coc1_assembly' ||
           simulation.id == 'sim_coc1_cabling') {
         expect(find.byType(PcBuildWorkbench), findsOneWidget);
@@ -65,7 +79,11 @@ void main() {
       await tester.scrollUntilVisible(find.text('Replay demonstration'), 80);
       expect(find.text('Replay demonstration'), findsOneWidget);
       expect(
-        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        tester
+            .widget<FilledButton>(
+              find.byKey(const ValueKey('guided-process-next')),
+            )
+            .onPressed,
         isNull,
       );
       await tester.scrollUntilVisible(find.byType(CheckboxListTile), 100);
@@ -78,10 +96,14 @@ void main() {
       await tester.tap(find.byType(CheckboxListTile));
       await tester.pumpAndSettle();
       expect(
-        tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+        tester
+            .widget<FilledButton>(
+              find.byKey(const ValueKey('guided-process-next')),
+            )
+            .onPressed,
         isNotNull,
       );
-      await tester.tap(find.byType(FilledButton));
+      await tester.tap(find.byKey(const ValueKey('guided-process-next')));
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(find.textContaining('Step 2 of'), -100);
       expect(find.textContaining('Step 2 of'), findsOneWidget);
@@ -148,6 +170,7 @@ void main() {
         home: Scaffold(
           body: DragDropSimulation(
             simulation: simulation,
+            practice: true,
             onComplete: (_, _, _) {},
           ),
         ),
@@ -166,6 +189,37 @@ void main() {
     expect(find.byKey(const ValueKey('strip-length-ruler')), findsOneWidget);
     expect(find.text('Select a cable task'), findsNothing);
     expect(find.text('RJ45 CABLE WORKSHOP'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('graded PC assembly hides guidance and walkthrough controls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1100, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final simulation = SimulationData.getPcAssembly();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PcBuildWorkbench(
+            items: simulation.items,
+            completed: const <String>{},
+            showGuidance: false,
+            onMistake: (_) {},
+            onCompleteStep: (_) => true,
+          ),
+        ),
+      ),
+    );
+    expect(find.text('Description'), findsNothing);
+    expect(find.textContaining('FIT CHECK'), findsNothing);
+    expect(find.textContaining('Rotate the keyed connector'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('demonstrate-build-operation')),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 }

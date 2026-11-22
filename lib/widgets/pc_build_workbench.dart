@@ -18,12 +18,13 @@ class PcBuildWorkbench extends StatefulWidget {
     this.cabling = false,
     this.locked = false,
     this.demonstration = false,
+    this.showGuidance = true,
   });
   final List<DraggableItem> items;
   final Set<String> completed;
   final bool Function(String id) onCompleteStep;
   final ValueChanged<String> onMistake;
-  final bool cabling, locked, demonstration;
+  final bool cabling, locked, demonstration, showGuidance;
   @override
   State<PcBuildWorkbench> createState() => _PcBuildWorkbenchState();
 }
@@ -242,9 +243,10 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     setState(() {
       _tool = step.tool;
       _turns = step.requiredQuarterTurns ?? 0;
-      if (_diagnostic)
+      if (_diagnostic) {
         _record.text =
             'Guided inspection: verify POST, memory, storage and cable clearance.';
+      }
     });
     await _act(
       dropped: step.tool == PcBuildProcedure.driver
@@ -287,11 +289,13 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                   (widget.cabling ? 'Wiring complete' : 'Build complete'),
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
             ),
-            const SizedBox(height: 6),
-            const Text(
-              'Training kit: DDR4 desktop • 2.5-inch SATA SSD. Use the actual manufacturer manual when servicing other hardware.',
-              style: TextStyle(fontSize: 11),
-            ),
+            if (widget.showGuidance) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'Training kit: DDR4 desktop • 2.5-inch SATA SSD. Use the actual manufacturer manual when servicing other hardware.',
+                style: TextStyle(fontSize: 11),
+              ),
+            ],
             if (_powered)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
@@ -312,47 +316,49 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                 ),
               ),
             if (item != null && step != null) ...[
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEAF2F8),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFCADCEB)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SimulationDescriptionSection(
-                      title: 'Description',
-                      text: item.description,
-                    ),
-                    if (item.id == 'ram' ||
-                        item.id == 'cpu' ||
-                        item.id == 'gpu') ...[
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Hold by the edges. Keep contacts untouched. Open the lock, align the key, and lower the part evenly without forcing it.',
-                        style: TextStyle(
-                          color: Color(0xFF274B63),
-                          fontSize: 12,
-                          height: 1.4,
-                        ),
+              if (widget.showGuidance) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF2F8),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFCADCEB)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SimulationDescriptionSection(
+                        title: 'Description',
+                        text: item.description,
                       ),
-                      Text(
-                        step.place
-                            ? 'Retention locks open • ready to align'
-                            : 'Complete the highlighted handling step before insertion.',
-                        style: const TextStyle(
-                          color: Color(0xFF475569),
-                          fontWeight: FontWeight.w600,
+                      if (item.id == 'ram' ||
+                          item.id == 'cpu' ||
+                          item.id == 'gpu') ...[
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Hold by the edges. Keep contacts untouched. Open the lock, align the key, and lower the part evenly without forcing it.',
+                          style: TextStyle(
+                            color: Color(0xFF274B63),
+                            fontSize: 12,
+                            height: 1.4,
+                          ),
                         ),
-                      ),
+                        Text(
+                          step.place
+                              ? 'Retention locks open • ready to align'
+                              : 'Complete the highlighted handling step before insertion.',
+                          style: const TextStyle(
+                            color: Color(0xFF475569),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 12),
               LinearProgressIndicator(value: _operation / _steps.length),
               const SizedBox(height: 8),
@@ -396,17 +402,20 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                     ? null
                     : (v) => setState(() => _tool = v),
               ),
-              const SizedBox(height: 10),
-              Text(
-                step.place
-                    ? 'Rotate the keyed connector until its notch and latch match, then drag it onto the highlighted port.'
-                    : step.tool == PcBuildProcedure.driver
-                    ? 'Use the screwdriver on the required fastener.'
-                    : 'Touch the highlighted latch or connector on the chassis.',
-                style: const TextStyle(fontSize: 12),
-              ),
+              if (widget.showGuidance) ...[
+                const SizedBox(height: 10),
+                Text(
+                  step.place
+                      ? 'Rotate the keyed connector until its notch and latch match, then drag it onto the highlighted port.'
+                      : step.tool == PcBuildProcedure.driver
+                      ? 'Use the screwdriver on the required fastener.'
+                      : 'Touch the highlighted latch or connector on the chassis.',
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ],
               if (step.tool == PcBuildProcedure.driver) ...[
-                const Text('Drag the Phillips #2 tip onto the fastener.'),
+                if (widget.showGuidance)
+                  const Text('Drag the Phillips #2 tip onto the fastener.'),
                 Draggable<String>(
                   data: 'tool:phillips-2',
                   maxSimultaneousDrags: _busy || widget.locked ? 0 : 1,
@@ -421,7 +430,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                   child: _driverAsset(),
                 ),
               ],
-              if (step.place) ...[
+              if (step.place && widget.showGuidance) ...[
                 const SizedBox(height: 8),
                 Container(
                   width: double.infinity,
@@ -828,19 +837,20 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
             child: Image.asset(item.imageUrl, fit: BoxFit.contain),
           ),
         ),
-        Align(
-          alignment: [
-            Alignment.topLeft,
-            Alignment.topRight,
-            Alignment.bottomRight,
-            Alignment.bottomLeft,
-          ][_turns % 4],
-          child: const Icon(
-            Icons.arrow_drop_down,
-            color: Colors.amber,
-            size: 24,
+        if (widget.showGuidance)
+          Align(
+            alignment: [
+              Alignment.topLeft,
+              Alignment.topRight,
+              Alignment.bottomRight,
+              Alignment.bottomLeft,
+            ][_turns % 4],
+            child: const Icon(
+              Icons.arrow_drop_down,
+              color: Colors.amber,
+              size: 24,
+            ),
           ),
-        ),
       ],
     ),
   );

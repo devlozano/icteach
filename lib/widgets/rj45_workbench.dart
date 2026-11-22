@@ -347,14 +347,15 @@ class _Rj45WorkbenchState extends State<Rj45Workbench> {
                     ],
                   ),
                 ),
-                IconButton(
-                  tooltip: 'Animated procedure',
-                  onPressed: widget.onShowGuide,
-                  icon: const Icon(
-                    Icons.play_circle_outline_rounded,
-                    color: Color(0xFF67E8F9),
+                if (widget.onShowGuide != null)
+                  IconButton(
+                    tooltip: 'Animated procedure',
+                    onPressed: widget.onShowGuide,
+                    icon: const Icon(
+                      Icons.play_circle_outline_rounded,
+                      color: Color(0xFF67E8F9),
+                    ),
                   ),
-                ),
                 IconButton(
                   tooltip: 'Inspect connector',
                   onPressed: () => showDialog<void>(

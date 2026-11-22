@@ -7,6 +7,8 @@ import 'guided_setup_workbench.dart';
 import 'pc_build_workbench.dart';
 import 'rj45_procedure_demo.dart';
 import '../data/guided_setup_data.dart';
+import '../data/simulation_tutorials.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Replayable reference; reviewed checkpoints never award assessment credit.
 class SimulationProcessGuide extends StatefulWidget {
@@ -47,6 +49,34 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
     }
   }
 
+  Future<void> _openVideoTutorial() async {
+    final tutorial = SimulationTutorials.forId(widget.simulation.id);
+    if (tutorial == null) return;
+    final opened = await launchUrl(
+      Uri.parse(tutorial.url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the video tutorial.')),
+      );
+    }
+  }
+
+  Widget _tutorialAction() {
+    final tutorial = SimulationTutorials.forId(widget.simulation.id);
+    if (tutorial == null) return const SizedBox.shrink();
+    return Tooltip(
+      message: tutorial.title,
+      child: FilledButton.tonalIcon(
+        key: const ValueKey('practice-video-tutorial'),
+        onPressed: _openVideoTutorial,
+        icon: const Icon(Icons.smart_display_rounded, size: 18),
+        label: const Text('Video tutorial'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.simulation.id == 'sim_coc1_assembly' ||
@@ -67,6 +97,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
                     ),
                   ),
                 ),
+                _tutorialAction(),
                 IconButton(
                   tooltip: 'Close walkthrough',
                   onPressed: _close,
@@ -106,6 +137,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
                   child: Text('Guided practice • no assessment credit'),
                 ),
               ),
+              _tutorialAction(),
               IconButton(
                 tooltip: 'Close walkthrough',
                 onPressed: _close,
@@ -134,6 +166,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
                   ),
                 ),
               ),
+              _tutorialAction(),
               IconButton(
                 tooltip: 'Close walkthrough',
                 onPressed: _close,
@@ -172,6 +205,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ),
+                _tutorialAction(),
                 IconButton(
                   tooltip: 'Close walkthrough',
                   onPressed: _close,
@@ -291,6 +325,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
                 ),
                 Flexible(
                   child: FilledButton(
+                    key: const ValueKey('guided-process-next'),
                     onPressed: !checked.contains(step)
                         ? null
                         : () {

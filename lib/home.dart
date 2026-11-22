@@ -14,7 +14,6 @@ import 'package:icteach/screens/student/forums_page.dart';
 import 'package:icteach/screens/student/module_view_page.dart';
 import 'package:icteach/screens/student/student_assignments_page.dart';
 import 'package:icteach/screens/student/student_quizzes_page.dart';
-import 'package:icteach/screens/student/instructional_videos_page.dart';
 import 'package:icteach/screens/student/simulations_list_page.dart';
 import 'package:icteach/screens/notification_page.dart';
 import 'package:icteach/widgets/notification_badge.dart';
@@ -116,11 +115,13 @@ class _HomePageState extends State<HomePage> {
               canPop: _currentTabIndex == 0,
               onPopInvokedWithResult: (didPop, _) {
                 if (didPop) return;
-                // Not on home tab → go back to home tab
+                // Return to the home tab before leaving the student workspace.
                 _selectTab(0);
               },
               child: Scaffold(
-                backgroundColor: const Color(0xFFF4F7FA),
+                backgroundColor: _currentTabIndex == 0
+                    ? const Color(0xFFEEF7FF)
+                    : const Color(0xFFF4F7FA),
                 // Modules and Forum own their headers once a class is available.
                 appBar:
                     (_currentTabIndex == 1 || _currentTabIndex == 2) &&
@@ -163,6 +164,71 @@ class _HomePageState extends State<HomePage> {
         ? BackButton(onPressed: () => _selectTab(0))
         : null,
     backgroundColor: const Color(0xFF428DEB),
+    elevation: _currentTabIndex == 0 ? 0 : 4,
+    toolbarHeight: _currentTabIndex == 0 ? 76 : kToolbarHeight,
+    flexibleSpace: _currentTabIndex == 0
+        ? Stack(
+            fit: StackFit.expand,
+            children: [
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF1565D8),
+                      Color(0xFF2F8FF0),
+                      Color(0xFF64C4F4),
+                    ],
+                    stops: [0, .58, 1],
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 38,
+                top: -42,
+                child: Container(
+                  width: 132,
+                  height: 132,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: .10),
+                  ),
+                ),
+              ),
+              Positioned(
+                right: 118,
+                bottom: -46,
+                child: Transform.rotate(
+                  angle: -.32,
+                  child: Container(
+                    width: 132,
+                    height: 74,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(28),
+                      color: const Color(0xFFBDEBFF).withValues(alpha: .17),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 128,
+                top: -34,
+                child: Transform.rotate(
+                  angle: .28,
+                  child: Container(
+                    width: 86,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: const Color(0xFF8BE0FF).withValues(alpha: .16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : null,
     foregroundColor: Colors.white,
     title: Text(
       const [
@@ -172,6 +238,10 @@ class _HomePageState extends State<HomePage> {
         'Progress',
         'Profile',
       ][_currentTabIndex],
+      style: TextStyle(
+        fontSize: _currentTabIndex == 0 ? 25 : 20,
+        fontWeight: FontWeight.w800,
+      ),
     ),
     actions: [
       NotificationBadge(
@@ -325,92 +395,132 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildHomeContent(String course, Map<String, dynamic>? profile) {
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-      child: Column(
+    return Stack(
+      children: [
+        const Positioned.fill(
+          child: IgnorePointer(
+            child: ExcludeSemantics(
+              child: CustomPaint(painter: _StudentHomeBackgroundPainter()),
+            ),
+          ),
+        ),
+        SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 34),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1040),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 126,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          left: 2,
+                          right: 94,
+                          bottom: 16,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _welcomeTitle(profile),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 28,
+                                  height: 1.04,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF071739),
+                                ),
+                              ),
+                              const SizedBox(height: 7),
+                              Text(
+                                course,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF52657F),
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.25,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 4,
+                          child: _buildHeartMascot(size: 94),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildProgressCard(),
+                  const SizedBox(height: 18),
+                  const _HomeSectionHeading(title: 'Quick Access'),
+                  const SizedBox(height: 13),
+                  _buildQuickAccessGrid(),
+                  const SizedBox(height: 26),
+                  _buildHomeAchievements(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHomeAchievements() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || _classId == null || _classId!.isEmpty) {
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: 70,
-            child: Stack(
-              clipBehavior: Clip.none,
+          const Row(
+            children: [
+              Expanded(child: _HomeSectionHeading(title: 'Achievements')),
+              AchievementUnlockCount(unlocked: 0, total: 0),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: .94),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFD7E9F8)),
+            ),
+            child: const Row(
               children: [
-                Positioned.fill(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      Text(
-                        _welcomeTitle(profile),
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: Colors.black,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        course,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF6B7280),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                Icon(Icons.emoji_events_outlined, color: Color(0xFF428DEB)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Join or select a class to start earning achievements.',
+                    style: TextStyle(
+                      color: Color(0xFF52657F),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                Positioned(
-                  right: -8,
-                  top: -30,
-                  child: _buildHeartMascot(size: 85),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-          _buildProgressCard(),
-          const SizedBox(height: 24),
-          const Text(
-            'Quick Access',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: Colors.black,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildQuickAccessGrid(),
-          if (userId != null) ...[
-            const SizedBox(height: 24),
-            _buildHomeAchievementShelf(userId),
-          ],
         ],
-      ),
-    );
-  }
-
-  Widget _buildHomeAchievementShelf(String userId) {
-    if (_classId == null || _classId!.isEmpty) {
-      return const SizedBox.shrink();
+      );
     }
     return RetainedFutureBuilder<List<StudentAchievement>>(
-      requestKey: 'home-achievements:$userId:$_classId',
+      requestKey: 'home-achievements:${user.uid}:$_classId',
       active: _currentTabIndex == 0,
-      load: () => StudentAchievementService().load(userId, _classId!),
+      load: () => StudentAchievementService().load(user.uid, _classId!),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const SizedBox(
-            height: 120,
-            child: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final achievements = [...snapshot.data!]
-          ..sort((a, b) {
-            if (a.unlocked == b.unlocked) return 0;
-            return a.unlocked ? -1 : 1;
-          });
+        final achievements = snapshot.data ?? const <StudentAchievement>[];
         final unlocked = achievements.where((item) => item.unlocked).length;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -418,62 +528,112 @@ class _HomePageState extends State<HomePage> {
             Row(
               children: [
                 const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Achievement Badges',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Keep learning to unlock your collection',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF64748B),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: _HomeSectionHeading(title: 'Achievements'),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF3C4),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: Text(
-                    '$unlocked/${achievements.length}',
-                    style: const TextStyle(
-                      color: Color(0xFF8A5A00),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
+                AchievementUnlockCount(
+                  unlocked: unlocked,
+                  total: achievements.length,
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 178,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: achievements.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (context, index) =>
-                    _HomeAchievementBadge(achievement: achievements[index]),
+            const SizedBox(height: 10),
+            if (snapshot.hasError)
+              const Text(
+                'Achievements could not be loaded right now.',
+                style: TextStyle(color: Color(0xFF64748B)),
+              )
+            else if (!snapshot.hasData)
+              const Center(child: CircularProgressIndicator())
+            else
+              SizedBox(
+                height: 164,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: achievements.length,
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  itemBuilder: (_, index) => SizedBox(
+                    width: 136,
+                    child: _buildAchievementBadge(achievements[index]),
+                  ),
+                ),
               ),
-            ),
           ],
         );
       },
     );
+  }
+
+  Future<double> _loadOverallProgress(String userId, String classId) async {
+    final results = await Future.wait<dynamic>([
+      _quizService.getStudentQuizResultsForClass(userId, classId),
+      _quizService
+          .getPublishedQuizzesForClass(classId)
+          .first
+          .then((items) => items.map((item) => item.id).toSet()),
+      ModuleService()
+          .getPublishedModulesForClass(classId)
+          .first
+          .then((items) => items.map((item) => item.id).toSet()),
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('module_progress')
+          .where('classId', isEqualTo: classId)
+          .get()
+          .then(
+            (snapshot) => snapshot.docs
+                .where((doc) => doc.data()['completed'] == true)
+                .map((doc) => doc.data()['moduleId'].toString())
+                .toSet(),
+          ),
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .collection('simulation_progress')
+          .where('classId', isEqualTo: classId)
+          .get()
+          .then(
+            (snapshot) => snapshot.docs
+                .where(
+                  (doc) =>
+                      doc.data()['completed'] == true &&
+                      doc.data()['passed'] == true,
+                )
+                .map((doc) => doc.data()['simulationId'].toString())
+                .toSet(),
+          ),
+      FirebaseFirestore.instance
+          .collection('pre_assessments')
+          .doc('${userId}_$classId')
+          .get()
+          .then((doc) => PreAssessmentData.isComplete(doc.data()) ? 1 : 0),
+    ]);
+
+    final quizResults = results[0] as List<QuizResult>;
+    final quizIds = results[1] as Set<String>;
+    final moduleIds = results[2] as Set<String>;
+    final completedModuleIds = results[3] as Set<String>;
+    final completedSimulationIds = results[4] as Set<String>;
+    final simulationIds = SimulationData.getAllSimulations()
+        .map((simulation) => simulation.id)
+        .toSet();
+
+    return ProgressCalculator.calculate(
+      quizCompleted: quizResults
+          .map((result) => result.quizId)
+          .toSet()
+          .intersection(quizIds)
+          .length,
+      quizTotal: quizIds.length,
+      moduleCompleted: completedModuleIds.intersection(moduleIds).length,
+      moduleTotal: moduleIds.length,
+      simulationCompleted: completedSimulationIds
+          .intersection(simulationIds)
+          .length,
+      simulationTotal: simulationIds.length,
+      assessmentCompleted: results[5] as int,
+      assessmentTotal: 1,
+    ).overallPercent;
   }
 
   Widget _buildProgressCard() {
@@ -501,25 +661,26 @@ class _HomePageState extends State<HomePage> {
           }
         }
 
-        return RetainedFutureBuilder<int>(
-          requestKey: _classId,
+        return RetainedFutureBuilder<double>(
+          requestKey: 'home-overall:${user?.uid}:$classId',
           active: _currentTabIndex == 0,
-          load: () => hasClass
-              ? ModuleService().getModuleCount(classId)
+          load: () => hasClass && user != null
+              ? _loadOverallProgress(user.uid, classId)
               : Future.value(0),
-          builder: (context, moduleSnap) {
-            final moduleCount = moduleSnap.data ?? 0;
+          builder: (context, progressSnap) {
+            final overallPercent = progressSnap.data ?? 0;
             return Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                color: Colors.white.withValues(alpha: .94),
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: const Color(0xFFD7E9F8)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                    color: const Color(0xFF397EB7).withValues(alpha: .12),
+                    blurRadius: 20,
+                    offset: const Offset(0, 7),
                   ),
                 ],
               ),
@@ -527,53 +688,54 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF428DEB).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(10),
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE8F3FF),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.school_rounded,
+                          color: Color(0xFF2E8EF0),
+                          size: 27,
+                        ),
+                      ),
+                      const SizedBox(width: 11),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              hasClass ? 'Current Class' : 'Get Started',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF667085),
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.school_rounded,
-                              color: Color(0xFF428DEB),
-                              size: 22,
+                            Text(
+                              className,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 17,
+                                height: 1.1,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0B1735),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 10),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
+                            if (schoolYear.isNotEmpty)
                               Text(
-                                hasClass ? 'Current Class' : 'Get Started',
+                                'SY: $schoolYear',
                                 style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF6B7280),
+                                  fontSize: 12,
+                                  color: Color(0xFF667085),
                                 ),
                               ),
-                              Text(
-                                className,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black,
-                                ),
-                              ),
-                              if (schoolYear.isNotEmpty)
-                                Text(
-                                  'SY: $schoolYear',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF6B7280),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       if (!hasClass)
                         GestureDetector(
@@ -610,41 +772,56 @@ class _HomePageState extends State<HomePage> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
                     child: LinearProgressIndicator(
-                      minHeight: 10,
-                      value: hasClass && moduleCount > 0 ? 1.0 : 0.0,
+                      minHeight: 8,
+                      value: hasClass
+                          ? (overallPercent / 100).clamp(0.0, 1.0)
+                          : 0.0,
                       color: const Color(0xFF428DEB),
                       backgroundColor: const Color(0xFFE5E7EB),
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 9),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        hasClass
-                            ? '$moduleCount modules available'
-                            : 'Join a class to start learning',
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 12,
+                      const Icon(
+                        Icons.menu_book_rounded,
+                        color: Color(0xFF2E8EF0),
+                        size: 19,
+                      ),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          hasClass
+                              ? '${overallPercent.toStringAsFixed(0)}% overall progress'
+                              : 'Join a class to start learning',
+                          style: const TextStyle(
+                            color: Color(0xFF667085),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                       if (hasClass)
-                        TextButton(
+                        FilledButton(
                           onPressed: () {
                             _navigateToClass(context, classId, className);
                           },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 0),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFE7F3FF),
+                            foregroundColor: const Color(0xFF1677D2),
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 13,
+                              vertical: 9,
+                            ),
+                            minimumSize: Size.zero,
                           ),
                           child: const Text(
-                            'Go to Class →',
+                            'Go to Class',
                             style: TextStyle(
                               color: Color(0xFF428DEB),
                               fontWeight: FontWeight.bold,
@@ -683,27 +860,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _navigateToInstructionalVideos(BuildContext context) async {
-    if (_classId == null || _classId!.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please join a class first to access videos'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) =>
-            InstructionalVideosPage(classId: _classId, className: _className),
-      ),
-    );
-  }
-
-  // ✅ Updated Quick Access Grid with Quizzes
+  // Student quick-access destinations.
   Widget _buildQuickAccessGrid() {
     return RetainedFutureBuilder(
       requestKey: _classId,
@@ -820,32 +977,14 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           _QuickAccessItem(
-            icon: Icons.video_library_rounded,
-            title: 'Videos',
-            subtitle: 'Video Lessons',
+            icon: Icons.groups_rounded,
+            title: 'Forums',
+            subtitle: 'Join discussions',
             color: const Color(0xFFD9468B),
             bgColor: const Color(0xFFFFC7E1),
             onTap: () {
-              _navigateToInstructionalVideos(context);
-            },
-          ),
-          _QuickAccessItem(
-            icon: Icons.forum_rounded,
-            title: 'Forums',
-            subtitle: 'Join Discussion',
-            color: const Color(0xFF249A38),
-            bgColor: const Color(0xFFC9F2CE),
-            onTap: () {
               if (_classId != null && _classId!.isNotEmpty) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ForumsPage(
-                      classId: _classId!,
-                      className: _className ?? 'My Class',
-                    ),
-                  ),
-                );
+                _selectTab(2);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -856,6 +995,14 @@ class _HomePageState extends State<HomePage> {
               }
             },
           ),
+          _QuickAccessItem(
+            icon: Icons.bar_chart_rounded,
+            title: 'Progress',
+            subtitle: 'Track your progress',
+            color: const Color(0xFF249A38),
+            bgColor: const Color(0xFFC9F2CE),
+            onTap: () => _selectTab(3),
+          ),
         ];
 
         return LayoutBuilder(
@@ -865,7 +1012,7 @@ class _HomePageState extends State<HomePage> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: constraints.maxWidth >= 900 ? 3 : 2,
-              childAspectRatio: constraints.maxWidth < 430 ? 1.48 : 2.05,
+              childAspectRatio: constraints.maxWidth < 430 ? 1.72 : 2.05,
               crossAxisSpacing: 14,
               mainAxisSpacing: 14,
             ),
@@ -876,7 +1023,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ Updated Progress Content with QuizService
+  // Student progress details.
   Widget _buildProgressContent(String userId) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -1255,15 +1402,30 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Achievements',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
                 if (_classId == null)
-                  const Text(
-                    'Join or select a class to track achievements.',
-                    style: TextStyle(color: Colors.grey),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Achievements',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          AchievementUnlockCount(unlocked: 0, total: 0),
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        'Join or select a class to track achievements.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ],
                   )
                 else
                   RetainedFutureBuilder<List<StudentAchievement>>(
@@ -1272,20 +1434,68 @@ class _HomePageState extends State<HomePage> {
                     load: () =>
                         StudentAchievementService().load(userId, _classId!),
                     builder: (context, snapshot) {
-                      if (snapshot.hasError) {
-                        return const Text(
-                          'Achievements could not be loaded. Reopen this tab to retry.',
-                        );
-                      }
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      return Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: snapshot.data!
-                            .map(_buildAchievementBadge)
-                            .toList(),
+                      final achievements =
+                          snapshot.data ?? const <StudentAchievement>[];
+                      final unlocked = achievements
+                          .where((item) => item.unlocked)
+                          .length;
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Achievements',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              AchievementUnlockCount(
+                                unlocked: unlocked,
+                                total: achievements.length,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          if (snapshot.hasError)
+                            const Text(
+                              'Achievements could not be loaded. Reopen this tab to retry.',
+                            )
+                          else if (!snapshot.hasData)
+                            const Center(child: CircularProgressIndicator())
+                          else
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final columns = constraints.maxWidth >= 900
+                                    ? 4
+                                    : constraints.maxWidth >= 600
+                                    ? 3
+                                    : 2;
+                                return GridView.builder(
+                                  key: const ValueKey(
+                                    'progress-achievements-grid',
+                                  ),
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: achievements.length,
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: columns,
+                                        crossAxisSpacing: 12,
+                                        mainAxisSpacing: 12,
+                                        mainAxisExtent: 164,
+                                      ),
+                                  itemBuilder: (context, index) =>
+                                      _buildAchievementBadge(
+                                        achievements[index],
+                                      ),
+                                );
+                              },
+                            ),
+                        ],
                       );
                     },
                   ),
@@ -1407,58 +1617,54 @@ class _HomePageState extends State<HomePage> {
   Widget _buildAchievementBadge(StudentAchievement achievement) {
     final unlocked = achievement.unlocked;
     return Container(
-      width: 250,
-      padding: const EdgeInsets.all(14),
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 148),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: unlocked ? const Color(0xFFFFF8E1) : Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: unlocked ? const Color(0xFFFFC44D) : Colors.grey.shade200,
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          AchievementMedal(achievement: achievement, size: 52),
+          AchievementMedal(achievement: achievement, size: 44),
+          const SizedBox(height: 6),
           Text(
-            unlocked ? achievement.icon : '🔒',
-            style: const TextStyle(fontSize: 0),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  achievement.title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: unlocked ? const Color(0xFF6B4E00) : null,
-                  ),
-                ),
-                Text(
-                  unlocked
-                      ? 'Unlocked'
-                      : '${achievement.description} · ${achievement.current}/${achievement.target}',
-                  style: TextStyle(
-                    color: unlocked
-                        ? const Color(0xFF8A6500)
-                        : Colors.grey.shade600,
-                    fontSize: 11,
-                  ),
-                ),
-                if (!unlocked) ...[
-                  const SizedBox(height: 6),
-                  LinearProgressIndicator(
-                    value: achievement.progress,
-                    minHeight: 4,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ],
-              ],
+            achievement.title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: unlocked ? const Color(0xFF6B4E00) : null,
             ),
           ),
+          const SizedBox(height: 3),
+          Text(
+            unlocked
+                ? achievement.description
+                : '${achievement.description} · ${achievement.current}/${achievement.target}',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: unlocked ? const Color(0xFF8A6500) : Colors.grey.shade600,
+              fontSize: 9.5,
+              height: 1.2,
+            ),
+          ),
+          if (!unlocked) ...[
+            const SizedBox(height: 6),
+            LinearProgressIndicator(
+              value: achievement.progress,
+              minHeight: 4,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ],
         ],
       ),
     );
@@ -1643,79 +1849,91 @@ class _HomePageState extends State<HomePage> {
       },
     ];
 
-    return Container(
-      height: 76,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: items.map((item) {
-          final index = item['index'] as int;
-          final isSelected = _currentTabIndex == index;
-          return InkWell(
-            onTap: () => _selectTab(index),
-            child: SizedBox(
-              width: MediaQuery.sizeOf(context).width / items.length,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AnimatedContainer(
+    return SafeArea(
+      top: false,
+      minimum: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+      child: Container(
+        height: 78,
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .97),
+          borderRadius: BorderRadius.circular(31),
+          border: Border.all(color: const Color(0xFFD8E8F5)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF357FBD).withValues(alpha: .2),
+              blurRadius: 20,
+              offset: const Offset(0, 7),
+            ),
+          ],
+        ),
+        child: Row(
+          children: items.map((item) {
+            final index = item['index'] as int;
+            final isSelected = _currentTabIndex == index;
+            return Expanded(
+              child: Semantics(
+                selected: isSelected,
+                button: true,
+                label: item['label'] as String,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => _selectTab(index),
+                  child: AnimatedContainer(
                     duration: const Duration(milliseconds: 180),
-                    padding: EdgeInsets.all(isSelected ? 8 : 5),
                     decoration: BoxDecoration(
                       gradient: isSelected
                           ? const LinearGradient(
-                              colors: [Color(0xFF428DEB), Color(0xFF2467B2)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF43A8F5), Color(0xFF1976E8)],
                             )
                           : null,
-                      borderRadius: BorderRadius.circular(13),
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
                                 color: const Color(
-                                  0xFF428DEB,
-                                ).withValues(alpha: .24),
-                                blurRadius: 9,
-                                offset: const Offset(0, 3),
+                                  0xFF2488EC,
+                                ).withValues(alpha: .3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
                               ),
                             ]
                           : null,
                     ),
-                    child: Icon(
-                      (isSelected ? item['selectedIcon'] : item['icon'])
-                          as IconData,
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF64748B),
-                      size: isSelected ? 22 : 24,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          (isSelected ? item['selectedIcon'] : item['icon'])
+                              as IconData,
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF65758E),
+                          size: 24,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          item['label'] as String,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF596981),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item['label'] as String,
-                    style: TextStyle(
-                      color: isSelected
-                          ? const Color(0xFF428DEB)
-                          : Colors.grey.shade600,
-                      fontSize: 11,
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -1756,76 +1974,155 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _HomeAchievementBadge extends StatelessWidget {
-  const _HomeAchievementBadge({required this.achievement});
-  final StudentAchievement achievement;
+class _HomeSectionHeading extends StatelessWidget {
+  const _HomeSectionHeading({required this.title});
+
+  final String title;
 
   @override
-  Widget build(BuildContext context) {
-    final unlocked = achievement.unlocked;
-    return Container(
-      width: 152,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: unlocked ? Colors.white : const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: unlocked ? const Color(0xFFF6C453) : const Color(0xFFE2E8F0),
+  Widget build(BuildContext context) => Row(
+    children: [
+      Container(
+        width: 7,
+        height: 31,
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF56B7F5), Color(0xFF247FEA)],
+          ),
+          borderRadius: BorderRadius.circular(99),
         ),
-        boxShadow: unlocked
-            ? [
-                BoxShadow(
-                  color: const Color(0xFFF59E0B).withValues(alpha: .12),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
       ),
-      child: Column(
-        children: [
-          AchievementMedal(achievement: achievement, size: 66),
-          const SizedBox(height: 8),
-          Text(
-            achievement.title,
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: Color(0xFF1E293B),
-            ),
+      const SizedBox(width: 11),
+      Expanded(
+        child: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            color: Color(0xFF10213E),
           ),
-          const SizedBox(height: 4),
-          Text(
-            unlocked
-                ? 'Unlocked'
-                : '${achievement.current}/${achievement.target} progress',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: unlocked
-                  ? const Color(0xFFB45309)
-                  : const Color(0xFF64748B),
-            ),
-          ),
-          if (!unlocked) ...[
-            const SizedBox(height: 7),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: achievement.progress,
-                minHeight: 4,
-                color: const Color(0xFF64748B),
-                backgroundColor: const Color(0xFFE2E8F0),
+        ),
+      ),
+      ExcludeSemantics(
+        child: Row(
+          children: List.generate(
+            3,
+            (index) => Container(
+              width: 7,
+              height: 19,
+              margin: const EdgeInsets.only(left: 5),
+              transform: Matrix4.skewX(-.35),
+              decoration: BoxDecoration(
+                color: const Color(
+                  0xFF328FE9,
+                ).withValues(alpha: 1 - index * .18),
+                borderRadius: BorderRadius.circular(99),
               ),
             ),
-          ],
-        ],
+          ),
+        ),
       ),
+    ],
+  );
+}
+
+class _StudentHomeBackgroundPainter extends CustomPainter {
+  const _StudentHomeBackgroundPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final base = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFFF1F9FF), Color(0xFFEAF5FF), Color(0xFFF7FBFF)],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, base);
+
+    final topWave = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, size.height * .16)
+      ..cubicTo(
+        size.width * .74,
+        size.height * .08,
+        size.width * .42,
+        size.height * .21,
+        0,
+        size.height * .11,
+      )
+      ..close();
+    canvas.drawPath(
+      topWave,
+      Paint()..color = const Color(0xFFB9E0FA).withValues(alpha: .22),
+    );
+
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width * .94, size.height * .32),
+        width: size.width * .5,
+        height: size.width * .5,
+      ),
+      Paint()..color = const Color(0xFF76C4F5).withValues(alpha: .08),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(size.width * .04, size.height * .78),
+        width: size.width * .62,
+        height: size.width * .42,
+      ),
+      Paint()..color = const Color(0xFF93D1F8).withValues(alpha: .1),
+    );
+
+    final lowerRibbon = Path()
+      ..moveTo(0, size.height * .88)
+      ..quadraticBezierTo(
+        size.width * .28,
+        size.height * .8,
+        size.width * .52,
+        size.height * .91,
+      )
+      ..quadraticBezierTo(
+        size.width * .76,
+        size.height,
+        size.width,
+        size.height * .89,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(
+      lowerRibbon,
+      Paint()..color = const Color(0xFF4AAAF0).withValues(alpha: .07),
     );
   }
+
+  @override
+  bool shouldRepaint(covariant _StudentHomeBackgroundPainter oldDelegate) =>
+      false;
+}
+
+class AchievementUnlockCount extends StatelessWidget {
+  const AchievementUnlockCount({
+    super.key,
+    required this.unlocked,
+    required this.total,
+  });
+
+  final int unlocked;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    '$unlocked of $total unlocked',
+    style: const TextStyle(
+      color: Color(0xFF667085),
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+    ),
+  );
 }
 
 class AchievementMedal extends StatelessWidget {

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/services/class_summary_service.dart';
 import 'package:icteach/services/summary_pdf_service.dart';
+import 'package:icteach/services/personal_summary_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -77,6 +78,77 @@ void main() {
     expect(
       ClassSummaryService.sectionsForRole('admin', sections),
       hasLength(sections.length),
+    );
+  });
+
+  test('print purposes include only the required summary', () {
+    const sections = [
+      SummarySection('Learning progress summary', [], []),
+      SummarySection('Students', [], []),
+      SummarySection('Module access', [], []),
+      SummarySection('Quiz results', [], []),
+      SummarySection('Trainer practical validation', [], []),
+      SummarySection('Simulations', [], []),
+    ];
+
+    expect(
+      ClassSummaryService.sectionsForPrint(
+        ClassSummaryPrintPurpose.grades,
+        ClassSummaryService.sectionsForRole('teacher', sections),
+      ).map((section) => section.title),
+      ['Learning progress summary'],
+    );
+    expect(
+      ClassSummaryService.sectionsForPrint(
+        ClassSummaryPrintPurpose.grades,
+        ClassSummaryService.sectionsForRole('trainer', sections),
+      ).map((section) => section.title),
+      ['Trainer practical validation'],
+    );
+    expect(
+      ClassSummaryService.sectionsForPrint(
+        ClassSummaryPrintPurpose.progress,
+        sections,
+      ).map((section) => section.title),
+      ['Learning progress summary'],
+    );
+    expect(
+      ClassSummaryService.sectionsForPrint(
+        ClassSummaryPrintPurpose.modules,
+        sections,
+      ).map((section) => section.title),
+      ['Module access'],
+    );
+  });
+
+  test('admin print summaries contain only the current page data', () {
+    const sections = [
+      SummarySection('Students', [], []),
+      SummarySection('Class enrollment', [], []),
+      SummarySection('Module publishing', [], []),
+      SummarySection('Assessment summary', [], []),
+    ];
+
+    expect(
+      AdminSummaryService.sectionsForPage(
+        'Performance',
+        sections,
+      ).map((section) => section.title),
+      ['Assessment summary'],
+    );
+    expect(
+      AdminSummaryService.sectionsForPage(
+        'Content Overview',
+        sections,
+      ).map((section) => section.title),
+      ['Module publishing'],
+    );
+    expect(
+      AdminSummaryService.sectionsForPage(
+        'Manage Classes',
+        sections,
+      ).map((section) => section.title),
+      ['Class enrollment'],
     );
   });
 }

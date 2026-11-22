@@ -53,8 +53,11 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
         elevation: 0,
         actions: [
           SummaryPrintButton(
-            title: 'Class summary - ${widget.className}',
-            load: () => ClassSummaryService.load(widget.classId),
+            title: 'Module access summary - ${widget.className}',
+            load: () => ClassSummaryService.loadForPrint(
+              widget.classId,
+              ClassSummaryPrintPurpose.modules,
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.account_tree),
