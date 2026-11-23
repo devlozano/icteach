@@ -256,6 +256,20 @@ service cloud.firestore {
         && data.enrolledStudentIds is list && data.enrolledStudentIds.size() <= 1000
         && data.get('trainerIds', []) is list && data.get('trainerIds', []).size() <= 100;
     }
+    function principalArchivesClass() {
+      return canAdmin()
+        && resource.data.schoolYear is string
+        && resource.data.schoolYear.matches('^[0-9]{4}-[0-9]{4}$')
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'archivedAt', 'archiveSchoolYear', 'archiveReason'
+        ])
+        && request.resource.data.status == 'archived'
+        && request.resource.data.archivedAt is timestamp
+        && request.resource.data.archiveSchoolYear == resource.data.schoolYear
+        && request.resource.data.archiveReason is string
+        && request.resource.data.archiveReason.size() > 0
+        && request.resource.data.archiveReason.size() <= 200;
+    }
     function classParticipant(classId) {
       let classroom = get(/databases/$(database)/documents/classes/$(classId)).data;
       return request.auth != null && (canAdmin() || (
@@ -305,6 +319,7 @@ service cloud.firestore {
         && request.resource.data.createdBy == request.auth.uid;
       allow update: if request.auth != null && (
         (canAdmin() && validPrincipalClass(request.resource.data))
+        || principalArchivesClass()
         || (isActiveTeacher() && ownsClass(classId) && validClassRoster(request.resource.data)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'description', 'enrolledStudentIds', 'studentCount', 'pendingReviews', 'updatedAt']))
@@ -350,11 +365,48 @@ service cloud.firestore {
         );
       }
     }
-    // School-year indexes are written only by the scheduled Admin SDK
-    // function. Principals may inspect them, but no client can alter history.
-    match /school_year_archives/{document=**} {
+    function validArchiveYear(data, schoolYear) {
+      return data.keys().hasOnly([
+          'name', 'schoolYear', 'status', 'classCount', 'dataLocation',
+          'dataPreservedInSource', 'updatedAt'
+        ])
+        && schoolYear.matches('^[0-9]{4}-[0-9]{4}$')
+        && data.name == schoolYear
+        && data.schoolYear == schoolYear
+        && data.status == 'archived'
+        && data.classCount is int && data.classCount >= 0 && data.classCount <= 1000
+        && data.dataLocation == 'classes and their nested subcollections'
+        && data.dataPreservedInSource == true
+        && data.updatedAt is timestamp;
+    }
+    function validArchiveClass(data, schoolYear, classId) {
+      return data.keys().hasOnly([
+          'classId', 'className', 'sectionCode', 'teacherId', 'teacherName',
+          'schoolYear', 'sourcePath', 'archivedAt', 'dataPreservedInSource'
+        ])
+        && data.classId == classId
+        && data.className is string && data.className.size() > 0 && data.className.size() <= 100
+        && data.sectionCode is string && data.sectionCode.size() <= 60
+        && data.teacherId is string && data.teacherId.size() <= 128
+        && data.teacherName is string && data.teacherName.size() <= 200
+        && data.schoolYear == schoolYear
+        && data.sourcePath == 'classes/' + classId
+        && data.archivedAt is timestamp
+        && data.dataPreservedInSource == true;
+    }
+    // The scheduled Admin SDK rollover and the principal's explicit rollover
+    // create the same validated archive index. Source class data is preserved.
+    match /school_year_archives/{schoolYear} {
       allow read: if canAdmin();
-      allow write: if false;
+      allow create, update: if canAdmin()
+        && validArchiveYear(request.resource.data, schoolYear);
+      allow delete: if false;
+      match /classes/{classId} {
+        allow read: if canAdmin();
+        allow create, update: if canAdmin()
+          && validArchiveClass(request.resource.data, schoolYear, classId);
+        allow delete: if false;
+      }
     }
     // Academic-year and school-profile settings affect every account. They
     // are readable in reports, but only the principal may change them.
@@ -363,7 +415,11 @@ service cloud.firestore {
         && request.resource.data.endYear is int
         && request.resource.data.activeSchoolYear is string
         && request.resource.data.activeSchoolYear.matches('^[0-9]{4}-[0-9]{4}$')
-        && request.resource.data.startYear >= request.time.year()
+        // January-May still belongs to the year that began the previous June.
+        && ((request.time.month() < 6
+              && request.resource.data.startYear >= request.time.year() - 1)
+          || (request.time.month() >= 6
+              && request.resource.data.startYear >= request.time.year()))
         && request.resource.data.startYear < 9999
         && request.resource.data.endYear == request.resource.data.startYear + 1;
     }

@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'admin/content_overview_page.dart';
 import 'package:flutter/services.dart';
 import 'utils/academic_year_validation.dart';
+import 'services/school_year_rollover_service.dart';
 import 'package:intl/intl.dart';
 import 'admin/create_staff_page.dart';
 import 'admin/principal_archives_page.dart';
@@ -48,6 +49,20 @@ class _AdminHomePageState extends State<AdminHomePage> {
   String _currentSelectedLabel = normalizePrincipalPanelSelection(
     WorkspacePreferences.selection('admin_panel'),
   );
+
+  @override
+  void initState() {
+    super.initState();
+    SchoolYearRolloverService().rollForward().catchError((_) {
+      // Settings remains available for an explicit retry if connectivity is
+      // unavailable while the principal workspace is opening.
+      return const SchoolYearRolloverResult(
+        activeSchoolYear: '',
+        archivedClasses: 0,
+        archiveNames: [],
+      );
+    });
+  }
 
   void _selectPanel(String label) {
     setState(() => _currentSelectedLabel = label);
@@ -1637,6 +1652,7 @@ class _ManageClassesContentState extends State<_ManageClassesContent> {
                                                   doc.id,
                                                   name,
                                                   value,
+                                                  data,
                                                 ),
                                           ),
                                         ),
@@ -1665,25 +1681,31 @@ class _ManageClassesContentState extends State<_ManageClassesContent> {
     String classId,
     String className,
     String action,
+    Map<String, dynamic> classData,
   ) async {
-    if (action == 'archive' || action == 'activate') {
-      final newStatus = action == 'archive' ? 'archived' : 'active';
-      await FirebaseFirestore.instance
-          .collection('classes')
-          .doc(classId)
-          .update({
-            'status': newStatus,
-            'updatedAt': FieldValue.serverTimestamp(),
-          });
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Class "$className" ${action == 'archive' ? 'archived' : 'activated'}',
+    if (action == 'archive') {
+      await _archiveClass(context, classId, className, classData);
+    } else if (action == 'activate') {
+      try {
+        await FirebaseFirestore.instance
+            .collection('classes')
+            .doc(classId)
+            .update({
+              'status': 'active',
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Class "$className" activated'),
+              backgroundColor: Colors.green,
             ),
-            backgroundColor: Colors.green,
-          ),
-        );
+          );
+        }
+      } on FirebaseException catch (error) {
+        if (context.mounted) {
+          _showClassActionError(context, error.message ?? error.code);
+        }
       }
     } else if (action == 'delete') {
       final confirm = await showDialog<bool>(
@@ -1734,6 +1756,91 @@ class _ManageClassesContentState extends State<_ManageClassesContent> {
         }
       }
     }
+  }
+
+  Future<void> _archiveClass(
+    BuildContext context,
+    String classId,
+    String className,
+    Map<String, dynamic> classData,
+  ) async {
+    final schoolYear = classData['schoolYear']?.toString() ?? '';
+    final studentCount =
+        (classData['enrolledStudentIds'] as List?)?.length ?? 0;
+    if (AcademicYearValidation.parseStartYear(schoolYear) == null) {
+      _showClassActionError(
+        context,
+        'Set a valid school year on this class before archiving it.',
+      );
+      return;
+    }
+    if (classData['status'] == 'archived') {
+      _showClassActionError(context, 'This class is already archived.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.archive_outlined, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Archive class?'),
+          ],
+        ),
+        content: Text(
+          'Archive "$className" under school year $schoolYear?\n\n'
+          '$studentCount enrolled student${studentCount == 1 ? '' : 's'} will lose access to this active class. Their lessons, scores, and records will be preserved in the archive.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            icon: const Icon(Icons.archive_outlined, size: 18),
+            label: const Text('Archive class'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    try {
+      final archivedYear = await SchoolYearRolloverService().archiveClass(
+        classId,
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Class "$className" archived under $archivedYear.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } on SchoolYearArchiveException catch (error) {
+      if (context.mounted) _showClassActionError(context, error.message);
+    } on FirebaseException catch (error) {
+      if (context.mounted) {
+        _showClassActionError(context, error.message ?? error.code);
+      }
+    } catch (_) {
+      if (context.mounted) {
+        _showClassActionError(
+          context,
+          'The class could not be archived. Check your connection and try again.',
+        );
+      }
+    }
+  }
+
+  void _showClassActionError(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
+    );
   }
 }
 
@@ -2397,9 +2504,7 @@ class _SettingsContentState extends State<_SettingsContent> {
   late String _selectedAcademicYear;
 
   String _automaticAcademicYear() {
-    final now = DateTime.now();
-    final start = now.year;
-    return '$start-${start + 1}';
+    return AcademicYearValidation.activeSchoolYear();
   }
 
   @override
@@ -2458,52 +2563,18 @@ class _SettingsContentState extends State<_SettingsContent> {
     }
   }
 
-  Future<void> _saveAcademicYear({required bool archivePrevious}) async {
+  Future<void> _saveAcademicYear() async {
     final academicYear = _validatedAcademicYear();
     if (academicYear == null) return;
-    final startYear = int.parse(_startYearController.text.trim());
     setState(() => _isSavingAcademicYear = true);
     try {
-      final db = FirebaseFirestore.instance;
-      await db.collection('system_settings').doc('academic_year').set({
-        'activeSchoolYear': academicYear,
-        'startYear': startYear,
-        'endYear': startYear + 1,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'updatedBy': FirebaseAuth.instance.currentUser?.uid,
-      }, SetOptions(merge: true));
-
-      var archivedCount = 0;
-      if (archivePrevious) {
-        final classes = await db.collection('classes').get();
-        WriteBatch batch = db.batch();
-        var pendingWrites = 0;
-        for (final classDoc in classes.docs) {
-          final data = classDoc.data();
-          final year = data['schoolYear']?.toString();
-          final status = data['status']?.toString();
-          if (year != academicYear && status != 'archived') {
-            batch.update(classDoc.reference, {
-              'status': 'archived',
-              'archivedAt': FieldValue.serverTimestamp(),
-              'archiveReason': 'Academic year changed to $academicYear',
-            });
-            archivedCount++;
-            pendingWrites++;
-            if (pendingWrites == 450) {
-              await batch.commit();
-              batch = db.batch();
-              pendingWrites = 0;
-            }
-          }
-        }
-        if (pendingWrites > 0) await batch.commit();
-      }
+      final result = await SchoolYearRolloverService().rollForward(
+        targetSchoolYear: academicYear,
+      );
 
       _showSnack(
-        archivePrevious
-            ? 'Academic year saved. $archivedCount previous class(es) archived.'
-            : 'Active academic year saved.',
+        'School year ${result.activeSchoolYear} is active. '
+        '${result.archivedClasses} past class(es) archived.',
         Colors.green,
       );
     } catch (e) {
@@ -2522,7 +2593,8 @@ class _SettingsContentState extends State<_SettingsContent> {
         title: const Text('Start academic year rollover?'),
         content: Text(
           'This sets $academicYear as active and archives every class '
-          'from another school year. Archived classes remain available in the '
+          'from an earlier school year. Future years are left unchanged. '
+          'Archived classes remain available in the '
           'Classes archive and their records are not deleted.',
         ),
         actions: [
@@ -2538,7 +2610,7 @@ class _SettingsContentState extends State<_SettingsContent> {
       ),
     );
     if (confirmed == true) {
-      await _saveAcademicYear(archivePrevious: true);
+      await _saveAcademicYear();
     }
   }
 
@@ -2774,41 +2846,30 @@ class _SettingsContentState extends State<_SettingsContent> {
                       ),
                     ),
                     const SizedBox(height: 14),
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed:
-                              _isSavingAcademicYear ||
-                                  AcademicYearValidation.startYearError(
-                                        _startYearController.text,
-                                      ) !=
-                                      null
-                              ? null
-                              : () => _saveAcademicYear(archivePrevious: false),
-                          icon: const Icon(Icons.save_rounded, size: 18),
-                          label: const Text('Save active year'),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(170, 46),
-                          ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: ElevatedButton.icon(
+                        onPressed:
+                            _isSavingAcademicYear ||
+                                AcademicYearValidation.startYearError(
+                                      _startYearController.text,
+                                    ) !=
+                                    null
+                            ? null
+                            : _confirmAcademicYearRollover,
+                        icon: _isSavingAcademicYear
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.archive_rounded, size: 18),
+                        label: const Text('Apply year and archive past years'),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(250, 46),
                         ),
-                        OutlinedButton.icon(
-                          onPressed:
-                              _isSavingAcademicYear ||
-                                  AcademicYearValidation.startYearError(
-                                        _startYearController.text,
-                                      ) !=
-                                      null
-                              ? null
-                              : _confirmAcademicYearRollover,
-                          icon: const Icon(Icons.archive_rounded, size: 18),
-                          label: const Text('Save and archive previous years'),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size(250, 46),
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ],
                 ),

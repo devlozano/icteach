@@ -5,7 +5,7 @@ import {
   assertSucceeds,
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import {doc, getDoc, setDoc} from 'firebase/firestore';
+import {doc, getDoc, setDoc, updateDoc} from 'firebase/firestore';
 
 let env;
 
@@ -39,6 +39,11 @@ beforeEach(async () => {
         doc(db, 'school_year_archives/2026-2027/classes/class-a'),
         {classId: 'class-a'},
     );
+    await setDoc(doc(db, 'classes/legacy-class'), {
+      name: 'Legacy CSS',
+      schoolYear: '2026-2027',
+      status: 'active',
+    });
   });
 });
 
@@ -57,11 +62,51 @@ test('students cannot read archived school-year indexes', async () => {
   await assertFails(getDoc(doc(db, 'school_year_archives/2026-2027')));
 });
 
-test('clients cannot create or alter an archive', async () => {
-  for (const uid of ['principal', 'student']) {
-    const db = env.authenticatedContext(uid).firestore();
-    await assertFails(setDoc(doc(db, 'school_year_archives/2027-2028'), {
-      name: '2027-2028',
-    }));
-  }
+test('principal can create a strictly validated archive index', async () => {
+  const db = env.authenticatedContext('principal').firestore();
+  await assertSucceeds(setDoc(doc(db, 'school_year_archives/2027-2028'), {
+    name: '2027-2028',
+    schoolYear: '2027-2028',
+    status: 'archived',
+    classCount: 1,
+    dataLocation: 'classes and their nested subcollections',
+    dataPreservedInSource: true,
+    updatedAt: new Date(),
+  }));
+  await assertSucceeds(setDoc(
+      doc(db, 'school_year_archives/2027-2028/classes/class-b'),
+      {
+        classId: 'class-b',
+        className: 'CSS 11',
+        sectionCode: 'A',
+        teacherId: 'teacher-a',
+        teacherName: 'Teacher A',
+        schoolYear: '2027-2028',
+        sourcePath: 'classes/class-b',
+        archivedAt: new Date(),
+        dataPreservedInSource: true,
+      },
+  ));
+});
+
+test('students and malformed principal writes cannot alter archives', async () => {
+  const student = env.authenticatedContext('student').firestore();
+  const principal = env.authenticatedContext('principal').firestore();
+  await assertFails(setDoc(doc(student, 'school_year_archives/2027-2028'), {
+    name: '2027-2028',
+  }));
+  await assertFails(setDoc(doc(principal, 'school_year_archives/2027-2028'), {
+    name: '2027-2028',
+    status: 'active',
+  }));
+});
+
+test('principal can archive a legacy class without rewriting its schema', async () => {
+  const db = env.authenticatedContext('principal').firestore();
+  await assertSucceeds(updateDoc(doc(db, 'classes/legacy-class'), {
+    status: 'archived',
+    archivedAt: new Date(),
+    archiveSchoolYear: '2026-2027',
+    archiveReason: 'School year advanced to 2027-2028',
+  }));
 });

@@ -23,6 +23,7 @@ import 'services/workspace_preferences.dart';
 import 'package:icteach/screens/notification_page.dart';
 import 'package:icteach/widgets/notification_badge.dart';
 import 'package:icteach/screens/student/forums_page.dart';
+import 'class_detail_page.dart';
 
 class TrainerHomePage extends StatefulWidget {
   const TrainerHomePage({super.key});
@@ -559,8 +560,12 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
           return const Text('Could not load class totals.');
         if (!snapshot.hasData) return const LinearProgressIndicator();
         final classes = snapshot.data!;
-        final classCount = classes.length;
-        final totalStudents = classes.fold<int>(
+        final activeClasses = classes
+            .where((doc) => doc.data()['status']?.toString() != 'archived')
+            .toList();
+        final classCount = activeClasses.length;
+        final archivedCount = classes.length - classCount;
+        final totalStudents = activeClasses.fold<int>(
           0,
           (total, doc) =>
               total + (doc.data()['enrolledStudentIds'] as List? ?? []).length,
@@ -571,7 +576,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
               WorkspaceStatData(
                 title: 'Classes',
                 value: '$classCount',
-                subtitle: 'Your assigned classes',
+                subtitle: archivedCount == 0
+                    ? 'Your active classes'
+                    : '$archivedCount archived',
                 icon: Icons.class_rounded,
                 color: const Color(0xFF0891B2),
               ),
@@ -716,18 +723,30 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
 
   // Discussion Forums Tab
   Widget _buildDiscussionForums(Color primaryColor) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(FirebaseAuth.instance.currentUser?.uid)
-          .collection('classes')
-          .snapshots(),
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) return const SizedBox.shrink();
+    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+      stream: WorkspaceData.assignedClasses(uid),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final classDocs = snapshot.data?.docs ?? [];
+        final classDocs = [...?snapshot.data]
+          ..sort((a, b) {
+            final aArchived = a.data()['status']?.toString() == 'archived';
+            final bArchived = b.data()['status']?.toString() == 'archived';
+            if (aArchived != bArchived) return aArchived ? 1 : -1;
+            final aName =
+                a.data()['name']?.toString() ??
+                a.data()['className']?.toString() ??
+                '';
+            final bName =
+                b.data()['name']?.toString() ??
+                b.data()['className']?.toString() ??
+                '';
+            return aName.toLowerCase().compareTo(bName.toLowerCase());
+          });
 
         if (classDocs.isEmpty) {
           return Center(
@@ -766,33 +785,69 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 data['className']?.toString() ??
                 data['name']?.toString() ??
                 'Unnamed Class';
-            final classId = data['classId']?.toString() ?? '';
+            final classId = doc.id;
             final teacherName =
                 data['teacherName']?.toString() ?? 'Unknown Teacher';
+            final schoolYear =
+                data['schoolYear']?.toString() ?? 'School year unavailable';
+            final archived = data['status']?.toString() == 'archived';
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              elevation: 2,
+              elevation: archived ? 0 : 2,
+              color: archived ? const Color(0xFFF8FAFC) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: archived
+                      ? const Color(0xFFCBD5E1)
+                      : Colors.transparent,
+                ),
               ),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: primaryColor.withValues(alpha: 0.1),
-                  child: Icon(Icons.forum_rounded, color: primaryColor),
+                  backgroundColor: archived
+                      ? const Color(0xFFE2E8F0)
+                      : primaryColor.withValues(alpha: 0.1),
+                  child: Icon(
+                    archived ? Icons.archive_outlined : Icons.forum_rounded,
+                    color: archived ? const Color(0xFF64748B) : primaryColor,
+                  ),
                 ),
-                title: Text(
-                  className,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        className,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: archived ? const Color(0xFF475569) : null,
+                        ),
+                      ),
+                    ),
+                    if (archived) const _TrainerArchivedClassBadge(),
+                  ],
                 ),
-                subtitle: Text('Teacher: $teacherName'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                subtitle: Text(
+                  archived
+                      ? 'Archived | $schoolYear | Records only'
+                      : 'Teacher: $teacherName | $schoolYear',
+                ),
+                trailing: Icon(
+                  archived ? Icons.lock_outline : Icons.arrow_forward_ios,
+                  size: 16,
+                  color: archived ? const Color(0xFF64748B) : null,
+                ),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) =>
-                          ForumsPage(classId: classId, className: className),
+                      builder: (_) => archived
+                          ? ClassDetailPage(
+                              classId: classId,
+                              className: className,
+                            )
+                          : ForumsPage(classId: classId, className: className),
                     ),
                   );
                 },
@@ -821,197 +876,268 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         minChildSize: 0.3,
         maxChildSize: 0.9,
         expand: false,
-        builder: (context, scrollController) => StreamBuilder<QuerySnapshot>(
-          stream: WorkspaceData.memberships(user.uid),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        builder: (context, scrollController) =>
+            StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
+              stream: WorkspaceData.assignedClasses(user.uid),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            if (snapshot.hasError) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: Colors.red,
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 48,
+                          color: Colors.red,
+                        ),
+                        const SizedBox(height: 16),
+                        Text('Error: ${snapshot.error}'),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Text('Error: ${snapshot.error}'),
-                  ],
-                ),
-              );
-            }
+                  );
+                }
 
-            final classDocs = snapshot.data?.docs ?? [];
+                final classDocs = [...?snapshot.data]
+                  ..sort((a, b) {
+                    final aArchived =
+                        a.data()['status']?.toString() == 'archived';
+                    final bArchived =
+                        b.data()['status']?.toString() == 'archived';
+                    if (aArchived != bArchived) return aArchived ? 1 : -1;
+                    final aName =
+                        a.data()['name']?.toString() ??
+                        a.data()['className']?.toString() ??
+                        '';
+                    final bName =
+                        b.data()['name']?.toString() ??
+                        b.data()['className']?.toString() ??
+                        '';
+                    return aName.toLowerCase().compareTo(bName.toLowerCase());
+                  });
 
-            if (classDocs.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.class_outlined,
-                      size: 64,
-                      color: Colors.grey.shade300,
+                if (classDocs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.class_outlined,
+                          size: 64,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'No assigned classes',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'The principal will assign you to a teacher and class.',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'No assigned classes',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                  );
+                }
+
+                final actionTitle = actionType == 'modules'
+                    ? 'Modules'
+                    : actionType == 'quizzes'
+                    ? 'Quizzes'
+                    : actionType == 'assignments'
+                    ? 'Assignments'
+                    : actionType == 'progress'
+                    ? 'Progress'
+                    : actionType == 'competency'
+                    ? 'Competency Validation'
+                    : 'Instructional Videos';
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0B2B4A),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(20),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            actionType == 'modules'
+                                ? Icons.menu_book_rounded
+                                : actionType == 'quizzes'
+                                ? Icons.quiz_rounded
+                                : actionType == 'assignments'
+                                ? Icons.assignment_rounded
+                                : actionType == 'progress'
+                                ? Icons.analytics_rounded
+                                : Icons.video_library_rounded,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Manage $actionTitle',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  'Select a class to manage',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white70,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(context),
+                            icon: const Icon(Icons.close, color: Colors.white),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'The principal will assign you to a teacher and class.',
-                      style: TextStyle(color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              );
-            }
+                    const Divider(height: 1),
+                    Expanded(
+                      child: ListView.builder(
+                        controller: scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: classDocs.length,
+                        itemBuilder: (context, index) {
+                          final doc = classDocs[index];
+                          final data =
+                              doc.data() as Map<String, dynamic>? ?? {};
+                          final className =
+                              data['className']?.toString() ??
+                              data['name']?.toString() ??
+                              'Unnamed Class';
+                          final classId = doc.id;
+                          final teacherName =
+                              data['teacherName']?.toString() ??
+                              'Unknown Teacher';
+                          final schoolYear =
+                              data['schoolYear']?.toString() ??
+                              'School year unavailable';
+                          final archived =
+                              data['status']?.toString() == 'archived';
 
-            final actionTitle = actionType == 'modules'
-                ? 'Modules'
-                : actionType == 'quizzes'
-                ? 'Quizzes'
-                : actionType == 'assignments'
-                ? 'Assignments'
-                : actionType == 'progress'
-                ? 'Progress'
-                : actionType == 'competency'
-                ? 'Competency Validation'
-                : 'Instructional Videos';
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0B2B4A),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(20),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        actionType == 'modules'
-                            ? Icons.menu_book_rounded
-                            : actionType == 'quizzes'
-                            ? Icons.quiz_rounded
-                            : actionType == 'assignments'
-                            ? Icons.assignment_rounded
-                            : actionType == 'progress'
-                            ? Icons.analytics_rounded
-                            : Icons.video_library_rounded,
-                        color: Colors.white,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Manage $actionTitle',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 10),
+                            elevation: archived ? 0 : 2,
+                            color: archived
+                                ? const Color(0xFFF8FAFC)
+                                : Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: archived
+                                    ? const Color(0xFFCBD5E1)
+                                    : Colors.transparent,
                               ),
                             ),
-                            Text(
-                              'Select a class to manage',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.white70,
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: archived
+                                    ? const Color(0xFFE2E8F0)
+                                    : const Color(
+                                        0xFF2F80ED,
+                                      ).withValues(alpha: 0.1),
+                                child: Icon(
+                                  archived
+                                      ? Icons.archive_outlined
+                                      : actionType == 'modules'
+                                      ? Icons.menu_book_rounded
+                                      : actionType == 'quizzes'
+                                      ? Icons.quiz_rounded
+                                      : actionType == 'assignments'
+                                      ? Icons.assignment_rounded
+                                      : actionType == 'progress'
+                                      ? Icons.analytics_rounded
+                                      : Icons.video_library_rounded,
+                                  color: archived
+                                      ? const Color(0xFF64748B)
+                                      : const Color(0xFF2F80ED),
+                                  size: 20,
+                                ),
                               ),
+                              title: Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      className,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: archived
+                                            ? const Color(0xFF475569)
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                  if (archived)
+                                    const _TrainerArchivedClassBadge(),
+                                ],
+                              ),
+                              subtitle: Text(
+                                archived
+                                    ? 'Archived | $schoolYear | Training disabled'
+                                    : 'Teacher: $teacherName | $schoolYear',
+                              ),
+                              trailing: Icon(
+                                archived
+                                    ? Icons.lock_outline
+                                    : Icons.arrow_forward_ios,
+                                size: 16,
+                                color: archived
+                                    ? const Color(0xFF64748B)
+                                    : null,
+                              ),
+                              onTap: () {
+                                navigator.pop();
+                                if (archived) {
+                                  navigator.push(
+                                    MaterialPageRoute(
+                                      builder: (_) => ClassDetailPage(
+                                        classId: classId,
+                                        className: className,
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  _navigateToAction(
+                                    navigator,
+                                    actionType,
+                                    classId,
+                                    className,
+                                  );
+                                }
+                              },
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: classDocs.length,
-                    itemBuilder: (context, index) {
-                      final doc = classDocs[index];
-                      final data = doc.data() as Map<String, dynamic>? ?? {};
-                      final className =
-                          data['className']?.toString() ??
-                          data['name']?.toString() ??
-                          'Unnamed Class';
-                      final classId = data['classId']?.toString() ?? '';
-                      final teacherName =
-                          data['teacherName']?.toString() ?? 'Unknown Teacher';
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: const Color(
-                              0xFF2F80ED,
-                            ).withValues(alpha: 0.1),
-                            child: Icon(
-                              actionType == 'modules'
-                                  ? Icons.menu_book_rounded
-                                  : actionType == 'quizzes'
-                                  ? Icons.quiz_rounded
-                                  : actionType == 'assignments'
-                                  ? Icons.assignment_rounded
-                                  : actionType == 'progress'
-                                  ? Icons.analytics_rounded
-                                  : Icons.video_library_rounded,
-                              color: Color(0xFF2F80ED),
-                              size: 20,
-                            ),
-                          ),
-                          title: Text(
-                            className,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text('Teacher: $teacherName'),
-                          trailing: const Icon(
-                            Icons.arrow_forward_ios,
-                            size: 16,
-                          ),
-                          onTap: () {
-                            navigator.pop();
-                            _navigateToAction(
-                              navigator,
-                              actionType,
-                              classId,
-                              className,
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
+                    ),
+                  ],
+                );
+              },
+            ),
       ),
     );
   }
@@ -1194,6 +1320,31 @@ class _TrainerToolItem extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TrainerArchivedClassBadge extends StatelessWidget {
+  const _TrainerArchivedClassBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFDBA74)),
+      ),
+      child: const Text(
+        'ARCHIVED',
+        style: TextStyle(
+          color: Color(0xFF9A3412),
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
         ),
       ),
     );

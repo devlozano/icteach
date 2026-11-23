@@ -23,6 +23,7 @@ import 'package:icteach/screens/student/forums_page.dart';
 import 'package:icteach/screens/notification_page.dart';
 import 'package:icteach/widgets/notification_badge.dart';
 import 'class_roster.dart';
+import 'class_detail_page.dart';
 import 'login.dart';
 import 'admin_login.dart';
 import 'widgets/staff_sidebar.dart';
@@ -175,9 +176,14 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           );
         }
 
-        final classes = classDocs
-            .map((doc) => _TeacherClassData.fromSnapshot(doc))
-            .toList();
+        final classes =
+            classDocs.map((doc) => _TeacherClassData.fromSnapshot(doc)).toList()
+              ..sort((a, b) {
+                if (a.isArchived != b.isArchived) return a.isArchived ? 1 : -1;
+                return a.className.toLowerCase().compareTo(
+                  b.className.toLowerCase(),
+                );
+              });
 
         return ListView.builder(
           shrinkWrap: kIsWeb,
@@ -186,43 +192,76 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           itemCount: classes.length,
           itemBuilder: (context, index) {
             final classData = classes[index];
+            final archived = classData.isArchived;
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              elevation: 2,
+              elevation: archived ? 0 : 2,
+              color: archived ? const Color(0xFFF8FAFC) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: archived
+                      ? const Color(0xFFCBD5E1)
+                      : Colors.transparent,
+                ),
               ),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: const Color(
-                    0xFF2F80ED,
-                  ).withValues(alpha: 0.1),
-                  child: Text(
-                    classData.className.isNotEmpty
-                        ? classData.className[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      color: Color(0xFF2F80ED),
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  backgroundColor: archived
+                      ? const Color(0xFFE2E8F0)
+                      : const Color(0xFF2F80ED).withValues(alpha: 0.1),
+                  child: archived
+                      ? const Icon(
+                          Icons.archive_outlined,
+                          color: Color(0xFF64748B),
+                        )
+                      : Text(
+                          classData.className.isNotEmpty
+                              ? classData.className[0].toUpperCase()
+                              : '?',
+                          style: const TextStyle(
+                            color: Color(0xFF2F80ED),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
-                title: Text(
-                  classData.className,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        classData.className,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: archived ? const Color(0xFF475569) : null,
+                        ),
+                      ),
+                    ),
+                    if (archived) const _ArchivedClassBadge(),
+                  ],
                 ),
                 subtitle: Text(
-                  '${classData.enrolledStudentIds?.length ?? 0} total enrolled',
+                  archived
+                      ? 'Archived | ${classData.schoolYear} | Records only'
+                      : '${classData.enrolledStudentIds?.length ?? 0} total enrolled | ${classData.schoolYear}',
                 ),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                trailing: Icon(
+                  archived ? Icons.lock_outline : Icons.arrow_forward_ios,
+                  size: 16,
+                  color: archived ? const Color(0xFF64748B) : null,
+                ),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ClassRosterPage(
-                        classId: classData.classId,
-                        className: classData.className,
-                      ),
+                      builder: (_) => archived
+                          ? ClassDetailPage(
+                              classId: classData.classId,
+                              className: classData.className,
+                            )
+                          : ClassRosterPage(
+                              classId: classData.classId,
+                              className: classData.className,
+                            ),
                     ),
                   );
                 },
@@ -361,12 +400,16 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             final classes = classDocs
                 .map((doc) => _TeacherClassData.fromSnapshot(doc))
                 .toList();
-            final classCount = classes.length;
-            final totalEnrolled = classes.fold<int>(
+            final activeClasses = classes
+                .where((classroom) => !classroom.isArchived)
+                .toList();
+            final classCount = activeClasses.length;
+            final archivedCount = classes.length - classCount;
+            final totalEnrolled = activeClasses.fold<int>(
               0,
               (total, item) => total + (item.enrolledStudentIds?.length ?? 0),
             );
-            final pendingReviewCount = classes.fold<int>(
+            final pendingReviewCount = activeClasses.fold<int>(
               0,
               (total, item) => total + (item.pendingReviews ?? 0),
             );
@@ -389,7 +432,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                       WorkspaceStatData(
                         title: 'Classes',
                         value: '$classCount',
-                        subtitle: 'Your active classes',
+                        subtitle: archivedCount == 0
+                            ? 'Your active classes'
+                            : '$archivedCount archived',
                         icon: Icons.class_rounded,
                         color: const Color(0xFF0891B2),
                       ),
@@ -707,9 +752,12 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           );
         }
 
-        final classes = classDocs
-            .map((doc) => _TeacherClassData.fromSnapshot(doc))
-            .toList();
+        final classes =
+            classDocs.map((doc) => _TeacherClassData.fromSnapshot(doc)).toList()
+              ..sort((a, b) {
+                if (a.isArchived != b.isArchived) return a.isArchived ? 1 : -1;
+                return a.className.compareTo(b.className);
+              });
 
         return ListView.builder(
           shrinkWrap: kIsWeb,
@@ -718,36 +766,64 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           itemCount: classes.length,
           itemBuilder: (context, index) {
             final classData = classes[index];
+            final archived = classData.isArchived;
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
-              elevation: 2,
+              elevation: archived ? 0 : 2,
+              color: archived ? const Color(0xFFF8FAFC) : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: archived
+                      ? const Color(0xFFCBD5E1)
+                      : Colors.transparent,
+                ),
               ),
               child: ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: const Color(
-                    0xFF2F80ED,
-                  ).withValues(alpha: 0.1),
+                  backgroundColor: archived
+                      ? const Color(0xFFE2E8F0)
+                      : const Color(0xFF2F80ED).withValues(alpha: 0.1),
                   child: Icon(
-                    Icons.forum_rounded,
-                    color: const Color(0xFF2F80ED),
+                    archived ? Icons.archive_outlined : Icons.forum_rounded,
+                    color: archived
+                        ? const Color(0xFF64748B)
+                        : const Color(0xFF2F80ED),
                   ),
                 ),
-                title: Text(
-                  classData.className,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        classData.className,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    if (archived) const _ArchivedClassBadge(),
+                  ],
                 ),
-                subtitle: const Text('View discussions'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                subtitle: Text(
+                  archived
+                      ? 'Archived | Discussions are read-only'
+                      : 'View discussions',
+                ),
+                trailing: Icon(
+                  archived ? Icons.lock_outline : Icons.arrow_forward_ios,
+                  size: 16,
+                ),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ForumsPage(
-                        classId: classData.classId,
-                        className: classData.className,
-                      ),
+                      builder: (_) => archived
+                          ? ClassDetailPage(
+                              classId: classData.classId,
+                              className: classData.className,
+                            )
+                          : ForumsPage(
+                              classId: classData.classId,
+                              className: classData.className,
+                            ),
                     ),
                   );
                 },
@@ -765,13 +841,19 @@ class _TeacherClassData {
   final String classId;
   final String className;
   final String teacherId;
+  final String schoolYear;
+  final String status;
   final List<String>? enrolledStudentIds;
   final int? pendingReviews;
+
+  bool get isArchived => status == 'archived';
 
   _TeacherClassData({
     required this.classId,
     required this.className,
     required this.teacherId,
+    required this.schoolYear,
+    required this.status,
     this.enrolledStudentIds,
     this.pendingReviews,
   });
@@ -787,8 +869,35 @@ class _TeacherClassData {
           data['className']?.toString() ??
           'Untitled Class',
       teacherId: data['teacherId'] ?? '',
+      schoolYear: data['schoolYear']?.toString() ?? 'School year unavailable',
+      status: data['status']?.toString() ?? 'active',
       enrolledStudentIds: List<String>.from(data['enrolledStudentIds'] ?? []),
       pendingReviews: data['pendingReviews'] as int?,
+    );
+  }
+}
+
+class _ArchivedClassBadge extends StatelessWidget {
+  const _ArchivedClassBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFFDBA74)),
+      ),
+      child: const Text(
+        'ARCHIVED',
+        style: TextStyle(
+          color: Color(0xFF9A3412),
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.4,
+        ),
+      ),
     );
   }
 }
@@ -809,7 +918,11 @@ class _TeacherSummary extends StatelessWidget {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
       stream: classStream,
       builder: (context, snapshot) {
-        final classCount = snapshot.data?.docs.length ?? 0;
+        final classCount =
+            snapshot.data?.docs
+                .where((doc) => doc.data()['status'] != 'archived')
+                .length ??
+            0;
 
         return Container(
           padding: const EdgeInsets.all(24),
@@ -1438,9 +1551,15 @@ class _ModuleClassSelectorState extends State<_ModuleClassSelector> {
             );
           }
 
-          final classes = classDocs
-              .map((doc) => _TeacherClassData.fromSnapshot(doc))
-              .toList();
+          final classes =
+              classDocs
+                  .map((doc) => _TeacherClassData.fromSnapshot(doc))
+                  .toList()
+                ..sort((a, b) {
+                  if (a.isArchived != b.isArchived)
+                    return a.isArchived ? 1 : -1;
+                  return a.className.compareTo(b.className);
+                });
 
           return Column(
             children: [
@@ -1457,27 +1576,65 @@ class _ModuleClassSelectorState extends State<_ModuleClassSelector> {
                   itemCount: classes.length,
                   itemBuilder: (context, index) {
                     final classData = classes[index];
+                    final archived = classData.isArchived;
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
-                      elevation: 2,
+                      elevation: archived ? 0 : 2,
+                      color: archived ? const Color(0xFFF8FAFC) : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: archived
+                              ? const Color(0xFFCBD5E1)
+                              : Colors.transparent,
+                        ),
                       ),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: color.withValues(alpha: 0.1),
-                          child: Icon(icon, color: color),
+                          backgroundColor: archived
+                              ? const Color(0xFFE2E8F0)
+                              : color.withValues(alpha: 0.1),
+                          child: Icon(
+                            archived ? Icons.archive_outlined : icon,
+                            color: archived ? const Color(0xFF64748B) : color,
+                          ),
                         ),
-                        title: Text(
-                          classData.className,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                classData.className,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            if (archived) const _ArchivedClassBadge(),
+                          ],
                         ),
                         subtitle: Text(
-                          '${classData.enrolledStudentIds?.length ?? 0} total enrolled',
+                          archived
+                              ? 'Archived | ${classData.schoolYear} | Management disabled'
+                              : '${classData.enrolledStudentIds?.length ?? 0} total enrolled | ${classData.schoolYear}',
                         ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        trailing: Icon(
+                          archived
+                              ? Icons.lock_outline
+                              : Icons.arrow_forward_ios,
+                          size: 16,
+                        ),
                         onTap: () {
-                          if (widget.moduleType == 'quizzes') {
+                          if (archived) {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ClassDetailPage(
+                                  classId: classData.classId,
+                                  className: classData.className,
+                                ),
+                              ),
+                            );
+                          } else if (widget.moduleType == 'quizzes') {
                             Navigator.push(
                               context,
                               MaterialPageRoute(

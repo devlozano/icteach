@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../class_roster.dart';
+import '../class_detail_page.dart';
+import '../widgets/archived_class_badge.dart';
 import 'teacher/manage_modules_page.dart';
 
 class StaffManagementPage extends StatefulWidget {
@@ -44,7 +46,17 @@ class _StaffManagementPageState extends State<StaffManagementPage> {
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
-        final classes = snapshot.data!;
+        final classes = [...snapshot.data!]
+          ..sort((a, b) {
+            final aArchived = isArchivedClass(a.data());
+            final bArchived = isArchivedClass(b.data());
+            if (aArchived != bArchived) return aArchived ? 1 : -1;
+            return _name(a).toLowerCase().compareTo(_name(b).toLowerCase());
+          });
+        final activeCount = classes
+            .where((item) => !isArchivedClass(item.data()))
+            .length;
+        final archivedCount = classes.length - activeCount;
         final visible = classes
             .where((c) => _name(c).toLowerCase().contains(_query))
             .toList();
@@ -65,7 +77,10 @@ class _StaffManagementPageState extends State<StaffManagementPage> {
               icon: widget.modules
                   ? Icons.auto_stories_outlined
                   : Icons.groups_outlined,
-              stats: [('Classes', '${classes.length}')],
+              stats: [
+                ('Active classes', '$activeCount'),
+                ('Archived', '$archivedCount'),
+              ],
             ),
             const SizedBox(height: 20),
             CollectionSearch(
@@ -96,7 +111,9 @@ class _StaffManagementPageState extends State<StaffManagementPage> {
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Material(
-                  color: Colors.white,
+                  color: isArchivedClass(c.data())
+                      ? const Color(0xFFF8FAFC)
+                      : Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                     side: const BorderSide(color: Color(0xFFE2E8F0)),
@@ -110,35 +127,65 @@ class _StaffManagementPageState extends State<StaffManagementPage> {
                     leading: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFEAF2FE),
+                        color: isArchivedClass(c.data())
+                            ? const Color(0xFFE2E8F0)
+                            : const Color(0xFFEAF2FE),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        widget.modules
+                        isArchivedClass(c.data())
+                            ? Icons.archive_outlined
+                            : widget.modules
                             ? Icons.menu_book_outlined
                             : Icons.groups_outlined,
-                        color: staffBlue,
+                        color: isArchivedClass(c.data())
+                            ? const Color(0xFF64748B)
+                            : staffBlue,
                       ),
                     ),
-                    title: Text(
-                      _name(c),
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: staffNavy,
-                      ),
+                    title: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            _name(c),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: isArchivedClass(c.data())
+                                  ? const Color(0xFF475569)
+                                  : staffNavy,
+                            ),
+                          ),
+                        ),
+                        if (isArchivedClass(c.data()))
+                          const ArchivedClassBadge(),
+                      ],
                     ),
                     subtitle: Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        widget.modules
-                            ? 'Open learning modules'
-                            : 'View students and trainers',
+                        isArchivedClass(c.data())
+                            ? 'Archived | ${classSchoolYear(c.data())} | Records only'
+                            : widget.modules
+                            ? 'Open learning modules | ${classSchoolYear(c.data())}'
+                            : 'View students and trainers | ${classSchoolYear(c.data())}',
                       ),
                     ),
-                    trailing: const Icon(Icons.chevron_right, color: staffBlue),
+                    trailing: Icon(
+                      isArchivedClass(c.data())
+                          ? Icons.lock_outline
+                          : Icons.chevron_right,
+                      color: isArchivedClass(c.data())
+                          ? const Color(0xFF64748B)
+                          : staffBlue,
+                    ),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => widget.modules
+                        builder: (_) => isArchivedClass(c.data())
+                            ? ClassDetailPage(
+                                classId: c.id,
+                                className: _name(c),
+                              )
+                            : widget.modules
                             ? ManageModulesPage(
                                 classId: c.id,
                                 className: _name(c),

@@ -10,6 +10,8 @@ import 'teacher/assessment_review_page.dart';
 import '../services/css_gradebook_service.dart';
 import '../utils/deped_grading.dart';
 import '../widgets/insights_ui.dart';
+import '../widgets/archived_class_badge.dart';
+import '../class_detail_page.dart';
 
 class StaffOutcomes extends StatelessWidget {
   final bool admin, feedback, trainer;
@@ -287,16 +289,24 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final trainerId = FirebaseAuth.instance.currentUser!.uid;
-    final activeClasses = classes;
-    final assignedClassIds = activeClasses.map((item) => item.id).toSet();
+    final scopedClasses = [...classes]
+      ..sort((a, b) {
+        final aArchived = isArchivedClass(a.data());
+        final bArchived = isArchivedClass(b.data());
+        if (aArchived != bArchived) return aArchived ? 1 : -1;
+        return (a.data()['name']?.toString() ?? '').compareTo(
+          b.data()['name']?.toString() ?? '',
+        );
+      });
+    final assignedClassIds = scopedClasses.map((item) => item.id).toSet();
     final classNames = {
-      for (final classroom in activeClasses)
+      for (final classroom in scopedClasses)
         classroom.id:
             classroom.data()['name']?.toString() ??
             classroom.data()['className']?.toString() ??
             'Class',
     };
-    final studentIds = activeClasses
+    final studentIds = scopedClasses
         .expand(
           (classroom) => List<String>.from(
             classroom.data()['enrolledStudentIds'] as List? ?? const [],
@@ -315,7 +325,7 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
               'Review only the practical observations and competency validations you recorded for your assigned students.',
         ),
         const SizedBox(height: 14),
-        if (activeClasses.isEmpty)
+        if (scopedClasses.isEmpty)
           const InsightsEmpty(
             icon: Icons.school_outlined,
             title: 'No assigned classes for this school year',
@@ -344,18 +354,37 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final classroom in activeClasses)
+                    for (final classroom in scopedClasses)
                       OutlinedButton.icon(
                         onPressed: () => Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => AssessmentReviewPage(
-                              classId: classroom.id,
-                              className: classNames[classroom.id]!,
-                            ),
+                            builder: (_) => isArchivedClass(classroom.data())
+                                ? ClassDetailPage(
+                                    classId: classroom.id,
+                                    className: classNames[classroom.id]!,
+                                  )
+                                : AssessmentReviewPage(
+                                    classId: classroom.id,
+                                    className: classNames[classroom.id]!,
+                                  ),
                           ),
                         ),
-                        icon: const Icon(Icons.visibility_outlined, size: 18),
-                        label: Text(classNames[classroom.id]!),
+                        icon: Icon(
+                          isArchivedClass(classroom.data())
+                              ? Icons.lock_outline
+                              : Icons.visibility_outlined,
+                          size: 18,
+                        ),
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(classNames[classroom.id]!),
+                            if (isArchivedClass(classroom.data())) ...[
+                              const SizedBox(width: 8),
+                              const ArchivedClassBadge(),
+                            ],
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -501,7 +530,15 @@ class _WeightedAssessmentMonitoring extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeClasses = classes;
+    final scopedClasses = [...classes]
+      ..sort((a, b) {
+        final aArchived = isArchivedClass(a.data());
+        final bArchived = isArchivedClass(b.data());
+        if (aArchived != bArchived) return aArchived ? 1 : -1;
+        return (a.data()['name']?.toString() ?? '').compareTo(
+          b.data()['name']?.toString() ?? '',
+        );
+      });
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -544,7 +581,7 @@ class _WeightedAssessmentMonitoring extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 14),
-        if (activeClasses.isEmpty)
+        if (scopedClasses.isEmpty)
           const InsightsEmpty(
             icon: Icons.school_outlined,
             title: 'No assigned classes for this school year',
@@ -552,7 +589,7 @@ class _WeightedAssessmentMonitoring extends StatelessWidget {
                 'Assessment monitoring appears after a class is assigned.',
           )
         else
-          for (final classroom in activeClasses)
+          for (final classroom in scopedClasses)
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: _WeightedClassCard(classroom: classroom),
@@ -572,6 +609,7 @@ class _WeightedClassCard extends StatelessWidget {
     final data = classroom.data();
     final className = data['name']?.toString() ?? 'Class';
     final teacherId = data['teacherId']?.toString() ?? '';
+    final archived = isArchivedClass(data);
     final studentIds = List<String>.from(
       data['enrolledStudentIds'] as List? ?? const [],
     );
@@ -590,34 +628,61 @@ class _WeightedClassCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          className,
-                          style: const TextStyle(
-                            color: insightsNavy,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                className,
+                                style: const TextStyle(
+                                  color: insightsNavy,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            if (archived) const ArchivedClassBadge(),
+                          ],
                         ),
                         Text(
                           '${data['sectionCode'] ?? 'No section'} • ${data['teacherName'] ?? 'Teacher'}',
                           style: const TextStyle(color: insightsMuted),
                         ),
+                        if (archived)
+                          Text(
+                            '${classSchoolYear(data)} | Archived | Grades are read-only',
+                            style: const TextStyle(
+                              color: Color(0xFF9A3412),
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                       ],
                     ),
                   ),
                   FilledButton.icon(
                     onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => ProgressTrackerPage(
-                          classId: classroom.id,
-                          className: className,
-                          initialTab: 4,
-                        ),
+                        builder: (_) => archived
+                            ? ClassDetailPage(
+                                classId: classroom.id,
+                                className: className,
+                              )
+                            : ProgressTrackerPage(
+                                classId: classroom.id,
+                                className: className,
+                                initialTab: 4,
+                              ),
                       ),
                     ),
-                    icon: const Icon(Icons.edit_note_rounded, size: 18),
+                    icon: Icon(
+                      archived ? Icons.lock_outline : Icons.edit_note_rounded,
+                      size: 18,
+                    ),
                     label: Text(
-                      config == null ? 'Set up gradebook' : 'Manage grades',
+                      archived
+                          ? 'View records'
+                          : config == null
+                          ? 'Set up gradebook'
+                          : 'Manage grades',
                     ),
                   ),
                 ],
