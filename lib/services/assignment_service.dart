@@ -183,12 +183,14 @@ class AssignmentService {
 
   // Get all submissions for an assignment (teacher view)
   Future<List<AssignmentSubmission>> getSubmissionsForAssignment(
+    String classId,
     String assignmentId,
   ) async {
     try {
       await _ensureSubmissionReviewer();
       final snapshot = await _firestore
           .collection('submissions')
+          .where('classId', isEqualTo: classId)
           .where('assignmentId', isEqualTo: assignmentId)
           .get();
 
@@ -246,11 +248,12 @@ class AssignmentService {
   }
 
   // Get submission count for an assignment
-  Future<int> getSubmissionCount(String assignmentId) async {
+  Future<int> getSubmissionCount(String classId, String assignmentId) async {
     try {
       await _ensureSubmissionReviewer();
       final snapshot = await _firestore
           .collection('submissions')
+          .where('classId', isEqualTo: classId)
           .where('assignmentId', isEqualTo: assignmentId)
           .get();
       return snapshot.docs.length;
@@ -261,11 +264,12 @@ class AssignmentService {
   }
 
   // Get graded count for an assignment
-  Future<int> getGradedCount(String assignmentId) async {
+  Future<int> getGradedCount(String classId, String assignmentId) async {
     try {
       await _ensureSubmissionReviewer();
       final snapshot = await _firestore
           .collection('submissions')
+          .where('classId', isEqualTo: classId)
           .where('assignmentId', isEqualTo: assignmentId)
           .where('isGraded', isEqualTo: true)
           .get();
@@ -277,9 +281,12 @@ class AssignmentService {
   }
 
   // Get average score for an assignment
-  Future<double> getAverageScore(String assignmentId) async {
+  Future<double> getAverageScore(String classId, String assignmentId) async {
     try {
-      final submissions = await getSubmissionsForAssignment(assignmentId);
+      final submissions = await getSubmissionsForAssignment(
+        classId,
+        assignmentId,
+      );
       final graded = submissions.where((s) => s.isGraded).toList();
       if (graded.isEmpty) return 0.0;
 

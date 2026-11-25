@@ -12,6 +12,7 @@ import '../utils/deped_grading.dart';
 import '../widgets/insights_ui.dart';
 import '../widgets/archived_class_badge.dart';
 import '../class_detail_page.dart';
+import 'trainer/trainer_gradebook_page.dart';
 
 class StaffOutcomes extends StatelessWidget {
   final bool admin, feedback, trainer;
@@ -136,7 +137,7 @@ class StaffOutcomes extends StatelessWidget {
             const Padding(
               padding: EdgeInsets.all(12),
               child: Text(
-                'A missing pass record does not mean the student failed the assessment.',
+                'A missing pass record does not mean the student failed the assignment.',
               ),
             ),
             if (classes != null)
@@ -149,7 +150,7 @@ class StaffOutcomes extends StatelessWidget {
                           'Class',
                     ),
                     subtitle: const Text(
-                      'Lesson progress and assessment results',
+                      'Lesson progress and assignment results',
                     ),
                     trailing: const Icon(Icons.arrow_forward),
                     onTap: () => Navigator.of(context).push(
@@ -318,7 +319,7 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const InsightsHeader(
-          title: 'My assessment results',
+          title: 'My assignment results',
           eyebrow: 'TRAINER PRACTICAL VALIDATION',
           icon: Icons.fact_check_outlined,
           subtitle:
@@ -332,12 +333,48 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
             subtitle: 'Results appear after the principal assigns you a class.',
           )
         else ...[
+          const InsightsPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Trainer gradebook',
+                  style: TextStyle(
+                    color: insightsNavy,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    InsightsPill('Quiz 20%'),
+                    InsightsPill('Simulation 65%'),
+                    InsightsPill('Assignment 15%'),
+                  ],
+                ),
+                SizedBox(height: 10),
+                Text(
+                  'Record your own grades for assigned students. These scores are separate from every teacher gradebook.',
+                  style: TextStyle(color: insightsMuted, height: 1.45),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          for (final classroom in scopedClasses)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _TrainerGradeClassCard(classroom: classroom),
+            ),
           InsightsPanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Assigned practical assessments',
+                  'Assigned practical assignments',
                   style: TextStyle(
                     color: insightsNavy,
                     fontSize: 17,
@@ -416,7 +453,7 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
                   if (snapshot.hasError) {
                     return const InsightsEmpty(
                       icon: Icons.error_outline,
-                      title: 'Assessment results could not be loaded',
+                      title: 'Assignment results could not be loaded',
                       subtitle: 'Reopen this page to try again.',
                     );
                   }
@@ -444,7 +481,7 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
                       icon: Icons.assignment_turned_in_outlined,
                       title: 'No practical validations recorded yet',
                       subtitle:
-                          'Open an assigned class, observe the practical task, and save your assessment.',
+                          'Open an assigned class, observe the practical task, and save your assignment.',
                     );
                   }
                   final validated = validations
@@ -458,7 +495,7 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            InsightsPill('${validations.length} assessments'),
+                            InsightsPill('${validations.length} assignments'),
                             InsightsPill('$validated validated'),
                             InsightsPill(
                               '${validations.length - validated} need practice',
@@ -523,6 +560,85 @@ class _TrainerAssessmentMonitoring extends StatelessWidget {
   }
 }
 
+class _TrainerGradeClassCard extends StatelessWidget {
+  const _TrainerGradeClassCard({required this.classroom});
+
+  final QueryDocumentSnapshot<Map<String, dynamic>> classroom;
+
+  @override
+  Widget build(BuildContext context) {
+    final data = classroom.data();
+    final name = data['name']?.toString() ?? 'Class';
+    final archived = isArchivedClass(data);
+    final trainerId = FirebaseAuth.instance.currentUser!.uid;
+    final service = CssGradebookService.trainer(
+      classroom.id,
+      trainerId: trainerId,
+    );
+    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+      stream: service.book.snapshots(),
+      builder: (context, snapshot) => InsightsPanel(
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: const TextStyle(
+                            color: insightsNavy,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (archived) const ArchivedClassBadge(),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    archived
+                        ? '${classSchoolYear(data)} | Archived | Trainer grades are read-only'
+                        : '${data['sectionCode'] ?? 'No section'} | ${List<String>.from(data['enrolledStudentIds'] as List? ?? const []).length} students',
+                    style: TextStyle(
+                      color: archived ? const Color(0xFF9A3412) : insightsMuted,
+                      fontWeight: archived ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton.icon(
+              onPressed: archived
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => TrainerGradebookPage(
+                          classId: classroom.id,
+                          className: name,
+                          trainerId: trainerId,
+                        ),
+                      ),
+                    ),
+              icon: const Icon(Icons.table_view_outlined, size: 18),
+              label: Text(
+                snapshot.data?.exists == true
+                    ? 'Manage grades'
+                    : 'Set up grades',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _WeightedAssessmentMonitoring extends StatelessWidget {
   const _WeightedAssessmentMonitoring({required this.classes});
 
@@ -543,7 +659,7 @@ class _WeightedAssessmentMonitoring extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const InsightsHeader(
-          title: 'Assessment result monitoring',
+          title: 'Assignment result monitoring',
           eyebrow: 'DEPED WEIGHTED GRADING',
           icon: Icons.fact_check_outlined,
           subtitle:
@@ -586,7 +702,7 @@ class _WeightedAssessmentMonitoring extends StatelessWidget {
             icon: Icons.school_outlined,
             title: 'No assigned classes for this school year',
             subtitle:
-                'Assessment monitoring appears after a class is assigned.',
+                'Assignment monitoring appears after a class is assigned.',
           )
         else
           for (final classroom in scopedClasses)

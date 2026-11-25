@@ -91,7 +91,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
                   child: Padding(
                     padding: EdgeInsets.symmetric(horizontal: 10),
                     child: Text(
-                      'Guided process • watch one operation at a time • no assessment credit',
+                      'Guided process • watch one operation at a time • no assignment credit',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -134,7 +134,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
               const Expanded(
                 child: Padding(
                   padding: EdgeInsets.all(12),
-                  child: Text('Guided practice • no assessment credit'),
+                  child: Text('Guided practice • no assignment credit'),
                 ),
               ),
               _tutorialAction(),
@@ -162,7 +162,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
                 child: Padding(
                   padding: EdgeInsets.all(12),
                   child: Text(
-                    'Guided RJ45 practice • measured cutting and crimping • no assessment credit',
+                    'Guided RJ45 practice • measured cutting and crimping • no assignment credit',
                   ),
                 ),
               ),
@@ -219,7 +219,7 @@ class _SimulationProcessGuideState extends State<SimulationProcessGuide> {
               overflow: TextOverflow.ellipsis,
             ),
             const Text(
-              'Practice walkthrough • Checkpoints do not change your assessment score.',
+              'Practice walkthrough • Checkpoints do not change your assignment score.',
               style: TextStyle(fontSize: 12),
             ),
             const SizedBox(height: 8),

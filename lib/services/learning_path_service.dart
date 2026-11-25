@@ -55,7 +55,11 @@ class LearningPathService {
       await requireQuizAvailable(classId, id);
       return;
     }
-    await requireActive(classId);
+    final classroom = await requireParticipant(classId);
+    if (classroom['status'] == 'archived') {
+      if (practice && type == 'simulation') return;
+      throw StateError('This activity is unavailable.');
+    }
     final db = FirebaseFirestore.instance;
     final user = db
         .collection('users')
@@ -218,13 +222,24 @@ class LearningPathService {
     FirebaseFirestore? firestore,
     String? userId,
   }) async {
+    final data = await requireParticipant(
+      classId,
+      firestore: firestore,
+      userId: userId,
+    );
+    if (data['status'] == 'archived') {
+      throw StateError('This activity is unavailable.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> requireParticipant(
+    String classId, {
+    FirebaseFirestore? firestore,
+    String? userId,
+  }) async {
     final db = firestore ?? FirebaseFirestore.instance;
     final data = (await db.collection('classes').doc(classId).get()).data();
-    if (data == null || data['status'] == 'archived') {
-      throw StateError(
-        'This class is archived or unavailable. Previous records are preserved.',
-      );
-    }
+    if (data == null) throw StateError('This class is unavailable.');
     final uid = userId ?? FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) throw StateError('Please sign in.');
     if (data['teacherId'] != uid &&
@@ -237,6 +252,7 @@ class LearningPathService {
         throw StateError('Join this class before accessing its activities.');
       }
     }
+    return data;
   }
 
   static Future<void> savePractice(

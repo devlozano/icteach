@@ -147,7 +147,7 @@ void main() {
           final button = tester.widget<FilledButton>(
             find.widgetWithText(
               FilledButton,
-              'Part B: start graded simulation assessment',
+              'Part B: start graded simulation assignment',
             ),
           );
           expect(button.onPressed != null, learned && practiced);
@@ -207,10 +207,10 @@ void main() {
         await tester.pumpAndSettle();
       }
       expect(find.text('Start practice mode'), findsOneWidget);
-      expect(find.text('PRACTICAL ASSESSMENT'), findsOneWidget);
+      expect(find.text('PRACTICAL ASSIGNMENT'), findsOneWidget);
       expect(find.text('Preparation checklist'), findsOneWidget);
       expect(
-        find.text('Part B: start graded simulation assessment'),
+        find.text('Part B: start graded simulation assignment'),
         findsOneWidget,
       );
       expect(find.byTooltip('Refresh access'), findsNothing);

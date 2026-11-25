@@ -20,12 +20,18 @@ void main() {
     await db.collection('classes').doc('c').collection('modules').doc('m').set({
       'isPublished': true,
     });
-    await db.collection('classes').doc('c').collection('learning_paths').doc('quiz_q').set({
-      'moduleId': 'm',
-    });
-    await db.collection('users').doc('student').collection('module_progress').doc('c_m').set({
-      'completed': true,
-    });
+    await db
+        .collection('classes')
+        .doc('c')
+        .collection('learning_paths')
+        .doc('quiz_q')
+        .set({'moduleId': 'm'});
+    await db
+        .collection('users')
+        .doc('student')
+        .collection('module_progress')
+        .doc('c_m')
+        .set({'completed': true});
   });
   Future<void> open({String student = 'student'}) =>
       LearningPathService.requireQuizAvailable(
@@ -120,7 +126,9 @@ void main() {
       );
     },
   );
-  test('missing, unpublished, incomplete, or locked module blocks a quiz', () async {
+  test(
+    'missing, unpublished, incomplete, or locked module blocks a quiz',
+    () async {
       await db
           .collection('classes')
           .doc('c')
@@ -128,10 +136,25 @@ void main() {
           .doc('quiz_q')
           .delete();
       await expectLater(open(), throwsStateError);
-      await db.collection('classes').doc('c').collection('learning_paths').doc('quiz_q').set({'moduleId': 'm'});
-      await db.collection('users').doc('student').collection('module_progress').doc('c_m').set({'completed': false});
+      await db
+          .collection('classes')
+          .doc('c')
+          .collection('learning_paths')
+          .doc('quiz_q')
+          .set({'moduleId': 'm'});
+      await db
+          .collection('users')
+          .doc('student')
+          .collection('module_progress')
+          .doc('c_m')
+          .set({'completed': false});
       await expectLater(open(), throwsStateError);
-      await db.collection('users').doc('student').collection('module_progress').doc('c_m').set({'completed': true});
+      await db
+          .collection('users')
+          .doc('student')
+          .collection('module_progress')
+          .doc('c_m')
+          .set({'completed': true});
       await db.collection('content_locks').add({
         'classId': 'c',
         'contentType': 'module',
@@ -170,6 +193,26 @@ void main() {
     await db.collection('classes').doc('c').update({'status': 'archived'});
     await expectLater(open(), throwsStateError);
   });
+  test(
+    'archived class remains accessible to its enrolled student for read-only practice',
+    () async {
+      await db.collection('classes').doc('c').update({'status': 'archived'});
+      final classroom = await LearningPathService.requireParticipant(
+        'c',
+        firestore: db,
+        userId: 'student',
+      );
+      expect(classroom['status'], 'archived');
+      await expectLater(
+        LearningPathService.requireParticipant(
+          'c',
+          firestore: db,
+          userId: 'outsider',
+        ),
+        throwsStateError,
+      );
+    },
+  );
   for (final type in ['quiz', 'practice']) {
     for (final target in ['q', '*']) {
       test(

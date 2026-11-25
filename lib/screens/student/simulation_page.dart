@@ -12,6 +12,8 @@ import '../../widgets/drag_drop_simulation.dart';
 import '../../widgets/content_access_gate.dart';
 import '../../widgets/activity_preparation_gate.dart';
 import '../../services/learning_path_service.dart';
+import '../../widgets/activity_evaluation_dialog.dart';
+import '../../widgets/simulation_exit_dialog.dart';
 
 class SimulationPage extends StatelessWidget {
   final String classId;
@@ -19,12 +21,14 @@ class SimulationPage extends StatelessWidget {
 
   final String title;
   final String? className;
+  final bool practiceOnly;
   const SimulationPage({
     super.key,
     required this.classId,
     required this.simulationId,
     required this.title,
     this.className,
+    this.practiceOnly = false,
   });
   @override
   Widget build(BuildContext context) {
@@ -50,23 +54,26 @@ class SimulationPage extends StatelessWidget {
         ),
       );
     }
+    final preparation = ActivityPreparationGate(
+      classId: classId,
+      type: 'simulation',
+      contentId: simulationId,
+      title: title,
+      practiceOnly: practiceOnly,
+      sessionBuilder: (practice) => _SimulationSession(
+        practice: practice,
+        classId: classId,
+        simulationId: simulationId,
+        title: title,
+        className: className,
+      ),
+    );
+    if (practiceOnly) return preparation;
     return ContentAccessGate(
       classId: classId,
       contentType: 'simulation',
       contentId: simulationId,
-      builder: (_) => ActivityPreparationGate(
-        classId: classId,
-        type: 'simulation',
-        contentId: simulationId,
-        title: title,
-        sessionBuilder: (practice) => _SimulationSession(
-          practice: practice,
-          classId: classId,
-          simulationId: simulationId,
-          title: title,
-          className: className,
-        ),
-      ),
+      builder: (_) => preparation,
     );
   }
 }
@@ -90,7 +97,8 @@ class _SimulationSession extends StatefulWidget {
   State<_SimulationSession> createState() => _SimulationPageState();
 }
 
-class _SimulationPageState extends State<_SimulationSession> {
+class _SimulationPageState extends State<_SimulationSession>
+    with WidgetsBindingObserver {
   sim_models.Simulation? _simulation;
   List<sim_models.Simulation> _prerequisites = [];
   bool _isLoading = true;
@@ -109,18 +117,29 @@ class _SimulationPageState extends State<_SimulationSession> {
   @override
   void initState() {
     super.initState();
-
+    WidgetsBinding.instance.addObserver(this);
     _loadSimulation();
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _hasStarted && !_isCompleted) {
+      _setGameplayOrientation(true);
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _setGameplayOrientation(false);
     super.dispose();
   }
 
   Future<void> _setGameplayOrientation(bool active) async {
     if (kIsWeb) return;
+    await SystemChrome.setEnabledSystemUIMode(
+      active ? SystemUiMode.immersiveSticky : SystemUiMode.edgeToEdge,
+    );
     final motherboardQuiz = widget.simulationId == 'sim_coc1_motherboard';
     await SystemChrome.setPreferredOrientations(
       active
@@ -216,11 +235,10 @@ class _SimulationPageState extends State<_SimulationSession> {
 
   @override
   Widget build(BuildContext context) {
-    final confirmExit = _hasStarted && !_isCompleted;
     return PopScope(
-      canPop: !confirmExit || _allowPop,
+      canPop: _allowPop,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && confirmExit) _requestExit();
+        if (!didPop) _requestExit();
       },
       child: _buildSession(context),
     );
@@ -337,48 +355,18 @@ class _SimulationPageState extends State<_SimulationSession> {
   );
 
   Future<void> _leaveSimulation() async {
-    if (_hasStarted && !_isCompleted) {
-      await _requestExit();
-      return;
-    }
-    await _exitNow();
+    await _requestExit();
   }
 
   Future<void> _requestExit() async {
     if (_exitDialogOpen || !mounted) return;
     _exitDialogOpen = true;
-    final leave = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        icon: const Icon(
-          Icons.warning_amber_rounded,
-          color: Color(0xFFB45309),
-          size: 38,
-        ),
-        title: const Text('Leave this simulation?'),
-        content: const Text(
-          'Your current attempt is still in progress. If you leave now, unsaved actions in this attempt will be lost.',
-          textAlign: TextAlign.center,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Continue simulation'),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFB42318),
-            ),
-            onPressed: () => Navigator.pop(dialogContext, true),
-            icon: const Icon(Icons.exit_to_app_rounded),
-            label: const Text('Leave simulation'),
-          ),
-        ],
-      ),
+    final leave = await showSimulationExitDialog(
+      context,
+      attemptInProgress: _hasStarted && !_isCompleted,
     );
     _exitDialogOpen = false;
-    if (leave == true && mounted) await _exitNow();
+    if (leave && mounted) await _exitNow();
   }
 
   Future<void> _exitNow() async {
@@ -491,7 +479,7 @@ class _SimulationPageState extends State<_SimulationSession> {
                         ? 'Locked'
                         : widget.practice
                         ? 'Start required practice mode'
-                        : 'Start graded simulation assessment',
+                        : 'Start graded simulation assignment',
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -509,7 +497,7 @@ class _SimulationPageState extends State<_SimulationSession> {
               ],
               const SizedBox(height: 16),
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: _requestExit,
                 child: const Text('Back to Simulations'),
               ),
             ],
@@ -546,8 +534,8 @@ class _SimulationPageState extends State<_SimulationSession> {
               widget.practice
                   ? 'Required practice completed'
                   : _lastPassed == false
-                  ? 'Part B assessment needs another attempt'
-                  : 'Part B assessment passed',
+                  ? 'Part B assignment needs another attempt'
+                  : 'Part B assignment passed',
               style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
@@ -604,7 +592,7 @@ class _SimulationPageState extends State<_SimulationSession> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context, true),
+                    onPressed: _requestExit,
                     icon: const Icon(Icons.arrow_back),
                     label: const Text('Back to List'),
                     style: ElevatedButton.styleFrom(
@@ -688,7 +676,7 @@ class _SimulationPageState extends State<_SimulationSession> {
           Text(
             _lastPassed == false
                 ? 'Possible errors and corrective actions'
-                : 'Assessment feedback',
+                : 'Assignment feedback',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
@@ -715,83 +703,31 @@ class _SimulationPageState extends State<_SimulationSession> {
   }
 
   Future<void> _showEvaluationDialog() async {
-    var difficulty = 3;
-    final commentController = TextEditingController();
-    final submitted = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Activity evaluation'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('How difficult was this activity?'),
-                Slider(
-                  value: difficulty.toDouble(),
-                  min: 1,
-                  max: 5,
-                  divisions: 4,
-                  label: '$difficulty / 5',
-                  onChanged: (value) =>
-                      setDialogState(() => difficulty = value.round()),
-                ),
-                Text(
-                  const [
-                    'Very easy',
-                    'Easy',
-                    'Appropriate',
-                    'Difficult',
-                    'Very difficult',
-                  ][difficulty - 1],
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: commentController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'What should be improved? (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Later'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final user = FirebaseAuth.instance.currentUser;
-                if (user == null) return;
-                await FirebaseFirestore.instance
-                    .collection('activity_feedback')
-                    .add({
-                      'studentId': user.uid,
-                      'classId': widget.classId,
-                      'simulationId': widget.simulationId,
-                      'simulationTitle': _simulation!.title,
-                      'difficulty': difficulty,
-                      'comment': commentController.text.trim(),
-                      'createdAt': FieldValue.serverTimestamp(),
-                    });
-                if (dialogContext.mounted) Navigator.pop(dialogContext, true);
-              },
-              child: const Text('Submit'),
-            ),
-          ],
-        ),
-      ),
-    );
-    commentController.dispose();
-    if (submitted == true && mounted) {
+    final evaluation = await showActivityEvaluationDialog(context);
+    if (evaluation == null || !mounted) return;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('activity_feedback').add({
+        'studentId': user.uid,
+        'classId': widget.classId,
+        'simulationId': widget.simulationId,
+        'simulationTitle': _simulation!.title,
+        'difficulty': evaluation.difficulty,
+        'comment': evaluation.comment,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      if (!mounted) return;
       setState(() => _feedbackSubmitted = true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Thank you. Your evaluation was saved.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save the evaluation. Please try again.'),
+        ),
       );
     }
   }

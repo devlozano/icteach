@@ -8,11 +8,13 @@ import 'simulation_page.dart';
 class SimulationsListPage extends StatefulWidget {
   final String classId;
   final String className;
+  final bool practiceOnly;
 
   const SimulationsListPage({
     super.key,
     required this.classId,
     required this.className,
+    this.practiceOnly = false,
   });
 
   @override
@@ -131,6 +133,7 @@ class _SimulationsListPageState extends State<SimulationsListPage> {
                   className: widget.className,
                   simulationId: sim.id,
                   title: sim.title,
+                  practiceOnly: widget.practiceOnly,
                 ),
               ),
             );

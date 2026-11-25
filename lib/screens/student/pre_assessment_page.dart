@@ -99,7 +99,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Assessment not saved. Reconnect and try again; your answers are still here.',
+              'Assignment not saved. Reconnect and try again; your answers are still here.',
             ),
           ),
         );
@@ -118,9 +118,9 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
           color: Color(0xFF2457C5),
           size: 36,
         ),
-        title: const Text('Submit your pre-assessment?'),
+        title: const Text('Submit your pre-assignment?'),
         content: const Text(
-          'Your answers will be saved as your diagnostic result. Review them now because this assessment can only be submitted once.',
+          'Your answers will be saved as your diagnostic result. Review them now because this assignment can only be submitted once.',
           textAlign: TextAlign.center,
         ),
         actions: [
@@ -130,7 +130,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Submit assessment'),
+            child: const Text('Submit assignment'),
           ),
         ],
       ),
@@ -161,7 +161,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
           title: Text(
             access.connectionState == ConnectionState.waiting
                 ? 'Modules'
-                : 'Pre-assessment',
+                : 'Pre-assignment',
           ),
           backgroundColor: const Color(0xFF2457C5),
           foregroundColor: Colors.white,
@@ -313,7 +313,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
           onPressed: () => setState(() => _started = true),
           icon: const Icon(Icons.play_arrow_rounded),
           label: const Text(
-            'Start pre-assessment',
+            'Start pre-assignment',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
@@ -556,7 +556,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
               final copy = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _Tag('ASSESSMENT SAVED'),
+                  const _Tag('ASSIGNMENT SAVED'),
                   const SizedBox(height: 12),
                   const Text(
                     'Your learning path is ready',
@@ -906,7 +906,7 @@ class _ErrorState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Unable to open the pre-assessment',
+            'Unable to open the pre-assignment',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),

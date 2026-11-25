@@ -258,7 +258,7 @@ class _ProgressTrackerPageState extends State<ProgressTrackerPage> {
                             ),
                           ),
                           IconButton(
-                            tooltip: 'Pre-assessments and practical validation',
+                            tooltip: 'Pre-assignments and practical validation',
                             icon: const Icon(Icons.fact_check_outlined),
                             onPressed: () => Navigator.push(
                               context,

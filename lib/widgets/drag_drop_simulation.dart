@@ -1616,16 +1616,17 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                   onPressed: _showConfidence,
                   icon: const Icon(Icons.psychology_outlined, size: 20),
                 ),
-              IconButton(
-                tooltip: _cableZoom > 1 ? 'Reset view' : 'Zoom in',
-                onPressed: () => _setCableZoom(_cableZoom > 1 ? 1 : 1.8),
-                icon: Icon(
-                  _cableZoom > 1
-                      ? Icons.center_focus_strong
-                      : Icons.zoom_in_rounded,
-                  size: 20,
+              if (widget.simulation.id != 'sim_coc1_assembly')
+                IconButton(
+                  tooltip: _cableZoom > 1 ? 'Reset view' : 'Zoom in',
+                  onPressed: () => _setCableZoom(_cableZoom > 1 ? 1 : 1.8),
+                  icon: Icon(
+                    _cableZoom > 1
+                        ? Icons.center_focus_strong
+                        : Icons.zoom_in_rounded,
+                    size: 20,
+                  ),
                 ),
-              ),
               if (widget.practice)
                 IconButton(
                   tooltip: _voiceEnabled

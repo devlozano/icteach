@@ -17,7 +17,7 @@ void main() {
       );
 
       expect(find.text('Manage Quizzes'), findsOneWidget);
-      expect(find.text('Manage Assessments'), findsOneWidget);
+      expect(find.text('Manage Assignments'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -38,7 +38,7 @@ void main() {
 
     await tester.tap(find.text('More'));
     await tester.pumpAndSettle();
-    expect(find.text('Quiz & Assessment'), findsOneWidget);
+    expect(find.text('Quiz & Assignment'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

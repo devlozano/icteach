@@ -47,6 +47,8 @@ class _HomePageState extends State<HomePage> {
 
   String? _classId;
   String? _className;
+  String _classSchoolYear = '';
+  bool _classArchived = false;
   final QuizService _quizService = QuizService();
 
   Future<void> _logout() async {
@@ -96,16 +98,23 @@ class _HomePageState extends State<HomePage> {
             'CSS NC II - Computer System Servicing';
 
         return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-          stream: WorkspaceData.activeMemberships(user.uid),
+          stream: WorkspaceData.studentClasses(user.uid),
           builder: (context, classSnapshot) {
             _classId = null;
             _className = null;
+            _classSchoolYear = '';
+            _classArchived = false;
             if (classSnapshot.hasData && classSnapshot.data!.isNotEmpty) {
               final doc = classSnapshot.data!.first;
               final data = doc.data() as Map<String, dynamic>?;
               if (data != null) {
-                _classId = data['classId']?.toString() ?? '';
-                _className = data['className']?.toString() ?? 'My Class';
+                _classId = doc.id;
+                _className =
+                    data['className']?.toString() ??
+                    data['name']?.toString() ??
+                    'My Class';
+                _classSchoolYear = data['schoolYear']?.toString() ?? '';
+                _classArchived = data['status'] == 'archived';
               }
             }
 
@@ -165,7 +174,7 @@ class _HomePageState extends State<HomePage> {
         : null,
     backgroundColor: const Color(0xFF428DEB),
     elevation: _currentTabIndex == 0 ? 0 : 4,
-    toolbarHeight: _currentTabIndex == 0 ? 76 : kToolbarHeight,
+    toolbarHeight: kToolbarHeight,
     flexibleSpace: _currentTabIndex == 0
         ? Stack(
             fit: StackFit.expand,
@@ -238,10 +247,7 @@ class _HomePageState extends State<HomePage> {
         'Progress',
         'Profile',
       ][_currentTabIndex],
-      style: TextStyle(
-        fontSize: _currentTabIndex == 0 ? 25 : 20,
-        fontWeight: FontWeight.w800,
-      ),
+      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
     ),
     actions: [
       NotificationBadge(
@@ -297,85 +303,63 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    return ForumsPage(classId: _classId!, className: _className ?? 'My Class');
+    return ForumsPage(
+      classId: _classId!,
+      className: _className ?? 'My Class',
+      readOnly: _classArchived,
+    );
   }
 
   // Modules Tab Content
   Widget _buildModulesContent() {
     final user = FirebaseAuth.instance.currentUser;
 
-    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-      stream: user != null ? WorkspaceData.activeMemberships(user.uid) : null,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('Error: ${snapshot.error}'),
-              ],
+    if (user == null || _classId == null || _classId!.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.menu_book_outlined,
+              size: 64,
+              color: Colors.grey.shade300,
             ),
-          );
-        }
-
-        final classDocs = snapshot.data ?? [];
-
-        if (classDocs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.menu_book_outlined,
-                  size: 64,
-                  color: Colors.grey.shade300,
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'No Class Joined',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Join a class to access learning modules',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const JoinClassPage()),
-                    );
-                    if (result == true && mounted) {
-                      setState(() {});
-                    }
-                  },
-                  icon: const Icon(Icons.add_circle_outline),
-                  label: const Text('Join a Class'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF428DEB),
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ],
+            const SizedBox(height: 16),
+            const Text(
+              'No Class Joined',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          );
-        }
-
-        final classDoc = classDocs.first;
-        final data = classDoc.data() as Map<String, dynamic>?;
-        final classId = data?['classId']?.toString() ?? '';
-        final className = data?['className']?.toString() ?? 'My Class';
-
-        return ModuleViewPage(classId: classId, className: className);
-      },
+            const SizedBox(height: 8),
+            Text(
+              'Join a class to access learning modules',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const JoinClassPage()),
+                );
+                if (result == true && mounted) {
+                  setState(() {});
+                }
+              },
+              icon: const Icon(Icons.add_circle_outline),
+              label: const Text('Join a Class'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF428DEB),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return ModuleViewPage(
+      classId: _classId!,
+      className: _className ?? 'My Class',
+      readOnly: _classArchived,
     );
   }
 
@@ -639,202 +623,184 @@ class _HomePageState extends State<HomePage> {
   Widget _buildProgressCard() {
     final user = FirebaseAuth.instance.currentUser;
 
-    return StreamBuilder<List<QueryDocumentSnapshot<Map<String, dynamic>>>>(
-      stream: user != null ? WorkspaceData.activeMemberships(user.uid) : null,
-      builder: (context, snapshot) {
-        final hasClass = snapshot.hasData && snapshot.data!.isNotEmpty;
-
-        String className = 'No Class Joined';
-        String schoolYear = '';
-        String classId = '';
-
-        if (hasClass) {
-          final doc = snapshot.data!.first;
-          final data = doc.data() as Map<String, dynamic>?;
-          if (data != null) {
-            className =
-                data['className']?.toString() ??
-                data['name']?.toString() ??
-                'Your Class';
-            schoolYear = data['schoolYear']?.toString() ?? '';
-            classId = data['classId']?.toString() ?? '';
-          }
-        }
-
-        return RetainedFutureBuilder<double>(
-          requestKey: 'home-overall:${user?.uid}:$classId',
-          active: _currentTabIndex == 0,
-          load: () => hasClass && user != null
-              ? _loadOverallProgress(user.uid, classId)
-              : Future.value(0),
-          builder: (context, progressSnap) {
-            final overallPercent = progressSnap.data ?? 0;
-            return Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .94),
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0xFFD7E9F8)),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF397EB7).withValues(alpha: .12),
-                    blurRadius: 20,
-                    offset: const Offset(0, 7),
-                  ),
-                ],
+    final hasClass = _classId != null && _classId!.isNotEmpty;
+    final className = hasClass
+        ? (_className ?? 'Your Class')
+        : 'No Class Joined';
+    final schoolYear = _classSchoolYear;
+    final classId = _classId ?? '';
+    return RetainedFutureBuilder<double>(
+      requestKey: 'home-overall:${user?.uid}:$classId',
+      active: _currentTabIndex == 0,
+      load: () => hasClass && user != null
+          ? _loadOverallProgress(user.uid, classId)
+          : Future.value(0),
+      builder: (context, progressSnap) {
+        final overallPercent = progressSnap.data ?? 0;
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: .94),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFD7E9F8)),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF397EB7).withValues(alpha: .12),
+                blurRadius: 20,
+                offset: const Offset(0, 7),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFE8F3FF),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.school_rounded,
-                          color: Color(0xFF2E8EF0),
-                          size: 27,
-                        ),
-                      ),
-                      const SizedBox(width: 11),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              hasClass ? 'Current Class' : 'Get Started',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF667085),
-                              ),
-                            ),
-                            Text(
-                              className,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 17,
-                                height: 1.1,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF0B1735),
-                              ),
-                            ),
-                            if (schoolYear.isNotEmpty)
-                              Text(
-                                'SY: $schoolYear',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF667085),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      if (!hasClass)
-                        GestureDetector(
-                          onTap: () async {
-                            final result = await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const JoinClassPage(),
-                              ),
-                            );
-                            if (result == true && context.mounted) {
-                              setState(() {});
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.amber.shade100,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.amber.shade300),
-                            ),
-                            child: Text(
-                              'Join Now',
-                              style: TextStyle(
-                                color: Colors.amber.shade900,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: LinearProgressIndicator(
-                      minHeight: 8,
-                      value: hasClass
-                          ? (overallPercent / 100).clamp(0.0, 1.0)
-                          : 0.0,
-                      color: const Color(0xFF428DEB),
-                      backgroundColor: const Color(0xFFE5E7EB),
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F3FF),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.school_rounded,
+                      color: Color(0xFF2E8EF0),
+                      size: 27,
                     ),
                   ),
-                  const SizedBox(height: 9),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.menu_book_rounded,
-                        color: Color(0xFF2E8EF0),
-                        size: 19,
-                      ),
-                      const SizedBox(width: 7),
-                      Expanded(
-                        child: Text(
-                          hasClass
-                              ? '${overallPercent.toStringAsFixed(0)}% overall progress'
-                              : 'Join a class to start learning',
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          hasClass ? 'Current Class' : 'Get Started',
                           style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
                             color: Color(0xFF667085),
+                          ),
+                        ),
+                        Text(
+                          className,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            height: 1.1,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFF0B1735),
+                          ),
+                        ),
+                        if (schoolYear.isNotEmpty)
+                          Text(
+                            'SY: $schoolYear',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF667085),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  if (!hasClass)
+                    GestureDetector(
+                      onTap: () async {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const JoinClassPage(),
+                          ),
+                        );
+                        if (result == true && context.mounted) {
+                          setState(() {});
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.amber.shade300),
+                        ),
+                        child: Text(
+                          'Join Now',
+                          style: TextStyle(
+                            color: Colors.amber.shade900,
+                            fontWeight: FontWeight.bold,
                             fontSize: 12,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
-                      if (hasClass)
-                        FilledButton(
-                          onPressed: () {
-                            _navigateToClass(context, classId, className);
-                          },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFE7F3FF),
-                            foregroundColor: const Color(0xFF1677D2),
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 13,
-                              vertical: 9,
-                            ),
-                            minimumSize: Size.zero,
-                          ),
-                          child: const Text(
-                            'Go to Class',
-                            style: TextStyle(
-                              color: Color(0xFF428DEB),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
-            );
-          },
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: LinearProgressIndicator(
+                  minHeight: 8,
+                  value: hasClass
+                      ? (overallPercent / 100).clamp(0.0, 1.0)
+                      : 0.0,
+                  color: const Color(0xFF428DEB),
+                  backgroundColor: const Color(0xFFE5E7EB),
+                ),
+              ),
+              const SizedBox(height: 9),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.menu_book_rounded,
+                    color: Color(0xFF2E8EF0),
+                    size: 19,
+                  ),
+                  const SizedBox(width: 7),
+                  Expanded(
+                    child: Text(
+                      hasClass
+                          ? '${overallPercent.toStringAsFixed(0)}% overall progress'
+                          : 'Join a class to start learning',
+                      style: const TextStyle(
+                        color: Color(0xFF667085),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (hasClass)
+                    FilledButton(
+                      onPressed: () {
+                        _navigateToClass(context, classId, className);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFE7F3FF),
+                        foregroundColor: const Color(0xFF1677D2),
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 13,
+                          vertical: 9,
+                        ),
+                        minimumSize: Size.zero,
+                      ),
+                      child: const Text(
+                        'Go to Class',
+                        style: TextStyle(
+                          color: Color(0xFF428DEB),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -903,6 +869,7 @@ class _HomePageState extends State<HomePage> {
                     builder: (_) => StudentQuizzesPage(
                       classId: _classId!,
                       className: _className ?? 'My Class',
+                      readOnly: _classArchived,
                     ),
                   ),
                 );
@@ -932,6 +899,7 @@ class _HomePageState extends State<HomePage> {
                     builder: (_) => StudentAssignmentsPage(
                       classId: _classId!,
                       className: _className ?? 'My Class',
+                      readOnly: _classArchived,
                     ),
                   ),
                 );
@@ -961,6 +929,7 @@ class _HomePageState extends State<HomePage> {
                     builder: (_) => SimulationsListPage(
                       classId: _classId!,
                       className: _className ?? 'My Class',
+                      practiceOnly: _classArchived,
                     ),
                   ),
                 );
@@ -1198,7 +1167,7 @@ class _HomePageState extends State<HomePage> {
                           '${stats.simulationPercent.toStringAsFixed(0)}%',
                         ),
                         _buildProgressStat(
-                          'Assessment',
+                          'Assignment',
                           '$assessmentCompleted/$assessmentTotal',
                           '${stats.assessmentPercent.toStringAsFixed(0)}%',
                         ),
@@ -1539,7 +1508,7 @@ class _HomePageState extends State<HomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Knowledge Assessment',
+                  'Knowledge Assignment',
                   style: TextStyle(fontWeight: FontWeight.w600),
                 ),
                 Text(

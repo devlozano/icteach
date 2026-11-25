@@ -13,11 +13,13 @@ import 'interactive_quiz_page.dart';
 class StudentQuizzesPage extends StatefulWidget {
   final String classId;
   final String className;
+  final bool readOnly;
 
   const StudentQuizzesPage({
     super.key,
     required this.classId,
     required this.className,
+    this.readOnly = false,
   });
 
   @override
@@ -198,6 +200,7 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
                 onTakeQuiz: () => _takeQuiz(quiz),
                 userId: user.uid,
                 quizService: _quizService,
+                readOnly: widget.readOnly,
               );
             },
           );
@@ -291,6 +294,7 @@ class _QuizCard extends StatefulWidget {
   final VoidCallback onTakeQuiz;
   final String userId;
   final QuizService quizService;
+  final bool readOnly;
 
   const _QuizCard({
     super.key,
@@ -298,6 +302,7 @@ class _QuizCard extends StatefulWidget {
     required this.onTakeQuiz,
     required this.userId,
     required this.quizService,
+    required this.readOnly,
   });
 
   @override
@@ -373,73 +378,74 @@ class _QuizCardState extends State<_QuizCard> {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            widget.quiz.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        // Result status badge.
-                        if (_hasTaken == true && _result != null)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _result!.isPassed
-                                  ? Colors.green.shade100
-                                  : Colors.red.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+              if (!widget.readOnly || _hasTaken == true)
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
                             child: Text(
-                              _result!.isPassed ? 'Passed' : 'Failed',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w600,
+                              widget.quiz.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          // Result status badge.
+                          if (_hasTaken == true && _result != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
                                 color: _result!.isPassed
-                                    ? Colors.green.shade800
-                                    : Colors.red.shade800,
+                                    ? Colors.green.shade100
+                                    : Colors.red.shade100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                _result!.isPassed ? 'Passed' : 'Failed',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: _result!.isPassed
+                                      ? Colors.green.shade800
+                                      : Colors.red.shade800,
+                                ),
                               ),
                             ),
-                          ),
-                      ],
-                    ),
-                    Text(
-                      InteractiveQuizzes.activity(
-                                widget.quiz.classId,
-                                widget.quiz.id,
-                              ) !=
-                              null
-                          ? 'Interactive procedure - Portrait - ${widget.quiz.totalPoints} points'
-                          : '${widget.quiz.questions.length} questions - ${widget.quiz.totalPoints} points',
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 13,
+                        ],
                       ),
-                    ),
-                    if (widget.quiz.timeLimit > 0)
                       Text(
-                        'Time: ${widget.quiz.timeLimit} minutes',
+                        InteractiveQuizzes.activity(
+                                  widget.quiz.classId,
+                                  widget.quiz.id,
+                                ) !=
+                                null
+                            ? 'Interactive procedure - Portrait - ${widget.quiz.totalPoints} points'
+                            : '${widget.quiz.questions.length} questions - ${widget.quiz.totalPoints} points',
                         style: TextStyle(
                           color: Colors.grey.shade600,
-                          fontSize: 12,
+                          fontSize: 13,
                         ),
                       ),
-                  ],
+                      if (widget.quiz.timeLimit > 0)
+                        Text(
+                          'Time: ${widget.quiz.timeLimit} minutes',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
           if (widget.quiz.description.isNotEmpty) ...[

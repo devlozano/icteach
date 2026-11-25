@@ -381,27 +381,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                     _busy ? 'Observe the operation...' : 'Show this operation',
                   ),
                 ),
-              DropdownButtonFormField<String>(
-                key: ValueKey('build-tool-${item.id}'),
-                initialValue: _tool,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Tool in hand',
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                items: PcBuildProcedure.tools
-                    .map(
-                      (t) => DropdownMenuItem(
-                        value: t,
-                        child: Text(t, style: const TextStyle(fontSize: 12)),
-                      ),
-                    )
-                    .toList(),
-                onChanged: _busy || widget.locked
-                    ? null
-                    : (v) => setState(() => _tool = v),
-              ),
+              _toolTray(item.id),
               if (widget.showGuidance) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -610,6 +590,107 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       child: visual,
     );
   }
+
+  Widget _toolTray(String itemId) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text(
+        'TOOL TRAY — tap the tool needed for this operation',
+        style: TextStyle(
+          color: Color(0xFF475569),
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: .3,
+        ),
+      ),
+      const SizedBox(height: 7),
+      GridView.count(
+        key: ValueKey('build-tool-$itemId'),
+        crossAxisCount: 2,
+        mainAxisSpacing: 7,
+        crossAxisSpacing: 7,
+        childAspectRatio: 1.65,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        children: [for (final tool in PcBuildProcedure.tools) _toolTile(tool)],
+      ),
+    ],
+  );
+
+  Widget _toolTile(String tool) {
+    final selected = _tool == tool;
+    final enabled = !_busy && !widget.locked;
+    return Tooltip(
+      message: tool,
+      child: Material(
+        color: selected ? const Color(0xFFDDF5F7) : const Color(0xFFF8FAFC),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(
+            color: selected ? const Color(0xFF087F8C) : const Color(0xFFCBD5E1),
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: InkWell(
+          key: ValueKey('select-build-tool-$tool'),
+          borderRadius: BorderRadius.circular(10),
+          onTap: enabled ? () => setState(() => _tool = tool) : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+            child: Row(
+              children: [
+                SizedBox.square(dimension: 38, child: _toolVisual(tool)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    tool,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: enabled
+                          ? const Color(0xFF17324D)
+                          : const Color(0xFF94A3B8),
+                      fontSize: 10,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _toolVisual(String tool) => switch (tool) {
+    PcBuildProcedure.hand => const Icon(
+      Icons.pan_tool_alt_rounded,
+      color: Color(0xFF0F766E),
+      size: 31,
+      semanticLabel: 'ESD safe hand',
+    ),
+    PcBuildProcedure.driver => Transform.rotate(
+      angle: .62,
+      child: Image.asset(
+        'assets/simulations/phillips-2-screwdriver.png',
+        fit: BoxFit.contain,
+        semanticLabel: 'Phillips number 2 screwdriver',
+      ),
+    ),
+    PcBuildProcedure.paste => Image.asset(
+      'assets/simulations/thermal-paste-syringe.png',
+      fit: BoxFit.contain,
+      semanticLabel: 'Thermal paste syringe',
+    ),
+    PcBuildProcedure.inspect => const Icon(
+      Icons.flashlight_on_rounded,
+      color: Color(0xFFF59E0B),
+      size: 31,
+      semanticLabel: 'Inspection flashlight',
+    ),
+    _ => const Icon(Icons.build_outlined),
+  };
 
   String? _connectorAsset(String token) => switch (token) {
     'atx_24pin_plug' => 'cable-atx-24pin-v2.png',
@@ -943,7 +1024,8 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Reset workbench zoom',
+                    key: const ValueKey('workbench-center-view'),
+                    tooltip: 'Center view',
                     onPressed: () => _zoom.value = Matrix4.identity(),
                     icon: const Icon(
                       Icons.center_focus_strong,

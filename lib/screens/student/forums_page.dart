@@ -12,8 +12,14 @@ import '../../widgets/forum_viewers_dialog.dart';
 class ForumsPage extends StatefulWidget {
   final String classId;
   final String className;
+  final bool readOnly;
 
-  const ForumsPage({super.key, required this.classId, required this.className});
+  const ForumsPage({
+    super.key,
+    required this.classId,
+    required this.className,
+    this.readOnly = false,
+  });
 
   @override
   State<ForumsPage> createState() => _ForumsPageState();
@@ -99,31 +105,33 @@ class _ForumsPageState extends State<ForumsPage> {
                     'No posts yet',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Be the first to start a discussion',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CreateForumPostPage(
-                            classId: widget.classId,
-                            className: widget.className,
-                          ),
-                        ),
-                      ).then((_) => setState(() {}));
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Create Post'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF428DEB),
-                      foregroundColor: Colors.white,
+                  if (!widget.readOnly) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Be the first to start a discussion',
+                      style: TextStyle(color: Colors.grey.shade600),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => CreateForumPostPage(
+                              classId: widget.classId,
+                              className: widget.className,
+                            ),
+                          ),
+                        ).then((_) => setState(() {}));
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Create Post'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF428DEB),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             );
@@ -148,6 +156,7 @@ class _ForumsPageState extends State<ForumsPage> {
                     onViews: () => _showViewers(context, displayPost),
                     onLike: () => _toggleLike(displayPost),
                     onDelete: () => _deletePost(displayPost),
+                    readOnly: widget.readOnly,
                   );
                 },
               );
@@ -155,22 +164,24 @@ class _ForumsPageState extends State<ForumsPage> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CreateForumPostPage(
-                classId: widget.classId,
-                className: widget.className,
-              ),
+      floatingActionButton: widget.readOnly
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CreateForumPostPage(
+                      classId: widget.classId,
+                      className: widget.className,
+                    ),
+                  ),
+                ).then((_) => setState(() {}));
+              },
+              backgroundColor: const Color(0xFF428DEB),
+              foregroundColor: Colors.white,
+              child: const Icon(Icons.add),
             ),
-          ).then((_) => setState(() {}));
-        },
-        backgroundColor: const Color(0xFF428DEB),
-        foregroundColor: Colors.white,
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -222,8 +233,11 @@ class _ForumsPageState extends State<ForumsPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) =>
-            ForumDetailPage(classId: widget.classId, postId: post.id),
+        builder: (context) => ForumDetailPage(
+          classId: widget.classId,
+          postId: post.id,
+          readOnly: widget.readOnly,
+        ),
       ),
     ).then((_) => setState(() {}));
   }
@@ -297,6 +311,7 @@ class _ForumPostCard extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onViews;
   final VoidCallback onDelete;
+  final bool readOnly;
 
   const _ForumPostCard({
     required this.post,
@@ -305,6 +320,7 @@ class _ForumPostCard extends StatelessWidget {
     required this.onLike,
     required this.onViews,
     required this.onDelete,
+    required this.readOnly,
   });
 
   Widget _buildRoleTag(String role) {
@@ -512,7 +528,7 @@ class _ForumPostCard extends StatelessWidget {
 
                   // Likes (clickable)
                   GestureDetector(
-                    onTap: onLike,
+                    onTap: readOnly ? null : onLike,
                     child: Row(
                       children: [
                         Icon(
@@ -535,7 +551,7 @@ class _ForumPostCard extends StatelessWidget {
                   const Spacer(),
 
                   // Delete button (only for author)
-                  if (currentUserId == post.authorId)
+                  if (!readOnly && currentUserId == post.authorId)
                     IconButton(
                       onPressed: onDelete,
                       icon: const Icon(Icons.delete_outline, size: 16),

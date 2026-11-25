@@ -35,8 +35,10 @@ class _AssignmentSubmissionsPageState extends State<AssignmentSubmissionsPage> {
         elevation: 0,
       ),
       body: FutureBuilder<List<AssignmentSubmission>>(
-        future:
-            _assignmentService.getSubmissionsForAssignment(widget.assignmentId),
+        future: _assignmentService.getSubmissionsForAssignment(
+          widget.classId,
+          widget.assignmentId,
+        ),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -87,9 +89,9 @@ class _AssignmentSubmissionsPageState extends State<AssignmentSubmissionsPage> {
           final gradedCount = submissions.where((s) => s.isGraded).length;
           final averageScore = gradedCount > 0
               ? submissions
-                      .where((s) => s.isGraded)
-                      .fold<double>(0, (sum, s) => sum + s.score) /
-                  gradedCount
+                        .where((s) => s.isGraded)
+                        .fold<double>(0, (sum, s) => sum + s.score) /
+                    gradedCount
               : 0;
 
           return Column(
@@ -201,10 +203,7 @@ class _StatChip extends StatelessWidget {
         ),
         Text(
           label,
-          style: TextStyle(
-            fontSize: 10,
-            color: Colors.grey.shade600,
-          ),
+          style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
         ),
       ],
     );
@@ -215,10 +214,7 @@ class _SubmissionCard extends StatelessWidget {
   final AssignmentSubmission submission;
   final VoidCallback onGrade;
 
-  const _SubmissionCard({
-    required this.submission,
-    required this.onGrade,
-  });
+  const _SubmissionCard({required this.submission, required this.onGrade});
 
   Future<void> _openAttachment(String url) async {
     try {
@@ -297,8 +293,10 @@ class _SubmissionCard extends StatelessWidget {
               ),
               if (submission.isGraded)
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.shade100,
                     borderRadius: BorderRadius.circular(12),
@@ -379,10 +377,7 @@ class _SubmissionCard extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  submission.content,
-                  style: const TextStyle(height: 1.5),
-                ),
+                Text(submission.content, style: const TextStyle(height: 1.5)),
                 const SizedBox(height: 12),
               ],
               if (submission.attachmentUrl != null) ...[

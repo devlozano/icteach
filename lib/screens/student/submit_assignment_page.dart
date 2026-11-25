@@ -88,6 +88,7 @@ class _SubmitAssignmentPageState extends State<SubmitAssignmentPage> {
 
       final submission = AssignmentSubmission(
         id: '',
+        classId: widget.classId,
         assignmentId: widget.assignment.id,
         studentId: user.uid,
         studentName: user.displayName ?? 'Student',

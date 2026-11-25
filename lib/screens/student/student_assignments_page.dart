@@ -8,11 +8,13 @@ import 'submit_assignment_page.dart';
 class StudentAssignmentsPage extends StatefulWidget {
   final String classId;
   final String className;
+  final bool readOnly;
 
   const StudentAssignmentsPage({
     super.key,
     required this.classId,
     required this.className,
+    this.readOnly = false,
   });
 
   @override
@@ -96,6 +98,7 @@ class _StudentAssignmentsPageState extends State<StudentAssignmentsPage> {
                 assignment: assignment,
                 userId: user?.uid ?? '',
                 assignmentService: _assignmentService,
+                readOnly: widget.readOnly,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -123,12 +126,14 @@ class _StudentAssignmentCard extends StatefulWidget {
   final String userId;
   final AssignmentService assignmentService;
   final VoidCallback onTap;
+  final bool readOnly;
 
   const _StudentAssignmentCard({
     required this.assignment,
     required this.userId,
     required this.assignmentService,
     required this.onTap,
+    required this.readOnly,
   });
 
   @override
@@ -478,6 +483,8 @@ class _StudentAssignmentCardState extends State<_StudentAssignmentCard> {
                     child: const Text('View'),
                   ),
                 )
+              else if (widget.readOnly)
+                const SizedBox.shrink()
               else if (isOverdue)
                 const Chip(
                   label: Text('Closed'),

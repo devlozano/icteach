@@ -7,11 +7,22 @@ class CssGradebookService {
     String classId, {
     FirebaseFirestore? firestore,
     String? teacherId,
+    String collection = 'css_gradebooks',
   }) : book = (firestore ?? FirebaseFirestore.instance)
-           .collection('css_gradebooks')
+           .collection(collection)
            .doc(teacherId ?? FirebaseAuth.instance.currentUser!.uid)
            .collection('classes')
            .doc(classId);
+  factory CssGradebookService.trainer(
+    String classId, {
+    FirebaseFirestore? firestore,
+    String? trainerId,
+  }) => CssGradebookService(
+    classId,
+    firestore: firestore,
+    teacherId: trainerId,
+    collection: 'trainer_gradebooks',
+  );
   final DocumentReference<Map<String, dynamic>> book;
 
   Future<void> configure(CssGradingProfile profile, int year) async {

@@ -220,6 +220,12 @@ void main() {
       viewer.transformationController!.value.getMaxScaleOnAxis(),
       greaterThan(1),
     );
+    expect(find.byIcon(Icons.center_focus_strong), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('workbench-center-view')));
+    await tester.pump();
+    expect(viewer.transformationController!.value.getMaxScaleOnAxis(), 1);
+    await tester.tap(find.byKey(const ValueKey('workbench-zoom-in')));
+    await tester.pump();
     await tester.tap(find.byKey(const ValueKey('workbench-zoom-out')));
     await tester.pump();
     expect(viewer.transformationController!.value.getMaxScaleOnAxis(), 1);
@@ -305,11 +311,13 @@ void main() {
             var connectorTurns = 1;
             for (var n = 0; n < steps.length; n++) {
               final step = steps[n];
-              final tool = find.byKey(ValueKey('build-tool-${item.id}'));
+              final tray = find.byKey(ValueKey('build-tool-${item.id}'));
+              await tester.ensureVisible(tray);
+              final tool = find.byKey(
+                ValueKey('select-build-tool-${step.tool}'),
+              );
               await tester.ensureVisible(tool);
               await tester.tap(tool);
-              await tester.pumpAndSettle();
-              await tester.tap(find.text(step.tool).last);
               await tester.pumpAndSettle();
               if (step.place) {
                 final dropToken =

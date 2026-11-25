@@ -63,7 +63,7 @@ class _DeleteTrainerAccountDialogState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Permanently delete your trainer sign-in account and profile? You will lose access. Shared class and assessment records will remain.',
+              'Permanently delete your trainer sign-in account and profile? You will lose access. Shared class and assignment records will remain.',
             ),
             const SizedBox(height: 16),
             TextField(

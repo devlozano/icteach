@@ -205,7 +205,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                 ),
                 (
                   Icons.quiz_outlined,
-                  'Quizzes & Assessments',
+                  'Quizzes & Assignments',
                   () => _showClassSelector(context, 'quizzes'),
                 ),
                 (
@@ -665,7 +665,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
         onTap: () => _showClassSelector(context, 'videos'),
       ),
       _TrainerToolItem(
-        title: 'Quizzes & Assessments',
+        title: 'Quizzes & Assignments',
         subtitle: 'Create knowledge tests',
         icon: Icons.quiz_rounded,
         color: Colors.orange,

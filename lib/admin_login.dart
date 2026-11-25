@@ -700,7 +700,7 @@ class _PortalIntroduction extends StatelessWidget {
           const SizedBox(
             width: 570,
             child: Text(
-              'A structured workspace for competency-based instruction, practical simulations, assessment, and learner progress.',
+              'A structured workspace for competency-based instruction, practical simulations, assignments, and learner progress.',
               style: TextStyle(
                 color: Color(0xFFC8DCEB),
                 fontSize: 16,

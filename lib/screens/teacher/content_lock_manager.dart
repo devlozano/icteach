@@ -198,7 +198,7 @@ class _ContentLockManagerState extends State<ContentLockManager> {
                   _AccessHeader(type: type),
                   _tile(type, '*', switch (type) {
                     'module' => 'All lessons & modules',
-                    'quiz' => 'All quizzes & assessments',
+                    'quiz' => 'All quizzes & assignments',
                     _ => 'All practical simulations',
                   }, records),
                   if (type == 'quiz')
@@ -372,7 +372,7 @@ class _AccessHeader extends StatelessWidget {
         Icons.menu_book_outlined,
       ),
       'quiz' => (
-        'Quizzes & assessments',
+        'Quizzes & assignments',
         'Open or close quizzes without removing their content.',
         Icons.quiz_outlined,
       ),

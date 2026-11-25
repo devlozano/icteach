@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 const helpfulnessPrompts = [
   'ICTeach helps me understand my lessons.',
   'The simulations help me practise real tasks.',
-  'ICTeach helps me prepare for the NC II assessment.',
+  'ICTeach helps me prepare for the NC II assignment.',
   'Overall, ICTeach helps me learn better.',
 ];
 

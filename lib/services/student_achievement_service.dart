@@ -83,7 +83,7 @@ class StudentAchievementService {
     return [
       StudentAchievement(
         title: 'Ready to Learn',
-        description: 'Complete the pre-assessment',
+        description: 'Complete the pre-assignment',
         icon: 'compass',
         current: assessmentCompleted ? 1 : 0,
         target: 1,

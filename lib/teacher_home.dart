@@ -52,7 +52,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     (Icons.rate_review_outlined, 'Feedback'),
     (Icons.groups_outlined, 'Student Management'),
     (Icons.menu_book_outlined, 'Module Management'),
-    (Icons.fact_check_outlined, 'Quiz & Assessment'),
+    (Icons.fact_check_outlined, 'Quiz & Assignment'),
   ];
   // Keep Feedback directly above Profile in the website sidebar.
   static const _webOrder = [0, 1, 2, 3, 6, 7, 8, 5, 4];
@@ -540,7 +540,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                             'Feedback',
                             'Students',
                             'Modules',
-                            'Quiz & Assessment',
+                            'Quiz & Assignment',
                           ][_currentTabIndex],
                         ),
                         actions: [
@@ -586,7 +586,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                                           'Feedback',
                                           'Student Management',
                                           'Module Management',
-                                          'Quiz & Assessment',
+                                          'Quiz & Assignment',
                                         ][_currentTabIndex],
                                         style: const TextStyle(
                                           color: Color(0xFF102A43),
@@ -1243,7 +1243,7 @@ class _TeacherDesktopNav extends StatelessWidget {
       (Icons.rate_review_outlined, 'Feedback'),
       (Icons.groups_outlined, 'Student Management'),
       (Icons.menu_book_outlined, 'Module Management'),
-      (Icons.fact_check_outlined, 'Quiz & Assessment'),
+      (Icons.fact_check_outlined, 'Quiz & Assignment'),
     ],
     onSelected: onChanged,
     onLogout: onLogout,
@@ -1278,7 +1278,7 @@ class TeacherQuizAssessmentHub extends StatelessWidget {
               ),
               SizedBox(height: 16),
               Text(
-                'Quiz & Assessment',
+                'Quiz & Assignment',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -1318,7 +1318,7 @@ class TeacherQuizAssessmentHub extends StatelessWidget {
             ),
             _AssessmentDestinationCard(
               icon: Icons.assignment_outlined,
-              title: 'Manage Assessments',
+              title: 'Manage Assignments',
               description:
                   'Create graded tasks, review submissions, and give feedback.',
               onTap: () => Navigator.push(

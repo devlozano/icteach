@@ -100,12 +100,62 @@ test('student cannot forge another user membership or nested progress', async ()
   }));
 });
 test('quiz results are owner-only and immutable', async () => {
+  await assertSucceeds(join(dbFor('student')).commit());
   const result = {quizId: 'quiz', classId: 'class', studentId: 'student', score: 8, totalPoints: 10};
   await assertSucceeds(setDoc(doc(dbFor('student'), 'users/student/quiz_results/quiz'), result));
   await assertSucceeds(setDoc(doc(dbFor('student'), 'quiz_results/quiz_student'), result));
   await assertFails(updateDoc(doc(dbFor('student'), 'users/student/quiz_results/quiz'), {score: 10}));
   await assertFails(updateDoc(doc(dbFor('student'), 'quiz_results/quiz_student'), {score: 10}));
   await assertFails(setDoc(doc(dbFor('other'), 'quiz_results/quiz_student'), {...result, score: 10}));
+});
+test('archived students keep read and practice access but cannot change graded or forum data', async () => {
+  const db = dbFor('student');
+  await assertSucceeds(join(db).commit());
+  await env.withSecurityRulesDisabled(c => updateDoc(doc(c.firestore(), 'classes/class'), {status: 'archived'}));
+
+  for (const path of ['modules/lesson', 'quizzes/quiz', 'assignments/task', 'forum_posts/post']) {
+    await assertSucceeds(getDoc(doc(db, `classes/class/${path}`)));
+  }
+  await assertFails(setDoc(doc(db, 'classes/class/forum_posts/new'), {title: 'No'}));
+  await assertFails(updateDoc(doc(db, 'classes/class/forum_posts/post'), {likeCount: 1}));
+  await assertFails(setDoc(doc(db, 'users/student/module_progress/lesson'), {
+    classId: 'class', moduleId: 'lesson', studentId: 'student', completed: true,
+  }));
+  const result = {quizId: 'quiz', classId: 'class', studentId: 'student', score: 8, totalPoints: 10};
+  await assertFails(setDoc(doc(db, 'users/student/quiz_results/quiz'), result));
+  await assertFails(setDoc(doc(db, 'quiz_results/quiz_student'), result));
+  await assertFails(setDoc(doc(db, 'submissions/task_student'), {
+    classId: 'class', assignmentId: 'task', studentId: 'student', content: 'answer',
+  }));
+  await assertSucceeds(setDoc(doc(db, 'users/student/practice_progress/class_simulation_demo'), {
+    classId: 'class', studentId: 'student', contentType: 'simulation', contentId: 'demo', mode: 'practice',
+  }));
+  await assertSucceeds(setDoc(doc(collection(db, 'activity_events')), {
+    classId: 'class', studentId: 'student', contentId: 'demo', mode: 'practice', event: 'practice_completed',
+  }));
+});
+test('assignment submissions are class-scoped for students and their teacher', async () => {
+  const studentDb = dbFor('student');
+  await assertSucceeds(join(studentDb).commit());
+  const submission = {
+    classId: 'class', assignmentId: 'task', studentId: 'student',
+    content: 'A complete student response', score: 0, isGraded: false,
+  };
+  await assertSucceeds(setDoc(doc(studentDb, 'submissions/task_student'), submission));
+  await assertSucceeds(getDoc(doc(studentDb, 'submissions/task_student')));
+  await assertFails(getDoc(doc(dbFor('other'), 'submissions/task_student')));
+
+  const teacherDb = dbFor('teacher');
+  const scoped = query(
+    collection(teacherDb, 'submissions'),
+    where('classId', '==', 'class'),
+    where('assignmentId', '==', 'task'),
+  );
+  assert.equal((await assertSucceeds(getDocs(scoped))).size, 1);
+  await assertSucceeds(updateDoc(doc(teacherDb, 'submissions/task_student'), {
+    score: 10, feedback: 'Complete', isGraded: true, gradedAt: serverTimestamp(),
+  }));
+  await assertFails(updateDoc(doc(studentDb, 'submissions/task_student'), {score: 10}));
 });
 test('teacher/trainer content management and principal read-only content remain supported', async () => {
   for (const uid of ['teacher', 'trainer']) {

@@ -79,7 +79,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
                   children: [
                     Text(
                       type == 'simulation'
-                          ? 'Choose the lesson students must complete before simulation practice, and the theory quiz required before simulation assessment.'
+                          ? 'Choose the lesson students must complete before simulation practice, and the theory quiz required before the simulation assignment.'
                           : 'Choose the published lesson students must complete before taking this quiz. Quizzes have one scored attempt and no practice mode.',
                     ),
                     const SizedBox(height: 16),
@@ -187,7 +187,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
     appBar: AppBar(
       backgroundColor: const Color(0xFF172554),
       foregroundColor: Colors.white,
-      title: const Text('Lesson & assessment links'),
+      title: const Text('Lesson & assignment links'),
     ),
     body: FutureBuilder<bool>(
       future: _staff,
@@ -215,7 +215,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Choose the lesson and theory quiz students complete before each practical assessment.',
+              'Choose the lesson and theory quiz students complete before each practical assignment.',
               style: TextStyle(color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 12),

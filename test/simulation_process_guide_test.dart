@@ -61,7 +61,7 @@ void main() {
       if (GuidedSetupData.kindForId(simulation.id) != null) {
         expect(find.byType(GuidedSetupWorkbench), findsOneWidget);
         expect(
-          find.text('Guided practice • no assessment credit'),
+          find.text('Guided practice • no assignment credit'),
           findsOneWidget,
         );
         return;

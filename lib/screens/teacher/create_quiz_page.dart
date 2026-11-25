@@ -500,7 +500,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                                   const SizedBox(width: 8),
                                   const Expanded(
                                     child: Text(
-                                      'Publish a quiz with questions, assign its required module in Lesson & assessment links, and unlock it in Content Lock Settings. Students complete that module before their one scored attempt.',
+                                      'Publish a quiz with questions, assign its required module in Lesson & assignment links, and unlock it in Content Lock Settings. Students complete that module before their one scored attempt.',
                                     ),
                                   ),
                                 ],

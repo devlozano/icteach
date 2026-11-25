@@ -12,10 +12,12 @@ class CssGradebookPage extends StatefulWidget {
     required this.classId,
     required this.students,
     this.service,
+    this.ownerLabel = '',
   });
   final String classId;
   final Map<String, String> students;
   final CssGradebookService? service;
+  final String ownerLabel;
   @override
   State<CssGradebookPage> createState() => _CssGradebookPageState();
 }
@@ -156,7 +158,9 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
             key: const ValueKey('insights-grades'),
             children: [
               InsightsHeader(
-                title: 'CSS gradebook',
+                title: widget.ownerLabel.isEmpty
+                    ? 'CSS gradebook'
+                    : '${widget.ownerLabel} CSS gradebook',
                 eyebrow: 'SY $schoolYear–${schoolYear + 1}',
                 icon: Icons.auto_stories_outlined,
                 subtitle:

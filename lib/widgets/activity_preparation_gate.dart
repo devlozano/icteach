@@ -13,6 +13,7 @@ class ActivityPreparationGate extends StatefulWidget {
   final String classId, type, contentId, title;
   final Widget Function(bool practice) sessionBuilder;
   final Future<Map<String, dynamic>> Function()? stateLoader;
+  final bool practiceOnly;
   const ActivityPreparationGate({
     super.key,
     required this.classId,
@@ -21,6 +22,7 @@ class ActivityPreparationGate extends StatefulWidget {
     required this.title,
     required this.sessionBuilder,
     this.stateLoader,
+    this.practiceOnly = false,
   });
   @override
   State<ActivityPreparationGate> createState() =>
@@ -78,7 +80,22 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
     }
   }
 
-  late Future<Map<String, dynamic>> _state = _refresh();
+  late Future<Map<String, dynamic>> _state;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.practiceOnly) _state = _refresh();
+  }
+
+  @override
+  void didUpdateWidget(covariant ActivityPreparationGate oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.practiceOnly && !widget.practiceOnly) {
+      _state = _refresh();
+    }
+  }
+
   Future<Map<String, dynamic>> _refresh() {
     final future = Future<Map<String, dynamic>>.sync(
       () => widget.stateLoader?.call() ?? _load(),
@@ -97,7 +114,11 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
       );
       return {'configured': true};
     }
-    await LearningPathService.requireActive(widget.classId);
+    if (widget.practiceOnly) {
+      await LearningPathService.requireParticipant(widget.classId);
+    } else {
+      await LearningPathService.requireActive(widget.classId);
+    }
     final db = FirebaseFirestore.instance;
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final root = db.collection('classes').doc(widget.classId);
@@ -112,12 +133,13 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
     if (module.data()?['isPublished'] != true) return {'configured': false};
     final user = db.collection('users').doc(uid);
     final learned =
+        widget.practiceOnly ||
         (await user
-                .collection('module_progress')
-                .doc('${widget.classId}_${path['moduleId']}')
-                .get())
-            .data()?['completed'] ==
-        true;
+                    .collection('module_progress')
+                    .doc('${widget.classId}_${path['moduleId']}')
+                    .get())
+                .data()?['completed'] ==
+            true;
     final practiced =
         (await user
                 .collection('practice_progress')
@@ -350,7 +372,7 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
                         SizedBox(height: 15),
                         _QuizRule(
                           icon: Icons.workspace_premium_rounded,
-                          title: 'Scored assessment',
+                          title: 'Scored assignment',
                           detail:
                               'Your final score will be recorded for grading.',
                         ),
@@ -504,7 +526,7 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
                                 ),
                               ),
                               child: const Text(
-                                'PRACTICAL ASSESSMENT',
+                                'PRACTICAL ASSIGNMENT',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 11,
@@ -748,11 +770,12 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
                             ? () => _start(false)
                             : null,
                         label: const Text(
-                          'Part B: start graded simulation assessment',
+                          'Part B: start graded simulation assignment',
                           textAlign: TextAlign.center,
                           style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                       );
+                      if (widget.practiceOnly) return practiceButton;
                       if (constraints.maxWidth < 620) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -811,54 +834,126 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
     );
   }
 
+  Widget _buildPracticeOnly() => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF075E57), Color(0xFF0F9F8F)],
+            ),
+            borderRadius: BorderRadius.circular(28),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F9F8F).withValues(alpha: .24),
+                blurRadius: 26,
+                offset: const Offset(0, 13),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.precision_manufacturing_rounded,
+                size: 64,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 18),
+              Text(
+                widget.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Review and repeat the complete hands-on procedure at your own pace.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, height: 1.4),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _starting ? null : () => _start(true),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF075E57),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  icon: const Icon(Icons.play_arrow_rounded),
+                  label: Text(
+                    _starting ? 'Opening practice...' : 'Start practice',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(widget.title)),
-    body: FutureBuilder<Map<String, dynamic>>(
-      future: _state,
-      builder: (context, snapshot) {
-        if (snapshot.hasError) {
-          return Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Text(
-                    'Unable to prepare activity: ${snapshot.error}',
-                    textAlign: TextAlign.center,
+    body: widget.practiceOnly
+        ? _buildPracticeOnly()
+        : FutureBuilder<Map<String, dynamic>>(
+            future: _state,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Text(
+                          'Unable to prepare activity: ${snapshot.error}',
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => setState(() {
+                          _state = _refresh();
+                        }),
+                        child: const Text('Retry'),
+                      ),
+                    ],
                   ),
-                ),
-                TextButton(
-                  onPressed: () => setState(() {
-                    _state = _refresh();
-                  }),
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final state = snapshot.data!;
-        if (state['configured'] != true) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
-                'This activity is waiting for teacher setup. Your teacher or trainer must publish a lesson, publish a theory quiz with questions for simulations, and link them in Modules > Lesson & assessment links. Uploading a draft alone does not unlock the activity.',
-              ),
-            ),
-          );
-        }
-        if (widget.type == 'quiz') {
-          return _buildQuizReady(context);
-        }
-        return _buildSimulationReady(state);
-      },
-    ),
+                );
+              }
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final state = snapshot.data!;
+              if (state['configured'] != true) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'This activity is waiting for teacher setup. Your teacher or trainer must publish a lesson, publish a theory quiz with questions for simulations, and link them in Modules > Lesson & assignment links. Uploading a draft alone does not unlock the activity.',
+                    ),
+                  ),
+                );
+              }
+              if (widget.type == 'quiz') {
+                return _buildQuizReady(context);
+              }
+              return _buildSimulationReady(state);
+            },
+          ),
   );
 }
 

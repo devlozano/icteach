@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:icteach/services/css_gradebook_service.dart';
 import 'package:icteach/screens/teacher/css_gradebook_page.dart';
+import 'package:icteach/screens/trainer/trainer_gradebook_page.dart';
 import 'package:icteach/utils/deped_grading.dart';
 
 void main() {
@@ -13,6 +14,47 @@ void main() {
       teacherId: 'teacher-a',
     );
     expect(service.book.path, 'css_gradebooks/teacher-a/classes/class-a');
+  });
+
+  test('trainer gradebook uses an independent trainer-owned path', () {
+    final service = CssGradebookService.trainer(
+      'class-a',
+      firestore: FakeFirebaseFirestore(),
+      trainerId: 'trainer-a',
+    );
+    expect(service.book.path, 'trainer_gradebooks/trainer-a/classes/class-a');
+  });
+
+  testWidgets('trainer setup route provides Material for gradebook fields', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    await db.collection('classes').doc('class').set({
+      'name': 'CSS 11-A',
+      'trainerIds': ['trainer'],
+      'enrolledStudentIds': ['student'],
+    });
+    await db.collection('users').doc('student').set({
+      'role': 'student',
+      'name': 'Ana Student',
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: TrainerGradebookPage(
+          classId: 'class',
+          className: 'CSS 11-A',
+          firestore: db,
+          trainerId: 'trainer',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Trainer gradebook'), findsOneWidget);
+    expect(find.text('Set up your gradebook'), findsOneWidget);
+    expect(find.byType(TextField), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   test(

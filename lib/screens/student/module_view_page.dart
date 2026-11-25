@@ -20,11 +20,13 @@ import 'dart:async';
 class ModuleViewPage extends StatefulWidget {
   final String classId;
   final String className;
+  final bool readOnly;
 
   const ModuleViewPage({
     super.key,
     required this.classId,
     required this.className,
+    this.readOnly = false,
   });
 
   @override
@@ -337,7 +339,7 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
               _selectedModuleIndex = index;
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (mounted) {
-                  _saveProgress(modules[index], false);
+                  if (!widget.readOnly) _saveProgress(modules[index], false);
                   setState(() {});
                 }
               });
@@ -447,7 +449,9 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
                             index: moduleIndex,
                             status: status,
                             onTap: () {
-                              _saveProgress(module, false);
+                              if (!widget.readOnly) {
+                                _saveProgress(module, false);
+                              }
                               setState(() {
                                 _selectedModuleIndex = moduleIndex;
                                 WorkspacePreferences.saveSelection(
@@ -665,52 +669,54 @@ class _ModuleViewPageState extends State<ModuleViewPage> {
                     ),
                   ],
 
-                  // Mark as Done Button
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _savingProgress
-                          ? null
-                          : () async {
-                              if (!await _saveProgress(module, true) ||
-                                  !mounted) {
-                                return;
-                              }
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (_) => LearningContinuationPage(
-                                    classId: widget.classId,
-                                    moduleId: module.id,
+                  if (!widget.readOnly) ...[
+                    // Mark as Done Button
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _savingProgress
+                            ? null
+                            : () async {
+                                if (!await _saveProgress(module, true) ||
+                                    !mounted) {
+                                  return;
+                                }
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => LearningContinuationPage(
+                                      classId: widget.classId,
+                                      moduleId: module.id,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4F46E5),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        elevation: 4,
-                        shadowColor: const Color(0xFF4F46E5).withOpacity(0.5),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                                );
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF4F46E5),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          elevation: 4,
+                          shadowColor: const Color(0xFF4F46E5).withOpacity(0.5),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        _savingProgress
-                            ? 'Saving progress...'
-                            : _progress[module.id] == true
-                            ? 'Continue to Quiz'
-                            : 'Mark as Done & Continue to Quiz',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
+                        child: Text(
+                          _savingProgress
+                              ? 'Saving progress...'
+                              : _progress[module.id] == true
+                              ? 'Continue to Quiz'
+                              : 'Mark as Done & Continue to Quiz',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                   const SizedBox(height: 40),
                 ],
               ),

@@ -45,7 +45,7 @@ class StaffMobileNav extends StatelessWidget {
             (
               Icons.fact_check_outlined,
               Icons.fact_check_rounded,
-              'Quiz & Assessment',
+              'Quiz & Assignment',
             ),
           ];
     // Keep discussion in the centre: it is a shared, high-frequency workspace
@@ -124,7 +124,7 @@ class StaffMobileNav extends StatelessWidget {
                               Text(
                                 trainer
                                     ? 'Monitoring and learner management'
-                                    : 'Teaching, assessment, and class tools',
+                                    : 'Teaching, assignments, and class tools',
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 13,

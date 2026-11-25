@@ -99,6 +99,7 @@ class AssignmentModel {
 // Assignment Submission Model with Rich Text Support
 class AssignmentSubmission {
   final String id;
+  final String classId;
   final String assignmentId;
   final String studentId;
   final String studentName;
@@ -114,6 +115,7 @@ class AssignmentSubmission {
 
   AssignmentSubmission({
     required this.id,
+    this.classId = '',
     required this.assignmentId,
     required this.studentId,
     required this.studentName,
@@ -134,6 +136,7 @@ class AssignmentSubmission {
     final data = doc.data()!;
     return AssignmentSubmission(
       id: doc.id,
+      classId: data['classId'] ?? '',
       assignmentId: data['assignmentId'] ?? '',
       studentId: data['studentId'] ?? '',
       studentName: data['studentName'] ?? 'Student',
@@ -153,6 +156,7 @@ class AssignmentSubmission {
   Map<String, dynamic> toFirestore() {
     return {
       'assignmentId': assignmentId,
+      'classId': classId,
       'studentId': studentId,
       'studentName': studentName,
       'content': content,
@@ -184,6 +188,7 @@ class AssignmentSubmission {
   }) {
     return AssignmentSubmission(
       id: id ?? this.id,
+      classId: classId,
       assignmentId: assignmentId ?? this.assignmentId,
       studentId: studentId ?? this.studentId,
       studentName: studentName ?? this.studentName,

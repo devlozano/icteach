@@ -172,7 +172,25 @@ service cloud.firestore {
       // must never let one signed-in user overwrite another user's records.
       allow write: if request.auth != null
         && request.auth.uid == uid
-        && !(subcollection in ['classes', 'quiz_results']);
+        && !(subcollection in ['classes', 'quiz_results', 'module_progress', 'simulation_progress']);
+    }
+    match /users/{uid}/module_progress/{progressId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.studentId == uid
+        && classParticipant(request.resource.data.classId)
+        && activeClass(request.resource.data.classId);
+      allow delete: if false;
+    }
+    match /users/{uid}/simulation_progress/{progressId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.studentId == uid
+        && classParticipant(request.resource.data.classId)
+        && activeClass(request.resource.data.classId);
+      allow delete: if false;
     }
     match /users/{uid}/quiz_results/{quizId} {
       allow read: if request.auth != null;
@@ -181,6 +199,8 @@ service cloud.firestore {
       allow create: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.studentId == uid
+        && classParticipant(request.resource.data.classId)
+        && activeClass(request.resource.data.classId)
         && request.resource.data.quizId == quizId;
       allow update, delete: if false;
     }
@@ -240,6 +260,39 @@ service cloud.firestore {
         allow delete: if false;
       }
     }
+    // Trainer grades are intentionally stored in a separate namespace. An
+    // assigned trainer can only manage their own enrolled learners.
+    function trainerGradebookStaff(trainerId, classId) {
+      let classroom = get(/databases/$(database)/documents/classes/$(classId)).data;
+      let profile = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return request.auth != null && request.auth.uid == trainerId
+        && profile.get('isActive', true) == true && profile.role == 'trainer'
+        && trainerId in classroom.get('trainerIds', []);
+    }
+    match /trainer_gradebooks/{trainerId}/classes/{classId} {
+      allow read: if trainerGradebookStaff(trainerId, classId);
+      allow create: if trainerGradebookStaff(trainerId, classId)
+        && request.resource.data.keys().hasOnly(['profile', 'year', 'updatedAt'])
+        && request.resource.data.profile == 'techPro'
+        && request.resource.data.year is int
+        && request.resource.data.year >= 2026 && request.resource.data.year <= 2100
+        && request.resource.data.updatedAt == request.time;
+      allow update, delete: if false;
+      match /records/{recordId} {
+        allow read: if trainerGradebookStaff(trainerId, classId);
+        allow create, update: if trainerGradebookStaff(trainerId, classId)
+          && exists(/databases/$(database)/documents/trainer_gradebooks/$(trainerId)/classes/$(classId))
+          && request.resource.data.keys().hasOnly(['studentId', 'term', 'scores', 'updatedAt'])
+          && request.resource.data.studentId is string
+          && request.resource.data.studentId.size() > 0 && request.resource.data.studentId.size() <= 128
+          && request.resource.data.studentId in get(/databases/$(database)/documents/classes/$(classId)).data.enrolledStudentIds
+          && request.resource.data.term is int && request.resource.data.term in [1, 2, 3]
+          && recordId == request.resource.data.studentId + '_' + string(request.resource.data.term)
+          && validGradeScores(request.resource.data.scores)
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if false;
+      }
+    }
     function validClassRoster(data) {
       return data.enrolledStudentIds is list && data.enrolledStudentIds.size() <= 1000
         && data.get('description', '') is string && data.get('description', '').size() <= 5000
@@ -277,6 +330,9 @@ service cloud.firestore {
         && (classroom.teacherId == request.auth.uid
           || request.auth.uid in classroom.get('trainerIds', [])
           || request.auth.uid in classroom.get('enrolledStudentIds', []))));
+    }
+    function activeClass(classId) {
+      return get(/databases/$(database)/documents/classes/$(classId)).data.status == 'active';
     }
     function classStaff(classId) {
       let classroom = get(/databases/$(database)/documents/classes/$(classId)).data;
@@ -346,7 +402,9 @@ service cloud.firestore {
           && !(studentId in getAfter(/databases/$(database)/documents/classes/$(classId)).data.enrolledStudentIds);
       }
       match /forum_posts/{document=**} {
-        allow read, write: if classParticipant(classId);
+        allow read: if classParticipant(classId);
+        allow write: if classStaff(classId)
+          || (classParticipant(classId) && activeClass(classId));
       }
       match /module_access/{accessId} {
         allow read: if classParticipant(classId);
@@ -436,6 +494,8 @@ service cloud.firestore {
       allow read: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.studentId == request.auth.uid
+        && classParticipant(request.resource.data.classId)
+        && activeClass(request.resource.data.classId)
         && request.resource.data.quizId is string
         && resultId == request.resource.data.quizId + '_' + request.auth.uid;
       allow update, delete: if false;
@@ -450,14 +510,49 @@ service cloud.firestore {
     match /activity_events/{eventId} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
-        && request.resource.data.studentId == request.auth.uid;
+        && request.resource.data.studentId == request.auth.uid
+        && (activeClass(request.resource.data.classId)
+          || (request.resource.data.mode == 'practice'
+            && classParticipant(request.resource.data.classId)));
       allow update, delete: if false;
+    }
+    match /submissions/{submissionId} {
+      allow read: if request.auth != null
+        && (resource.data.studentId == request.auth.uid
+          || classStaff(resource.data.classId));
+      allow create: if request.auth != null
+        && request.resource.data.studentId == request.auth.uid
+        && request.resource.data.classId is string
+        && request.resource.data.classId.size() > 0
+        && request.resource.data.classId.size() <= 128
+        && request.resource.data.assignmentId is string
+        && request.resource.data.assignmentId.size() > 0
+        && request.resource.data.assignmentId.size() <= 128
+        && submissionId == request.resource.data.assignmentId + '_' + request.auth.uid
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 50000
+        && request.resource.data.score == 0
+        && request.resource.data.isGraded == false
+        && classParticipant(request.resource.data.classId)
+        && activeClass(request.resource.data.classId);
+      allow update: if classStaff(resource.data.classId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'score', 'feedback', 'isGraded', 'gradedAt'
+        ])
+        && request.resource.data.score is number
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 1000000
+        && request.resource.data.feedback is string
+        && request.resource.data.feedback.size() <= 10000
+        && request.resource.data.isGraded == true
+        && request.resource.data.gradedAt is timestamp;
+      allow delete: if false;
     }
     // Existing policies for unrelated collections remain unchanged. Exclude the
     // LRN namespace here so a broad match cannot bypass its admin restrictions.
     match /{collection}/{document=**} {
       allow read, write: if request.auth != null
-        && !(collection in ['lrn_master_list', 'lrn_folders', 'users', 'students', 'css_gradebooks', 'classes', 'school_year_archives', 'system_settings', 'settings', 'quiz_results', 'pre_assessments', 'activity_events']);
+        && !(collection in ['lrn_master_list', 'lrn_folders', 'users', 'students', 'css_gradebooks', 'trainer_gradebooks', 'classes', 'school_year_archives', 'system_settings', 'settings', 'quiz_results', 'pre_assessments', 'activity_events', 'submissions']);
     }
   }
 }

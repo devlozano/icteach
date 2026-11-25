@@ -84,6 +84,25 @@ class WorkspaceData {
           return result;
         }),
   );
+
+  /// All classes the student has joined. Active classes stay first, while
+  /// archived classes remain available for read-only learning and practice.
+  static Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>>
+  studentClasses(String uid) => watch(
+    'studentClasses/$uid',
+    () => assignedClasses(uid).map((classes) {
+      final result = classes.toList();
+      result.sort((a, b) {
+        final aArchived = a.data()['status'] == 'archived';
+        final bArchived = b.data()['status'] == 'archived';
+        if (aArchived != bArchived) return aArchived ? 1 : -1;
+        return (b.data()['schoolYear']?.toString() ?? '').compareTo(
+          a.data()['schoolYear']?.toString() ?? '',
+        );
+      });
+      return result;
+    }),
+  );
   static Stream<List<QueryDocumentSnapshot<Map<String, dynamic>>>> students(
     Set<String>? ids,
   ) {

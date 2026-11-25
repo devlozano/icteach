@@ -55,7 +55,7 @@ void main() {
       SummarySection('Students', [], []),
       SummarySection('Module access', [], []),
       SummarySection('Quiz results', [], []),
-      SummarySection('Pre-assessment', [], []),
+      SummarySection('Pre-assignment', [], []),
       SummarySection('Trainer practical validation', [], []),
       SummarySection('Simulations', [], []),
       SummarySection('Teaching and course feedback', [], []),
@@ -126,7 +126,7 @@ void main() {
       SummarySection('Students', [], []),
       SummarySection('Class enrollment', [], []),
       SummarySection('Module publishing', [], []),
-      SummarySection('Assessment summary', [], []),
+      SummarySection('Assignment summary', [], []),
     ];
 
     expect(
@@ -134,7 +134,7 @@ void main() {
         'Performance',
         sections,
       ).map((section) => section.title),
-      ['Assessment summary'],
+      ['Assignment summary'],
     );
     expect(
       AdminSummaryService.sectionsForPage(

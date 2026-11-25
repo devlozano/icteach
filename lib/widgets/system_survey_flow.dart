@@ -120,7 +120,7 @@ class _SystemSurveyFlowState extends State<SystemSurveyFlow> {
       ),
       const SizedBox(height: 16),
       const Text(
-        'Tell us how ICTeach helped you learn and prepare for your NC II assessment. Your answers help improve the learning experience.',
+        'Tell us how ICTeach helped you learn and prepare for your NC II assignment. Your answers help improve the learning experience.',
         textAlign: TextAlign.center,
         style: TextStyle(fontSize: 16, height: 1.5, color: navy),
       ),

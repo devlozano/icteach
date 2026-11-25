@@ -150,7 +150,7 @@ class _AssessmentReviewPageState extends State<AssessmentReviewPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Assessments',
+            'Assignments',
             style: TextStyle(fontWeight: FontWeight.w800),
           ),
           Text(
@@ -189,7 +189,7 @@ class _AssessmentReviewPageState extends State<AssessmentReviewPage> {
             if (snapshot.hasError) {
               return const Center(
                 child: Text(
-                  'Assessment results could not be loaded. Reopen to retry.',
+                  'Assignment results could not be loaded. Reopen to retry.',
                 ),
               );
             }

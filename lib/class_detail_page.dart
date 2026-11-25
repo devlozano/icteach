@@ -34,6 +34,7 @@ class ClassDetailPage extends StatefulWidget {
 
 class _ClassDetailPageState extends State<ClassDetailPage> {
   String? _userRole;
+  bool _classArchived = false;
 
   @override
   void initState() {
@@ -102,7 +103,8 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
 
             final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
             final classCode = data['classCode']?.toString() ?? 'N/A';
-            if (data['status'] == 'archived')
+            _classArchived = data['status'] == 'archived';
+            if (_classArchived && _userRole != 'student')
               return Center(
                 child: Padding(
                   padding: const EdgeInsets.all(24),
@@ -255,7 +257,7 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
                               child: _buildInfoChip(
                                 icon: Icons.description,
                                 label: 'Status',
-                                value: 'Active',
+                                value: _classArchived ? 'Archived' : 'Active',
                               ),
                             ),
                           ],
@@ -369,7 +371,7 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
                   const SizedBox(height: 20),
 
                   // Leave Class Button
-                  if (_userRole == 'student')
+                  if (_userRole == 'student' && !_classArchived)
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
@@ -407,6 +409,7 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
           : ModuleViewPage(
               classId: widget.classId,
               className: widget.className,
+              readOnly: _classArchived,
             ),
     );
   }
@@ -422,6 +425,7 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
           : StudentQuizzesPage(
               classId: widget.classId,
               className: widget.className,
+              readOnly: _classArchived,
             ),
     );
   }
@@ -437,6 +441,7 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
           : StudentAssignmentsPage(
               classId: widget.classId,
               className: widget.className,
+              readOnly: _classArchived,
             ),
     );
   }
@@ -444,7 +449,11 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
   void _navigateToForum() {
     NavigationService.navigateTo(
       context,
-      ForumsPage(classId: widget.classId, className: widget.className),
+      ForumsPage(
+        classId: widget.classId,
+        className: widget.className,
+        readOnly: _classArchived && _userRole == 'student',
+      ),
     );
   }
 
@@ -460,6 +469,7 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
           : StudentQuizzesPage(
               classId: widget.classId,
               className: widget.className,
+              readOnly: _classArchived,
             ),
     );
   }

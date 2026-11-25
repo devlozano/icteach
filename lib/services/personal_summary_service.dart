@@ -71,7 +71,7 @@ class PersonalSummaryService {
         ],
       ),
       SummarySection(
-        'Pre-assessment',
+        'Pre-assignment',
         ['Score', 'Total'],
         [
           for (final p in pre) [p['score'], p['totalQuestions']],
@@ -87,14 +87,14 @@ class AdminSummaryService {
     List<SummarySection> sections,
   ) {
     final titles = switch (page) {
-      'Performance' => const {'Assessment summary'},
+      'Performance' => const {'Assignment summary'},
       'Content Overview' => const {'Module publishing'},
       'Manage Classes' => const {'Class enrollment'},
       _ => const {
         'Students',
         'Class enrollment',
         'Module publishing',
-        'Assessment summary',
+        'Assignment summary',
       },
     };
     return sections.where((section) => titles.contains(section.title)).toList();
@@ -160,7 +160,7 @@ class AdminSummaryService {
         'Published',
       ], moduleRows),
       SummarySection(
-        'Assessment summary',
+        'Assignment summary',
         ['Quiz submissions', 'Average score (%)'],
         [
           [

@@ -11,11 +11,13 @@ import '../../services/forum_service.dart';
 class ForumDetailPage extends StatefulWidget {
   final String classId;
   final String postId;
+  final bool readOnly;
 
   const ForumDetailPage({
     super.key,
     required this.classId,
     required this.postId,
+    this.readOnly = false,
   });
 
   @override
@@ -75,7 +77,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
               _postError = null;
             });
             if (post == null) return;
-            if (!_viewRecorded) {
+            if (!widget.readOnly && !_viewRecorded) {
               _viewRecorded = true;
               unawaited(_recordView());
             }
@@ -418,7 +420,7 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
 
                             // Likes (clickable)
                             GestureDetector(
-                              onTap: _toggleLikePost,
+                              onTap: widget.readOnly ? null : _toggleLikePost,
                               child: Row(
                                 children: [
                                   Icon(
@@ -565,7 +567,9 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
                                 const SizedBox(height: 6),
                                 // Like button for reply
                                 GestureDetector(
-                                  onTap: () => _toggleLikeReply(reply.id),
+                                  onTap: widget.readOnly
+                                      ? null
+                                      : () => _toggleLikeReply(reply.id),
                                   child: Row(
                                     children: [
                                       Icon(
@@ -601,55 +605,56 @@ class _ForumDetailPageState extends State<ForumDetailPage> {
             ),
           ),
           // Reply Input
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _replyController,
-                    decoration: InputDecoration(
-                      hintText: 'Write a reply...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                    ),
-                    maxLines: 3,
-                    minLines: 1,
+          if (!widget.readOnly)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
                   ),
-                ),
-                const SizedBox(width: 8),
-                CircleAvatar(
-                  backgroundColor: const Color(0xFF428DEB),
-                  child: IconButton(
-                    onPressed: _isLoading ? null : _addReply,
-                    icon: Icon(
-                      _isLoading ? Icons.hourglass_empty : Icons.send,
-                      color: Colors.white,
-                      size: 20,
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _replyController,
+                      decoration: InputDecoration(
+                        hintText: 'Write a reply...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      maxLines: 3,
+                      minLines: 1,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  CircleAvatar(
+                    backgroundColor: const Color(0xFF428DEB),
+                    child: IconButton(
+                      onPressed: _isLoading ? null : _addReply,
+                      icon: Icon(
+                        _isLoading ? Icons.hourglass_empty : Icons.send,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

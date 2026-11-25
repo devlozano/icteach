@@ -49,7 +49,7 @@ class ClassSummaryService {
         'Students',
         'Module access',
         'Quiz results',
-        'Pre-assessment',
+        'Pre-assignment',
         'Simulations',
       ];
       return [
@@ -209,7 +209,7 @@ class ClassSummaryService {
         ],
       ),
       SummarySection(
-        'Pre-assessment',
+        'Pre-assignment',
         ['Student', 'Score', 'Total', 'Competency scores'],
         [
           for (final a in assessments)

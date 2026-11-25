@@ -54,6 +54,16 @@ test('assigned trainer cannot read or manage the teacher-owned gradebook', async
   await assertFails(getDoc(doc(db('trainer'),path)));
   await assertFails(setDoc(ref,record()));
 });
+test('assigned trainer manages only their independent trainer gradebook', async () => {
+  const trainerPath = 'trainer_gradebooks/trainer/classes/class';
+  const config = {profile:'techPro',year:2026,updatedAt:serverTimestamp()};
+  await assertSucceeds(setDoc(doc(db('trainer'),trainerPath),config));
+  await assertSucceeds(setDoc(doc(db('trainer'),trainerPath+'/records/student_1'),record()));
+  await assertSucceeds(getDoc(doc(db('trainer'),trainerPath+'/records/student_1')));
+  await assertFails(getDoc(doc(db('teacher'),trainerPath)));
+  await assertFails(setDoc(doc(db('unassigned-trainer'),'trainer_gradebooks/unassigned-trainer/classes/class'),config));
+  await assertFails(setDoc(doc(db('trainer'),trainerPath+'/records/outsider_1'),record({studentId:'outsider'})));
+});
 test('invalid scores, term four, outsider, and unknown fields rejected on create and update', async () => {
   const ref = doc(db('teacher'),path+'/records/student_1');
   for (const patch of [{term:4},{studentId:'outsider'},{extra:true},
