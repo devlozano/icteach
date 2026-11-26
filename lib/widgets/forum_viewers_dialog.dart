@@ -133,21 +133,7 @@ class ForumViewersDialog extends StatelessWidget {
                           ),
                           const Row(
                             mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.lock_outline_rounded,
-                                size: 14,
-                                color: Color(0xff94a3b8),
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Post author excluded',
-                                style: TextStyle(
-                                  color: Color(0xff64748b),
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ],
+                            children: [SizedBox(width: 4)],
                           ),
                         ],
                       ),
