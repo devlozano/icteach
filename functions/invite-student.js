@@ -93,7 +93,14 @@ function makeInviteStudentHandler({auth, db, fieldValue, emailjs, logger = conso
         .commit();
       const setupLink = await auth.generatePasswordResetLink(address);
       try {
-        await emailjs.send({toEmail: address, studentName: names.name, setupLink});
+        await emailjs.send({
+          toEmail: address,
+          studentName: names.name,
+          setupLink,
+          className: classSnapshot.data().name || 'Computer System Servicing',
+          teacherName: classSnapshot.data().teacherName || 'Your teacher',
+          schoolYear: classSnapshot.data().schoolYear || '',
+        });
       } catch (error) {
         logger.error('Student invitation email delivery failed', error);
         return res.status(502).json({error: 'email-delivery-failed'});

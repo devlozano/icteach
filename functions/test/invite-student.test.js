@@ -101,6 +101,10 @@ test('CSV invitation creates and enrolls a student and records confirmed deliver
   assert.equal(result.body.notificationSent, true);
   assert.equal(f.created(), 1);
   assert.equal(f.sent[0].studentName, 'Ana Santos');
+  assert.equal(f.sent[0].className, 'Computer System Servicing');
+  assert.equal(f.sent[0].teacherName, 'Your teacher');
+  assert.equal(f.sent[0].schoolYear, '');
+  assert.equal(f.sent[0].setupLink, 'https://example.com/test-only-setup');
   assert.equal(f.store.get('users/student').invitedClassId, 'class');
   assert.equal(f.store.get('users/student/classes/class').status, 'active');
   assert.equal(f.store.get('classes/class/students/student').notificationSent, true);

@@ -155,8 +155,49 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Upload student Gmail or school email addresses to invite them to this class. No LRN or password is needed.',
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF12304A), Color(0xFF087EA4)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.lock_reset_rounded,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          SizedBox(width: 13),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Students create their own passwords',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                SizedBox(height: 5),
+                                Text(
+                                  'Upload Gmail or school email accounts. Each student is added to the class and receives a secure password setup email. No LRN or shared password is needed.',
+                                  style: TextStyle(
+                                    color: Color(0xFFDCEFF5),
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -185,7 +226,7 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
                     const SizedBox(height: 8),
                     Text(
                       batch == null
-                          ? 'Review the list below, then choose Send invitations. Students receive an email to set their own password.'
+                          ? 'Review the list below, then send the setup emails. Each student creates a private password from their own link.'
                           : 'Review the addresses below before sending invitations.',
                     ),
                     if (_error != null) _notice(_error!, error: true),

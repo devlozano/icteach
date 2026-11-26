@@ -81,6 +81,8 @@ class StudentInvitationBatch extends ChangeNotifier {
               : InvitationStatus.sent;
           row.message = result.skipped
               ? 'Already enrolled or invited to this class.'
+              : result.completesAfterSignIn
+              ? 'Existing account found. Setup email sent; enrollment finishes after sign-in.'
               : 'Invitation accepted by the email service.';
         } catch (error) {
           row.status = InvitationStatus.failed;

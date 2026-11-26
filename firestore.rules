@@ -11,6 +11,7 @@ service cloud.firestore {
     }
     function isAdminProfile() {
       return request.auth != null
+      && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true;
     }
@@ -19,6 +20,7 @@ service cloud.firestore {
     }
     function isActiveTeacher() {
       return request.auth != null
+      && exists(/databases/$(database)/documents/users/$(request.auth.uid))
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'teacher'
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true;
     }
@@ -70,7 +72,8 @@ service cloud.firestore {
     // Admin account creation is limited to teachers and trainers.
     function profileCreate(data, uid) {
       return (isAdminProfile() && data.role in ['teacher', 'trainer'])
-        || invitedStudentProfile(data, uid);
+        || invitedStudentProfile(data, uid)
+        || repairedStudentProfile(data, uid);
     }
     function invitedStudentProfile(data, uid) {
       return isActiveTeacher() && ownsClass(data.invitedClassId)
@@ -91,6 +94,32 @@ service cloud.firestore {
         && data.name is string && data.name.size() > 0 && data.name.size() <= 274
         && data.displayName == data.name
         && data.invitationStatus == 'pending'
+        && data.invitedAt == request.time
+        && data.createdAt == request.time && data.updatedAt == request.time;
+    }
+    function repairedStudentProfile(data, uid) {
+      let repair = get(/databases/$(database)/documents/student_account_repairs/$(data.accountRepairId)).data;
+      return request.auth != null && request.auth.uid == uid
+        && request.auth.token.get('email', '') == data.email
+        && data.keys().hasOnly([
+          'uid', 'email', 'role', 'firstName', 'middleName', 'lastName',
+          'extension', 'name', 'displayName', 'invitationStatus', 'invitedAt',
+          'invitedBy', 'invitedClassId', 'accountRepairId', 'currentClassId',
+          'currentClassName', 'currentTeacherName', 'createdAt', 'updatedAt'
+        ])
+        && data.uid == uid && data.role == 'student'
+        && data.email == repair.email
+        && data.firstName == repair.firstName
+        && data.middleName == repair.middleName
+        && data.lastName == repair.lastName
+        && data.extension == repair.extension
+        && data.name == repair.name && data.displayName == repair.name
+        && data.invitationStatus == 'sent'
+        && data.invitedBy == repair.teacherId
+        && data.invitedClassId == repair.classId
+        && data.currentClassId == repair.classId
+        && data.accountRepairId is string && data.accountRepairId.size() == 64
+        && repair.status == 'pending'
         && data.invitedAt == request.time
         && data.createdAt == request.time && data.updatedAt == request.time;
     }
@@ -133,6 +162,66 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /student_account_repairs/{repairId} {
+      allow get: if request.auth != null && (
+        (isActiveTeacher() && resource.data.teacherId == request.auth.uid)
+        || request.auth.token.get('email', '') == resource.data.email
+      );
+      allow list: if false;
+      allow create: if isActiveTeacher()
+        && ownsClass(request.resource.data.classId)
+        && request.resource.data.keys().hasOnly([
+          'email', 'firstName', 'middleName', 'lastName', 'extension', 'name',
+          'classId', 'className', 'teacherId', 'teacherName', 'schoolYear',
+          'status', 'notificationSent', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.teacherId == request.auth.uid
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3
+        && request.resource.data.email.size() <= 254
+        && request.resource.data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
+        && request.resource.data.firstName is string
+        && request.resource.data.firstName.size() > 0
+        && request.resource.data.firstName.size() <= 80
+        && request.resource.data.middleName is string
+        && request.resource.data.middleName.size() <= 80
+        && request.resource.data.lastName is string
+        && request.resource.data.lastName.size() > 0
+        && request.resource.data.lastName.size() <= 80
+        && request.resource.data.extension is string
+        && request.resource.data.extension.size() <= 30
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 274
+        && request.resource.data.status == 'pending'
+        && request.resource.data.notificationSent == false
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if request.auth != null && (
+        (isActiveTeacher()
+          && resource.data.teacherId == request.auth.uid
+          && ownsClass(resource.data.classId)
+          && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'notificationSent', 'notifiedAt', 'updatedAt'
+          ])
+          && request.resource.data.notificationSent == true
+          && request.resource.data.notifiedAt == request.time
+          && request.resource.data.updatedAt == request.time)
+        || (request.auth.token.get('email', '') == resource.data.email
+          && resource.data.status == 'pending'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status', 'claimedUid', 'claimedAt', 'updatedAt'
+          ])
+          && request.resource.data.status == 'claimed'
+          && request.resource.data.claimedUid == request.auth.uid
+          && request.resource.data.claimedAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.accountRepairId == repairId)
+      );
+      allow delete: if false;
+    }
+
     // Narrow the previous signed-in catch-all: registered student names cannot
     // be edited, deleted/recreated, or relabeled to evade identity protection.
     match /users/{uid} {
@@ -143,7 +232,8 @@ service cloud.firestore {
     }
     match /students/{uid} {
       allow read: if request.auth != null;
-      allow create: if invitedStudentProfile(request.resource.data, uid);
+      allow create: if invitedStudentProfile(request.resource.data, uid)
+        || repairedStudentProfile(request.resource.data, uid);
       allow update: if profileUpdate(uid);
       allow delete: if canAdmin();
     }
@@ -385,8 +475,8 @@ service cloud.firestore {
       let before = resource.data.get('enrolledStudentIds', []);
       let after = request.resource.data.enrolledStudentIds;
       let membership = getAfter(/databases/$(database)/documents/users/$(request.auth.uid)/classes/$(classId)).data;
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true
+      return getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true
         && resource.data.status == 'active'
         && !(request.auth.uid in before)
         && request.auth.uid in after
@@ -433,8 +523,8 @@ service cloud.firestore {
       match /students/{studentId} {
         allow create, update: if request.auth != null
           && request.auth.uid == studentId
-          && get(/databases/$(database)/documents/users/$(studentId)).data.role == 'student'
-          && get(/databases/$(database)/documents/users/$(studentId)).data.get('isActive', true) == true
+          && getAfter(/databases/$(database)/documents/users/$(studentId)).data.role == 'student'
+          && getAfter(/databases/$(database)/documents/users/$(studentId)).data.get('isActive', true) == true
           && get(/databases/$(database)/documents/classes/$(classId)).data.status == 'active'
           && studentId in getAfter(/databases/$(database)/documents/classes/$(classId)).data.enrolledStudentIds
           && getAfter(/databases/$(database)/documents/users/$(studentId)/classes/$(classId)).data.classCode
@@ -443,7 +533,7 @@ service cloud.firestore {
           && request.resource.data.uid == studentId
           && request.resource.data.role == 'student'
           && request.resource.data.name is string && request.resource.data.name.size() <= 200
-          && request.resource.data.email == get(/databases/$(database)/documents/users/$(studentId)).data.email
+          && request.resource.data.email == getAfter(/databases/$(database)/documents/users/$(studentId)).data.email
           && request.resource.data.status == 'active'
           && request.resource.data.joinedAt == request.time;
         allow delete: if request.auth != null && request.auth.uid == studentId
@@ -630,7 +720,7 @@ service cloud.firestore {
     // LRN namespace here so a broad match cannot bypass its admin restrictions.
     match /{collection}/{document=**} {
       allow read, write: if request.auth != null
-        && !(collection in ['lrn_master_list', 'lrn_folders', 'users', 'students', 'css_gradebooks', 'trainer_gradebooks', 'classes', 'school_year_archives', 'system_settings', 'settings', 'quiz_results', 'pre_assessments', 'activity_events', 'submissions']);
+        && !(collection in ['lrn_master_list', 'lrn_folders', 'users', 'students', 'student_account_repairs', 'css_gradebooks', 'trainer_gradebooks', 'classes', 'school_year_archives', 'system_settings', 'settings', 'quiz_results', 'pre_assessments', 'activity_events', 'submissions']);
     }
   }
 }

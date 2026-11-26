@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 import 'invitation_enrollment_service.dart';
+import 'student_account_repair.dart';
 
 class StudentInvitationException implements Exception {
   const StudentInvitationException(this.message, {this.stopBatch = true});
@@ -16,8 +17,12 @@ class StudentInvitationException implements Exception {
 }
 
 class StudentInvitationResult {
-  const StudentInvitationResult({this.skipped = false});
+  const StudentInvitationResult({
+    this.skipped = false,
+    this.completesAfterSignIn = false,
+  });
   final bool skipped;
+  final bool completesAfterSignIn;
 }
 
 class StudentInvitationService {
@@ -127,9 +132,16 @@ class StudentInvitationService {
         uid = createdAccount.uid;
       } on FirebaseAuthException catch (error) {
         if (error.code == 'email-already-in-use') {
-          throw const StudentInvitationException(
-            'This email already has an account but no student profile. Ask the system administrator to repair it.',
-            stopBatch: false,
+          return _queueExistingAccountRepair(
+            db: db,
+            classId: classId,
+            classData: classSnapshot.data()!,
+            teacherId: teacher.uid,
+            email: address,
+            firstName: first,
+            middleName: middle,
+            lastName: last,
+            extension: ext,
           );
         }
         throw _authFailure(error);
@@ -240,6 +252,67 @@ class StudentInvitationService {
     } on TimeoutException {
       throw const StudentInvitationException(
         'The account was enrolled, but email delivery timed out. Check the inbox before retrying.',
+      );
+    }
+  }
+
+  static Future<StudentInvitationResult> _queueExistingAccountRepair({
+    required FirebaseFirestore db,
+    required String classId,
+    required Map<String, dynamic> classData,
+    required String teacherId,
+    required String email,
+    required String firstName,
+    required String middleName,
+    required String lastName,
+    required String extension,
+  }) async {
+    final repair = db
+        .collection('student_account_repairs')
+        .doc(studentAccountRepairId(email));
+    final name = [
+      firstName,
+      middleName,
+      lastName,
+      extension,
+    ].where((part) => part.isNotEmpty).join(' ');
+    final now = FieldValue.serverTimestamp();
+    await repair.set({
+      'email': email,
+      'firstName': firstName,
+      'middleName': middleName,
+      'lastName': lastName,
+      'extension': extension,
+      'name': name,
+      'classId': classId,
+      'className': classData['name']?.toString() ?? 'Unnamed Class',
+      'teacherId': teacherId,
+      'teacherName': classData['teacherName']?.toString() ?? 'Your teacher',
+      'schoolYear': classData['schoolYear']?.toString() ?? '',
+      'status': 'pending',
+      'notificationSent': false,
+      'createdAt': now,
+      'updatedAt': now,
+    });
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await repair.update({
+        'notificationSent': true,
+        'notifiedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      return const StudentInvitationResult(completesAfterSignIn: true);
+    } on FirebaseAuthException catch (error) {
+      throw _authFailure(error);
+    } on FirebaseException catch (error) {
+      throw StudentInvitationException(
+        error.message ??
+            'The account repair was saved, but Firebase did not confirm the setup email. Retry this address.',
+      );
+    } on TimeoutException {
+      throw const StudentInvitationException(
+        'The account repair was saved, but email delivery timed out. Check the inbox before retrying.',
       );
     }
   }

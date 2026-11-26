@@ -28,6 +28,10 @@ beforeEach(async () => {
     await setDoc(doc(db, 'users/other'), {role: 'teacher', isActive: true});
     await setDoc(doc(db, 'classes/class-a'), {
       teacherId: 'teacher',
+      teacherName: 'Teacher One',
+      name: 'CSS 10',
+      classCode: 'CSS101',
+      status: 'active',
       enrolledStudentIds: [],
     });
   });
@@ -199,4 +203,73 @@ test('student cannot change protected invitation identity after creation', async
   await assertFails(updateDoc(doc(student, 'users/student'), {firstName: 'Changed'}));
   await assertFails(updateDoc(doc(student, 'users/student'), {invitedClassId: 'other'}));
   await assertFails(updateDoc(doc(student, 'users/student'), {invitedBy: 'attacker'}));
+});
+
+const repairId = 'a'.repeat(64);
+const repairData = () => ({
+  email: 'student@example.test',
+  firstName: 'Ana',
+  middleName: '',
+  lastName: 'Santos',
+  extension: '',
+  name: 'Ana Santos',
+  classId: 'class-a',
+  className: 'CSS 10',
+  teacherId: 'teacher',
+  teacherName: 'Teacher One',
+  schoolYear: '2026-2027',
+  status: 'pending',
+  notificationSent: false,
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+});
+
+test('orphan Auth account can claim only its own teacher-issued repair', async () => {
+  await assertSucceeds(setDoc(
+    doc(teacherDb(), `student_account_repairs/${repairId}`),
+    repairData(),
+  ));
+  await assertFails(getDoc(doc(
+    teacherDb('other'),
+    `student_account_repairs/${repairId}`,
+  )));
+
+  const student = teacherDb('student');
+  await assertSucceeds(getDoc(doc(
+    student,
+    `student_account_repairs/${repairId}`,
+  )));
+  const profile = {
+    uid: 'student', email: 'student@example.test', role: 'student',
+    firstName: 'Ana', middleName: '', lastName: 'Santos', extension: '',
+    name: 'Ana Santos', displayName: 'Ana Santos', invitationStatus: 'sent',
+    invitedAt: serverTimestamp(), invitedBy: 'teacher', invitedClassId: 'class-a',
+    accountRepairId: repairId, currentClassId: 'class-a', currentClassName: 'CSS 10',
+    currentTeacherName: 'Teacher One', createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  };
+  await assertSucceeds(writeBatch(student)
+    .set(doc(student, 'users/student'), profile)
+    .set(doc(student, 'students/student'), profile)
+    .commit());
+  await assertSucceeds(updateDoc(
+    doc(student, `student_account_repairs/${repairId}`),
+    {
+      status: 'claimed', claimedUid: 'student', claimedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+  ));
+  await assertSucceeds(writeBatch(student)
+    .set(doc(student, 'users/student/classes/class-a'), {
+      classId: 'class-a', className: 'CSS 10', description: '', sectionCode: '',
+      classCode: 'CSS101', teacherId: 'teacher', teacherName: 'Teacher One',
+      teacherEmail: '', schoolYear: '', joinedAt: serverTimestamp(), status: 'active',
+    })
+    .set(doc(student, 'classes/class-a/students/student'), {
+      uid: 'student', name: 'Ana Santos', email: 'student@example.test',
+      role: 'student', joinedAt: serverTimestamp(), status: 'active',
+    })
+    .update(doc(student, 'classes/class-a'), {
+      enrolledStudentIds: arrayUnion('student'), updatedAt: serverTimestamp(),
+    })
+    .commit());
 });

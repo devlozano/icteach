@@ -10,6 +10,34 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
+class _InvitationResultStep extends StatelessWidget {
+  const _InvitationResultStep({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: const Color(0xFF178257), size: 19),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Color(0xFF285166),
+              fontWeight: FontWeight.w600,
+              height: 1.3,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class ClassRosterPage extends StatefulWidget {
   final String classId;
   final String className;
@@ -198,7 +226,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Invite student by email',
+                              'Create student account',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 20,
@@ -207,7 +235,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                             ),
                             SizedBox(height: 3),
                             Text(
-                              'Add a student and send their account setup link.',
+                              'Create the account, enroll the student, and send a secure password setup email.',
                               style: TextStyle(
                                 color: Color(0xFFDCEFF5),
                                 fontSize: 13,
@@ -237,30 +265,76 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: const Color(0xFFEAF7FB),
                               borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFFBFE3EE),
+                              ),
                             ),
-                            child: const Row(
+                            child: const Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Icon(
-                                  Icons.info_outline_rounded,
-                                  color: primary,
-                                  size: 20,
-                                ),
-                                SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Fields marked with * are required. Check the email carefully before sending.',
-                                    style: TextStyle(
-                                      color: Color(0xFF285166),
-                                      height: 1.35,
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.lock_reset_rounded,
+                                      color: primary,
+                                      size: 22,
                                     ),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Student creates their password',
+                                        style: TextStyle(
+                                          color: navy,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: Color(0xFFD7F2E5),
+                                        borderRadius: BorderRadius.all(
+                                          Radius.circular(20),
+                                        ),
+                                      ),
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 5,
+                                        ),
+                                        child: Text(
+                                          'SECURE SETUP',
+                                          style: TextStyle(
+                                            color: Color(0xFF176B46),
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: .5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  'No password is shown or sent by the teacher. The student receives a secure email, creates a private password, then signs in to the class.',
+                                  style: TextStyle(
+                                    color: Color(0xFF285166),
+                                    height: 1.4,
                                   ),
                                 ),
                               ],
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Fields marked with * are required. Check the email carefully before sending.',
+                            style: TextStyle(
+                              color: Color(0xFF607385),
+                              fontSize: 12,
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -383,8 +457,11 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
                             Navigator.pop(dialogContext, true);
                           }
                         },
-                        icon: const Icon(Icons.send_rounded, size: 18),
-                        label: const Text('Send invitation'),
+                        icon: const Icon(
+                          Icons.person_add_alt_1_rounded,
+                          size: 18,
+                        ),
+                        label: const Text('Create & send setup email'),
                       ),
                     ],
                   ),
@@ -404,7 +481,7 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       return;
     }
     try {
-      await StudentInvitationService.invite(
+      final result = await StudentInvitationService.invite(
         classId: widget.classId,
         email: email.text.trim(),
         firstName: firstName.text.trim(),
@@ -413,13 +490,15 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         extension: extension.text.trim(),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Student added to this class. A password-setup email was sent.',
-            ),
-            backgroundColor: Colors.green,
-          ),
+        await _showStudentInvitationSent(
+          email: email.text.trim(),
+          studentName: [
+            firstName.text.trim(),
+            middleName.text.trim(),
+            suffix.text.trim(),
+            extension.text.trim(),
+          ].where((part) => part.isNotEmpty).join(' '),
+          completesAfterSignIn: result.completesAfterSignIn,
         );
       }
       await _loadRoster();
@@ -439,6 +518,105 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
       suffix.dispose();
       extension.dispose();
     }
+  }
+
+  Future<void> _showStudentInvitationSent({
+    required String email,
+    required String studentName,
+    required bool completesAfterSignIn,
+  }) async {
+    const primary = Color(0xFF087EA4);
+    const navy = Color(0xFF12304A);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: Container(
+          width: 58,
+          height: 58,
+          decoration: const BoxDecoration(
+            color: Color(0xFFDFF5EB),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.mark_email_read_rounded,
+            color: Color(0xFF178257),
+            size: 30,
+          ),
+        ),
+        title: const Text(
+          'Student account created',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: navy, fontWeight: FontWeight.w900),
+        ),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 430),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                studentName,
+                style: const TextStyle(
+                  color: navy,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(email, style: const TextStyle(color: Color(0xFF607385))),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF2F8FB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFD6E8EF)),
+                ),
+                child: Column(
+                  children: [
+                    _InvitationResultStep(
+                      icon: Icons.check_circle_rounded,
+                      text: completesAfterSignIn
+                          ? 'Existing account found; missing profile queued for repair'
+                          : 'Account created and added to this class',
+                    ),
+                    const SizedBox(height: 10),
+                    const _InvitationResultStep(
+                      icon: Icons.outgoing_mail,
+                      text: 'Secure password setup email sent',
+                    ),
+                    const SizedBox(height: 10),
+                    _InvitationResultStep(
+                      icon: Icons.password_rounded,
+                      text: completesAfterSignIn
+                          ? 'Class enrollment finishes automatically after sign-in'
+                          : 'Student creates their own private password',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Ask the student to check Inbox and Spam. The setup link is intended only for that student.',
+                style: TextStyle(
+                  color: Color(0xFF607385),
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: primary),
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
 
   // ✅ Helper function to extract email from user data

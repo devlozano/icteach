@@ -77,8 +77,8 @@ class _LoginPageState extends State<LoginPage> {
           .doc(user.uid)
           .get();
 
-      final data = doc.data();
-      final role = (data?['role'] as String?)?.toLowerCase() ?? '';
+      var data = doc.data();
+      var role = (data?['role'] as String?)?.toLowerCase() ?? '';
 
       if (data?['isActive'] == false) {
         await FirebaseAuth.instance.signOut();
@@ -101,17 +101,34 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      if (role == 'student') {
+      if (data == null || role == 'student') {
         try {
-          await InvitationEnrollmentService.reconcile(
+          final repaired = await InvitationEnrollmentService.reconcile(
             firestore: FirebaseFirestore.instance,
             uid: user.uid,
             authEmail: user.email ?? _emailController.text.trim(),
           );
+          if (repaired && data == null) {
+            final repairedProfile = await FirebaseFirestore.instance
+                .collection('users')
+                .doc(user.uid)
+                .get();
+            data = repairedProfile.data();
+            role = (data?['role'] as String?)?.toLowerCase() ?? '';
+          }
         } on InvitationEnrollmentException {
           await FirebaseAuth.instance.signOut();
           rethrow;
         }
+      }
+
+      if (data == null || role.isEmpty) {
+        await FirebaseAuth.instance.signOut();
+        if (!mounted) return;
+        _showError(
+          'This account has no ICTeach profile or pending class invitation.',
+        );
+        return;
       }
 
       await WorkspaceNavigation.instance.startFreshSession(user.uid);

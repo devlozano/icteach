@@ -22,7 +22,27 @@ The optional Function verifies both the caller's `teacher` profile and that the 
     firebase functions:secrets:set EMAILJS_PUBLIC_KEY
     firebase functions:secrets:set EMAILJS_PRIVATE_KEY
 
-The EmailJS template requires `{{to_email}}`, `{{student_name}}`, and `{{setup_link}}`. Then deploy:
+The student EmailJS template accepts the same account-card fields as the
+Teacher/Trainer email (`{{email}}`, `{{name}}`, `{{role}}`, and `{{password}}`).
+Use `email-templates/student-password-emailjs.html` as the dedicated student
+template body in EmailJS's HTML editor. Set the subject to
+`Set up your ICTeach student password`, the To Email field to `{{to_email}}`,
+and the From Name to `ICTeach Learning Portal`. Keep the teacher/trainer
+credentials template separate. Select this student template with the server's
+`EMAILJS_TEMPLATE_ID` secret. HTML uses escaped double-brace variables, a mobile
+account card, a password setup button, numbered instructions, and a fallback URL.
+Uploading this repository does not update a template saved in EmailJS.
+
+The active Spark-plan client sends Firebase Authentication password-reset email,
+so changing the EmailJS template alone does not change those delivered messages.
+`email-templates/firebase-password-setup.html` is the separate Firebase draft;
+its placeholders are not compatible with EmailJS. Live email-provider template
+configuration and an actual delivered-email check are separate release steps.
+
+For students, `{{password}}` contains the secure setup URL rather than a shared
+temporary password. The richer student layout can also use `{{setup_link}}`,
+`{{action_label}}`, `{{credential_label}}`, `{{class_name}}`,
+`{{teacher_name}}`, and `{{school_year}}`. Then deploy:
 
     npx firebase-tools deploy --only functions:inviteStudentAccount --project icteach-free
 
