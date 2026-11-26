@@ -3,7 +3,7 @@
 The workbench reuses the exact assembly kit so hardware stays visually consistent:
 - pc-case-workbench-realistic.png: empty chassis, revealed progressively.
 - assembly-motherboard-matched.png, assembly-cpu-matched.png,
-  assembly-cooler-matched.png, assembly-ram-ddr4-matched.png,
+  assembly-cooler-pushpin-v2.png, assembly-ram-ddr4-matched.png,
   assembly-gpu-matched.png, assembly-ssd-matched.png,
   assembly-psu-matched.png: individually removable component layers.
 - assembly-fasteners-matched.png: collected fasteners.

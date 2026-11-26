@@ -447,21 +447,15 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
         );
       case 'cpu_fan':
         return (
-          'Thermal paste + Phillips #2',
-          'Cooler screws/push-pins in cross pattern',
-          'Paste coverage is appropriate, cooler pressure is even, every fastener is locked, and CPU_FAN is connected.',
+          'Thermal paste + ESD-safe hands',
+          'Four quarter-turn push-pin locks in diagonal order',
+          'Paste coverage is appropriate, cooler pressure is even, every push pin is rotated and pressed into its locked position, and CPU_FAN is connected.',
         );
       case 'ram':
         return (
           'Hands + DIMM latches',
           'Both slot retaining clips',
           'The DDR4 notch aligns, the module is evenly seated, both latches clamp fully, and no gold contacts remain exposed.',
-        );
-      case 'ram_ddr5_distractor':
-        return (
-          'Compatibility chart',
-          'Do not force incompatible memory',
-          'DDR generation, notch position, voltage, and motherboard support are confirmed before insertion.',
         );
       case 'gpu':
         return (
@@ -524,9 +518,6 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   }
 
   String _compatibilityFeedback(sim_models.DraggableItem item, String slotId) {
-    if (item.id.contains('ddr5') && slotId == 'ram_slot') {
-      return 'DDR5 cannot be installed in this DDR4 slot. Both use 288 pins, but the notch position, voltage, and electrical layout differ.';
-    }
     if (item.id == 'gpu_power' && slotId == 'cpu_power_slot') {
       return 'A PCIe 6+2 plug is wired for a GPU. The CPU header requires an EPS12V 4+4 plug; forcing it can damage the board.';
     }

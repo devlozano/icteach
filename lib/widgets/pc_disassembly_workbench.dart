@@ -72,8 +72,8 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
     ],
     'cooler': [
       'Unplug CPU fan header',
-      'Loosen top-left and bottom-right fasteners',
-      'Loosen top-right and bottom-left fasteners',
+      'Turn and lift top-left and bottom-right push-pin locks',
+      'Turn and lift top-right and bottom-left push-pin locks',
       'Gently twist cooler to release thermal paste',
     ],
     'ram': ['Release upper DIMM clip', 'Release lower DIMM clip'],
@@ -766,6 +766,15 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
                     'assets/simulations/assembly-gpu-installed-edge-v2.png',
                     fit: BoxFit.fill,
                     filterQuality: FilterQuality.high,
+                  )
+                : kind == 'cmos'
+                ? ClipOval(
+                    child: Image.asset(
+                      item.imageUrl,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                      filterQuality: FilterQuality.high,
+                    ),
                   )
                 : RotatedBox(
                     quarterTurns: kind == 'storage' ? 1 : 0,

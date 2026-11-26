@@ -189,13 +189,13 @@ class SimulationStepDetail {
     ),
     'ram_slot': SimulationStepDetail(
       [
-        'Identify the memory generation from its label and keyed notch. Select the DDR4 module for this DDR4 training board.',
+        'Identify the DDR4 module from its label and keyed notch before handling it by the edges.',
         'Use the board manual to choose the recommended DIMM slot. Open its movable retention clips.',
         'Align the notch with the slot key. Press evenly at both ends without bending the module.',
         'Inspect both ends at the same height and confirm the retention clips engage. Verify memory capacity at the final POST check.',
       ],
       'DDR4 module is level and its retention clips are engaged.',
-      'One end is raised or the DDR5 notch does not match.',
+      'One end is raised, a latch is still open, or the DDR4 notch is not aligned.',
     ),
     'pcie_slot': SimulationStepDetail(
       [

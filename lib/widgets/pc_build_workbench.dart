@@ -1060,6 +1060,18 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
   );
   Widget _componentLayer(String id, double progress, bool installing) {
     final asset = 'assets/simulations/${PcBuildProcedure.assets[id]}';
+    if (id == 'cmos') {
+      // The source photo has a wide transparent canvas. Cover-cropping it into
+      // the calibrated square holder keeps the CR2032 circular and seated.
+      return ClipOval(
+        child: Image.asset(
+          asset,
+          fit: BoxFit.cover,
+          alignment: Alignment.center,
+          filterQuality: FilterQuality.high,
+        ),
+      );
+    }
     if (id == 'ssd') {
       return DecoratedBox(
         decoration: BoxDecoration(
@@ -1118,38 +1130,38 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     );
   }
 
-  List<(Offset, int)> _visibleFasteners(
-    Set<String> installed,
+  List<(String, Offset, int)> _visibleFasteners(
+    Set<String> secured,
     String? current,
     int operation,
   ) {
-    final result = <(Offset, int)>[];
+    final result = <(String, Offset, int)>[];
     for (final entry in PcBuildProcedure.fasteners.entries) {
       final id = entry.key;
-      final complete = installed.contains(id);
-      // The completed photo layers already contain their final mounting
-      // detail. A separate screw sprite should only appear during the active
-      // installation operation, never float over the finished chassis.
-      if (complete || current != id) continue;
+      final complete = secured.contains(id);
+      // A secured fastener remains in its mounting hole. Completed components
+      // therefore keep every installed screw instead of losing them when the
+      // procedure advances to the next part.
+      if (!complete && current != id) continue;
       for (var i = 0; i < entry.value.length; i++) {
-        var visible = false;
+        var visible = complete;
         var sprite = id == 'gpu' || id == 'psu' ? 1 : 0;
-        if (id == 'motherboard') {
+        if (!complete && id == 'motherboard') {
           final boardPlaced =
               operation > PcBuildProcedure.placementOperation[id]!;
           visible =
               boardPlaced &&
               operation > PcBuildProcedure.placementOperation[id]! + 1 + i;
-        } else {
+        } else if (!complete) {
           final firstScrew = switch (id) {
-            'cpu_fan' || 'gpu' => 4,
+            'gpu' => 4,
             'ssd' => 2,
             'psu' => 3,
             _ => 999,
           };
           visible = operation >= firstScrew + i;
         }
-        if (visible) result.add((entry.value[i], sprite));
+        if (visible) result.add((id, entry.value[i], sprite));
       }
     }
     return result;
@@ -1161,11 +1173,11 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     'cpu_power' => const Offset(.326, .187),
     'gpu_power' => const Offset(.455, .58),
     'sata_cable' => switch (operation) {
-      1 => const Offset(.612, .478),
+      1 => const Offset(.606, .542),
       2 => const Offset(.501, .585),
       _ => null,
     },
-    'sata_power' => const Offset(.652, .478),
+    'sata_power' => const Offset(.642, .542),
     'front_panel' => switch (operation) {
       1 => const Offset(.49, .68),
       2 => const Offset(.505, .69),
@@ -1194,7 +1206,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     final start = item.id == 'front_panel'
         ? const Offset(.77, .22)
         : item.id == 'sata_cable' && operation == 2
-        ? const Offset(.612, .478)
+        ? const Offset(.606, .542)
         : const Offset(.68, .78);
     final position = Offset.lerp(
       start,
@@ -1323,16 +1335,20 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
           ),
         ),
         for (final fastener in _visibleFasteners(
-          installed,
+          {
+            ...widget.completed,
+            if (widget.cabling) ...PcBuildProcedure.fasteners.keys,
+          },
           item?.id,
           _operation,
         ))
           Positioned(
-            left: fastener.$1.dx * w - 7,
-            top: fastener.$1.dy * h - 7,
+            key: ValueKey('installed-fastener-${fastener.$1}-${fastener.$2}'),
+            left: fastener.$2.dx * w - 7,
+            top: fastener.$2.dy * h - 7,
             width: 14,
             height: 14,
-            child: IgnorePointer(child: _FastenerSprite(index: fastener.$2)),
+            child: IgnorePointer(child: _FastenerSprite(index: fastener.$3)),
           ),
         if (_busy &&
             step?.place == true &&
@@ -1410,7 +1426,9 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
                     ),
                   )
                 : step.tool == PcBuildProcedure.hand &&
-                      (item?.id == 'cpu' || item?.id == 'ram')
+                      (item?.id == 'cpu' ||
+                          item?.id == 'ram' ||
+                          item?.id == 'cpu_fan')
                 ? Semantics(
                     label: step.label,
                     button: true,
@@ -1615,6 +1633,35 @@ class _BuildMechanicsPainter extends CustomPainter {
       );
     }
 
+    void pushPin(Offset center, double progress) {
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.rotate(progress * math.pi / 2);
+      final radius = math.max(5.0, size.width * .0065);
+      canvas.drawCircle(
+        Offset.zero,
+        radius,
+        Paint()..color = const Color(0xE620252A),
+      );
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset.zero, radius: radius * .68),
+        -.85 * math.pi,
+        1.25 * math.pi,
+        false,
+        Paint()
+          ..color = const Color(0xFFB8C1C8)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.2, size.width * .0015)
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawCircle(
+        Offset(0, progress * 2.5),
+        radius * .3,
+        Paint()..color = const Color(0xFF11161A),
+      );
+      canvas.restore();
+    }
+
     void wire(
       bool shown,
       Offset end,
@@ -1670,6 +1717,7 @@ class _BuildMechanicsPainter extends CustomPainter {
           (current == 'power_cable' && operation == 2 && busy),
       p(.501, .338),
       Colors.orange,
+      viaX: size.width * PcBuildProcedure.cableRouteX['power_cable']!,
       progress: current == 'power_cable' && operation == 2 && busy ? motion : 1,
       contacts: 24,
     );
@@ -1689,6 +1737,7 @@ class _BuildMechanicsPainter extends CustomPainter {
           (current == 'gpu_power' && operation == 2 && busy),
       p(.455, .58),
       Colors.yellow,
+      viaX: size.width * PcBuildProcedure.cableRouteX['gpu_power']!,
       progress: current == 'gpu_power' && operation == 2 && busy ? motion : 1,
       contacts: 8,
     );
@@ -1697,9 +1746,10 @@ class _BuildMechanicsPainter extends CustomPainter {
           connected('sata_data_board') ||
           (current == 'sata_cable' &&
               (operation > 1 || operation == 1 && busy)),
-      p(.612, .478),
+      p(.606, .542),
       Colors.redAccent,
       start: p(.501, .585),
+      viaX: size.width * PcBuildProcedure.cableRouteX['sata_cable']!,
       progress: current == 'sata_cable'
           ? operation == 1 && busy
                 ? motion * .5
@@ -1717,8 +1767,9 @@ class _BuildMechanicsPainter extends CustomPainter {
       installed.contains('sata_power') ||
           connected('sata_power_drive') ||
           (current == 'sata_power' && operation == 2 && busy),
-      p(.652, .478),
+      p(.642, .542),
       Colors.orangeAccent,
+      viaX: size.width * PcBuildProcedure.cableRouteX['sata_power']!,
       progress: current == 'sata_power' && operation == 2 && busy ? motion : 1,
       contacts: 15,
     );
@@ -1771,9 +1822,13 @@ class _BuildMechanicsPainter extends CustomPainter {
     );
     wire(
       installed.contains('cpu_fan') || cabling,
-      p(.455, .23),
+      p(PcBuildProcedure.cpuFanHeader.dx, PcBuildProcedure.cpuFanHeader.dy),
       Colors.grey,
-      start: p(.40, .30),
+      start: p(
+        PcBuildProcedure.cpuFanCableExit.dx,
+        PcBuildProcedure.cpuFanCableExit.dy,
+      ),
+      viaX: size.width * .425,
       contacts: 4,
     );
     if (current == 'motherboard' || installed.contains('motherboard')) {
@@ -1881,6 +1936,16 @@ class _BuildMechanicsPainter extends CustomPainter {
         Paint()..color = Colors.grey.shade300,
       );
     }
+    if (current == 'cpu_fan' && operation >= 3 && operation <= 6) {
+      final index = operation - 3;
+      pushPin(
+        p(
+          PcBuildProcedure.coolerPushPins[index].dx,
+          PcBuildProcedure.coolerPushPins[index].dy,
+        ),
+        busy ? motion : 0,
+      );
+    }
     if (current == 'ram' || installed.contains('ram')) {
       final seating = operation == 2 && busy ? 1 - motion : 1.0;
       for (var index = 0; index < 2; index++) {
@@ -1932,9 +1997,13 @@ class _BuildMechanicsPainter extends CustomPainter {
         canvas.restore();
       }
     }
-    if ((current == 'gpu' && operation >= 2) || installed.contains('gpu')) {
-      final seated = installed.contains('gpu') || operation >= 3;
-      latch(p(.455, .51), !seated, vertical: true);
+    if (current == 'gpu' && operation == 2 && !installed.contains('gpu')) {
+      // Animate the real PCIe latch only while the card is being seated. The
+      // board artwork already contains its closed latch, so retaining this
+      // pale overlay after placement produced the unexplained white marker.
+      latch(p(.448, .51), true, vertical: true, opening: busy ? 1 - motion : 1);
+    }
+    if (current == 'gpu' || installed.contains('gpu')) {
       final screws = PcBuildProcedure.fasteners['gpu']!;
       for (var i = 0; i < screws.length; i++) {
         if (installed.contains('gpu') || operation >= i + 4) {
@@ -1955,18 +2024,6 @@ class _BuildMechanicsPainter extends CustomPainter {
       for (var i = 0; i < screws.length; i++) {
         if (installed.contains('psu') || operation >= i + 3) {
           fastener(p(screws[i].dx, screws[i].dy), true, radius: 4);
-        }
-      }
-    }
-    if (current == 'cpu_fan' || installed.contains('cpu_fan')) {
-      final coolerScrews = PcBuildProcedure.fasteners['cpu_fan']!;
-      for (var i = 0; i < coolerScrews.length; i++) {
-        if (installed.contains('cpu_fan') || operation >= i + 4) {
-          fastener(
-            p(coolerScrews[i].dx, coolerScrews[i].dy),
-            true,
-            radius: 3.5,
-          );
         }
       }
     }

@@ -127,7 +127,7 @@ class SimulationData {
         id: 'cpu_fan',
         name: 'CPU Cooler',
         description: 'Attach after CPU installation',
-        imageUrl: 'assets/simulations/assembly-cooler-matched.png',
+        imageUrl: 'assets/simulations/assembly-cooler-pushpin-v2.png',
         correctSlot: 'cpu_fan_mount',
         category: 'cooling',
         step: 4,
@@ -143,20 +143,6 @@ class SimulationData {
         step: 5,
         tooltip: 'Press firmly until the clips click.',
         specification: 'DDR4-3200 UDIMM • 288-pin • 1.2 V',
-      ),
-      _item(
-        id: 'ram_ddr5_distractor',
-        name: 'DDR5 Memory',
-        description: 'Newer-generation DIMM with a different notch and voltage',
-        imageUrl: 'assets/simulations/ddr5-memory-incompatible-matched.png',
-        correctSlot: 'ddr5_memory_slot',
-        category: 'memory',
-        step: 0,
-        tooltip:
-            'DDR5 cannot fit a DDR4 socket. The key notch and electrical design are different.',
-        specification:
-            'DDR5-5600 UDIMM • 288-pin • 1.1 V • incompatible with DDR4',
-        isRequired: false,
       ),
       _item(
         id: 'gpu',
@@ -350,12 +336,12 @@ class SimulationData {
         id: 'disassembly_cooler',
         name: 'Remove CPU Cooler',
         description: 'Unplug the fan and release the cooler evenly',
-        imageUrl: 'assets/simulations/assembly-cooler-matched.png',
+        imageUrl: 'assets/simulations/assembly-cooler-pushpin-v2.png',
         correctSlot: 'cooler_parts_tray',
         category: 'disassembly',
         step: 5,
         tooltip:
-            'Loosen fasteners diagonally and gently twist to break the thermal-paste seal.',
+            'Turn the four push-pin locks to their release position, lift them, then gently twist to break the thermal-paste seal.',
       ),
       _item(
         id: 'disassembly_ram',

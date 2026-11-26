@@ -81,7 +81,7 @@ void main() {
 
   test('case component layers keep realistic orientation and proportions', () {
     expect(PcBuildProcedure.quarterTurns('ram'), 1);
-    expect(PcBuildProcedure.quarterTurns('ssd'), 1);
+    expect(PcBuildProcedure.quarterTurns('ssd'), 3);
     expect(PcBuildProcedure.quarterTurns('gpu'), 0);
     expect(PcBuildProcedure.quarterTurns('cmos'), 0);
     final ram = PcBuildProcedure.rects['ram']!;
@@ -91,15 +91,36 @@ void main() {
     double screenAspect(Rect rect) => rect.width * (1672 / 941) / rect.height;
     expect(ram.width, inInclusiveRange(.009, .012));
     expect(PcBuildProcedure.targetRect('ram').contains(ram.center), isTrue);
-    expect(screenAspect(ssd), closeTo(250 / 315, .01));
+    expect(screenAspect(ssd), closeTo(69.85 / 100, .03));
     expect(screenAspect(gpu), closeTo(2172 / 724, .02));
     expect(ram.center.dx, closeTo(.456, .002));
     expect(ram.top, closeTo(.211, .002));
     expect(ram.bottom, closeTo(.474, .002));
-    expect(ssd.center.dx, closeTo(.63175, .002));
-    expect(gpu.left, closeTo(.245, .001));
+    expect(ssd.center.dx, closeTo(.626, .002));
+    expect(gpu.left, closeTo(.228, .001));
+    expect(gpu.top, closeTo(.510, .001));
     expect(gpu.bottom, lessThanOrEqualTo(.72));
-    expect(cmos.center.dx, closeTo(.4325, .001));
+    expect(cmos.center.dx, closeTo(.438, .001));
+    expect(cmos.center.dy, closeTo(.438, .001));
+    expect(
+      screenAspect(cmos),
+      closeTo(1, .04),
+      reason: 'The seated CR2032 must render as a circle, not an oval.',
+    );
+    final cooler = PcBuildProcedure.rects['cpu_fan']!;
+    expect(screenAspect(cooler), closeTo(1, .01));
+    expect(cooler.overlaps(cmos), isFalse);
+    expect(PcBuildProcedure.rects['cpu']!.overlaps(cmos), isFalse);
+    expect(
+      PcBuildProcedure.cpuFanHeader.dy,
+      lessThan(ram.top),
+      reason: 'CPU_FAN must remain above the RAM slot.',
+    );
+    expect(
+      PcBuildProcedure.cpuFanCableExit.dx,
+      lessThan(ram.left),
+      reason: 'The cooler lead must leave the fan before the DIMM bank.',
+    );
     for (final rect in PcBuildProcedure.rects.values) {
       expect(const Rect.fromLTWH(0, 0, 1, 1).contains(rect.topLeft), isTrue);
       expect(rect.right, lessThanOrEqualTo(1));
@@ -108,8 +129,10 @@ void main() {
   });
 
   test('case hardware uses the correct mounting fastener counts', () {
+    final gpu = PcBuildProcedure.rects['gpu']!;
     expect(PcBuildProcedure.fasteners['motherboard'], hasLength(9));
-    expect(PcBuildProcedure.fasteners['cpu_fan'], hasLength(4));
+    expect(PcBuildProcedure.fasteners['cpu_fan'], isNull);
+    expect(PcBuildProcedure.coolerPushPins, hasLength(4));
     expect(PcBuildProcedure.fasteners['gpu'], hasLength(2));
     expect(PcBuildProcedure.fasteners['ssd'], hasLength(4));
     expect(PcBuildProcedure.fasteners['psu'], hasLength(4));
@@ -118,8 +141,20 @@ void main() {
     expect(PcBuildProcedure.fasteners['cmos'], isNull);
     expect(
       PcBuildProcedure.fasteners['gpu'],
-      orderedEquals([const Offset(.226, .523), const Offset(.226, .558)]),
+      orderedEquals([const Offset(.230, .523), const Offset(.230, .558)]),
     );
+    for (final screw in PcBuildProcedure.fasteners['gpu']!) {
+      expect(
+        screw.dx,
+        inInclusiveRange(gpu.left, gpu.left + gpu.width * .08),
+        reason: 'GPU screws must land on the rear bracket tabs.',
+      );
+      expect(
+        screw.dy,
+        inInclusiveRange(gpu.top, gpu.bottom),
+        reason: 'GPU screws must remain vertically aligned with the bracket.',
+      );
+    }
     expect(
       PcBuildProcedure.fasteners['motherboard']!.toSet(),
       equals({
@@ -134,6 +169,53 @@ void main() {
         const Offset(.509, .676),
       }),
     );
+    for (final entry in PcBuildProcedure.fasteners.entries) {
+      final component = PcBuildProcedure.rects[entry.key]!;
+      for (final screw in entry.value) {
+        expect(
+          component.contains(screw),
+          isTrue,
+          reason: '${entry.key} screw $screw must sit inside its mount.',
+        );
+      }
+      final placement = PcBuildProcedure.placementOperation[entry.key]!;
+      final securedPoints = PcBuildProcedure.stepsFor(entry.key)
+          .skip(placement + 1)
+          .where((step) => step.tool == PcBuildProcedure.driver)
+          .map((step) => step.point);
+      expect(
+        securedPoints,
+        orderedEquals(entry.value),
+        reason: '${entry.key} screw actions must use the rendered screw slots.',
+      );
+    }
+  });
+
+  test('CPU cooler uses four hand-operated push-pin locks, not screws', () {
+    final steps = PcBuildProcedure.stepsFor('cpu_fan');
+    final placement = PcBuildProcedure.placementOperation['cpu_fan']!;
+    final locking = steps.skip(placement + 1).take(4).toList();
+    expect(
+      locking.map((step) => step.tool),
+      everyElement(PcBuildProcedure.hand),
+    );
+    expect(
+      locking.map((step) => step.point),
+      orderedEquals(PcBuildProcedure.coolerPushPins),
+    );
+    expect(
+      locking.map((step) => step.label.toLowerCase()).join(' '),
+      allOf(contains('rotate'), contains('press'), contains('push pin')),
+    );
+  });
+
+  test('assembly offers the compatible DDR4 module only', () {
+    final memory = SimulationData.getPcAssembly().items.where(
+      (item) => item.category == 'memory',
+    );
+    expect(memory.map((item) => item.id), orderedEquals(['ram']));
+    expect(memory.single.specification, contains('DDR4'));
+    expect(memory.single.imageUrl, contains('assembly-ram-ddr4'));
   });
 
   test('front-panel leads have four distinct pin-matching drops', () {
@@ -197,14 +279,25 @@ void main() {
     expect(drops.map((operation) => operation.requiredQuarterTurns), [0, 2]);
   });
 
+  test('GPU and SATA cables use separate routing corridors', () {
+    final routes = PcBuildProcedure.cableRouteX;
+    expect(routes.values.toSet(), hasLength(routes.length));
+    expect(routes['gpu_power'], lessThan(routes['sata_cable']!));
+    expect(routes['sata_cable'], lessThan(routes['power_cable']!));
+    expect(routes['sata_power'], greaterThan(routes['power_cable']!));
+  });
+
   test('SSD endpoints meet the raised side tray without floating', () {
     final ssd = PcBuildProcedure.rects['ssd']!;
-    const data = Offset(.612, .478);
-    const power = Offset(.652, .478);
+    const data = Offset(.606, .542);
+    const power = Offset(.642, .542);
     expect(ssd.contains(data), isTrue);
     expect(ssd.contains(power), isTrue);
-    expect(data.dy, closeTo(ssd.bottom, .02));
-    expect(power.dy, closeTo(ssd.bottom, .02));
+    expect(data.dy, closeTo(ssd.bottom, .01));
+    expect(power.dy, closeTo(ssd.bottom, .01));
+    for (final screw in PcBuildProcedure.fasteners['ssd']!) {
+      expect(ssd.contains(screw), isTrue);
+    }
   });
 
   test('CMOS installation releases the holder before seating positive-up', () {
@@ -440,6 +533,22 @@ void main() {
               }
               await tester.pumpAndSettle();
               expect(tester.takeException(), isNull, reason: '${item.id}: $n');
+              if (!cabling &&
+                  step.place &&
+                  const {'ram', 'gpu', 'psu'}.contains(item.id)) {
+                expect(
+                  find.byWidgetPredicate(
+                    (widget) =>
+                        widget.key is ValueKey<String> &&
+                        (widget.key! as ValueKey<String>).value.startsWith(
+                          'installed-fastener-${item.id}-',
+                        ),
+                  ),
+                  findsNothing,
+                  reason:
+                      '${item.id} fasteners must wait for their fastening steps.',
+                );
+              }
               if (const bool.fromEnvironment('CAPTURE_BUILD') &&
                   (item.id == 'cpu' || item.id == 'ram') &&
                   n == 1) {
@@ -476,6 +585,21 @@ void main() {
           expect(
             find.text(cabling ? 'Wiring complete' : 'Build complete'),
             findsOneWidget,
+          );
+          final fastenerCount = PcBuildProcedure.fasteners.values.fold<int>(
+            0,
+            (total, screws) => total + screws.length,
+          );
+          expect(
+            find.byWidgetPredicate(
+              (widget) =>
+                  widget.key is ValueKey<String> &&
+                  (widget.key! as ValueKey<String>).value.startsWith(
+                    'installed-fastener-',
+                  ),
+            ),
+            findsNWidgets(fastenerCount),
+            reason: 'Every secured screw must remain visible in the case.',
           );
           if (const bool.fromEnvironment('CAPTURE_BUILD')) {
             await tester.runAsync(() async {

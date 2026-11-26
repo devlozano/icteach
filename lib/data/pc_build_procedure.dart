@@ -24,6 +24,23 @@ class PcBuildProcedure {
   static const paste = 'Thermal compound';
   static const inspect = 'Inspection light';
   static const tools = [hand, driver, paste, inspect];
+  // The cooler lead exits on the upper-right side of the fan and plugs into
+  // the CPU_FAN header above the DIMM bank. Keeping both anchors above the RAM
+  // rectangle prevents the rendered lead from crossing either memory slot.
+  static const cpuFanCableExit = Offset(.405, .285);
+  static const cpuFanHeader = Offset(.443, .195);
+  static const coolerPushPins = <Offset>[
+    Offset(.349, .271),
+    Offset(.425, .410),
+    Offset(.425, .271),
+    Offset(.349, .410),
+  ];
+  static const cableRouteX = <String, double>{
+    'power_cable': .575,
+    'gpu_power': .515,
+    'sata_cable': .555,
+    'sata_power': .665,
+  };
   static const frontPanelDropTokens = <int, String>{
     2: 'front_power_sw',
     3: 'front_reset_sw',
@@ -52,24 +69,30 @@ class PcBuildProcedure {
     // screen-space aspect ratios match the transparent source sprites.
     'motherboard': Rect.fromLTWH(.255, .16, .262, .55),
     'cpu': Rect.fromLTWH(.366, .29, .056, .105),
-    'cpu_fan': Rect.fromLTWH(.334, .227, .12, .23),
+    // Physical screen dimensions are square on the 1672:941 chassis canvas.
+    // The smaller footprint clears the adjacent CMOS holder.
+    'cpu_fan': Rect.fromLTWH(.345, .265, .084, .1493),
     // RAM and SSD source images are photographed horizontally. Their chassis
     // layers rotate 90 degrees into the vertical DIMM and drive mounts.
     // A seated DIMM is seen edge-on from this chassis view. The full-height
     // side-profile sprite is used only while the learner is positioning it.
     'ram': Rect.fromLTWH(.451, .211, .010, .263),
     // From the open side panel the installed card is seen edge-on.
-    'gpu': Rect.fromLTWH(.245, .535, .22, .13),
+    // The rear bracket sits against the expansion-slot rail while the gold
+    // edge is centered over PCIe x16. This also puts both bracket tabs under
+    // their case screw anchors instead of leaving the screws beside the card.
+    'gpu': Rect.fromLTWH(.228, .510, .22, .13),
     // Raised 2.5-inch carrier beside the motherboard tray. The connector edge
     // faces down toward the cable grommet and remains visible after seating.
-    'ssd': Rect.fromLTWH(.586, .286, .0915, .205),
-    'cmos': Rect.fromLTWH(.422, .429, .021, .038),
+    'ssd': Rect.fromLTWH(.574, .292, .104, .258),
+    // Calibrated to the round CR2032 holder visible on the motherboard layer.
+    'cmos': Rect.fromLTWH(.429, .422, .018, .032),
     'psu': Rect.fromLTWH(.225, .735, .12, .213),
   };
   static const assets = <String, String>{
     'motherboard': 'assembly-motherboard-cmos-holder-v3.png',
     'cpu': 'assembly-cpu-matched.png',
-    'cpu_fan': 'assembly-cooler-matched.png',
+    'cpu_fan': 'assembly-cooler-pushpin-v2.png',
     'ram': 'assembly-ram-ddr4-matched.png',
     'gpu': 'assembly-gpu-matched.png',
     'ssd': 'assembly-ssd-matched.png',
@@ -80,7 +103,13 @@ class PcBuildProcedure {
     'ram': 'assembly-ram-installed-edge-v2.png',
     'gpu': 'assembly-gpu-installed-edge-v2.png',
   };
-  static int quarterTurns(String id) => id == 'ram' || id == 'ssd' ? 1 : 0;
+  static int quarterTurns(String id) => switch (id) {
+    'ram' => 1,
+    // Turn counter-clockwise so the SSD's SATA edge faces the lower cable
+    // opening rather than being trapped against the top of the carrier.
+    'ssd' => 3,
+    _ => 0,
+  };
   static Rect targetRect(String id) => switch (id) {
     'ram' => const Rect.fromLTWH(.446, .206, .020, .273),
     'gpu' => const Rect.fromLTWH(.24, .51, .235, .17),
@@ -98,20 +127,14 @@ class PcBuildProcedure {
       Offset(.281, .483),
       Offset(.509, .483),
     ],
-    'cpu_fan': [
-      Offset(.34, .25),
-      Offset(.45, .44),
-      Offset(.45, .25),
-      Offset(.34, .44),
-    ],
     // The GPU bracket screws pass through the rear I/O bracket tabs into the
     // top two case expansion-slot screw holes.
-    'gpu': [Offset(.226, .523), Offset(.226, .558)],
+    'gpu': [Offset(.230, .523), Offset(.230, .558)],
     'ssd': [
-      Offset(.598, .302),
-      Offset(.669, .474),
-      Offset(.669, .302),
-      Offset(.598, .474),
+      Offset(.594, .335),
+      Offset(.662, .505),
+      Offset(.662, .335),
+      Offset(.594, .505),
     ],
     'psu': [
       Offset(.235, .755),
@@ -314,30 +337,26 @@ class PcBuildProcedure {
         place: true,
       ),
       PcBuildOperation(
-        'Engage upper-left cooler fastener',
-        driver,
-        Offset(.34, .25),
-      ),
-      PcBuildOperation(
-        'Engage lower-right fastener diagonally',
-        driver,
-        Offset(.45, .44),
-      ),
-      PcBuildOperation(
-        'Engage upper-right cooler fastener',
-        driver,
-        Offset(.45, .25),
-      ),
-      PcBuildOperation(
-        'Engage lower-left fastener evenly',
-        driver,
-        Offset(.34, .44),
-      ),
-      PcBuildOperation(
-        'Plug the fan lead into CPU_FAN',
+        'Rotate the upper-left push pin to its install position, then press until it clicks',
         hand,
-        Offset(.455, .23),
+        Offset(.349, .271),
       ),
+      PcBuildOperation(
+        'Rotate and press the lower-right push pin diagonally opposite',
+        hand,
+        Offset(.425, .410),
+      ),
+      PcBuildOperation(
+        'Rotate and press the upper-right push pin until its center locks',
+        hand,
+        Offset(.425, .271),
+      ),
+      PcBuildOperation(
+        'Rotate and press the lower-left push pin; verify all four sit level',
+        hand,
+        Offset(.349, .410),
+      ),
+      PcBuildOperation('Plug the fan lead into CPU_FAN', hand, cpuFanHeader),
     ],
     'ram': [
       PcBuildOperation(
@@ -382,12 +401,12 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Secure the card bracket to the chassis',
         driver,
-        Offset(.226, .523),
+        Offset(.230, .523),
       ),
       PcBuildOperation(
         'Secure the second expansion-slot bracket screw',
         driver,
-        Offset(.226, .558),
+        Offset(.230, .558),
       ),
       PcBuildOperation(
         'Inspect the locked PCIe latch and level card',
@@ -399,56 +418,56 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Locate the CR2032 holder and inspect its retaining latch',
         inspect,
-        Offset(.4325, .448),
+        Offset(.438, .438),
       ),
       PcBuildOperation(
         'Release the CMOS battery-holder latch',
         hand,
-        Offset(.443, .448),
+        Offset(.447, .438),
       ),
       PcBuildOperation(
         'Insert the CR2032 with the positive (+) face visible',
         hand,
-        Offset(.4325, .448),
+        Offset(.438, .438),
         place: true,
       ),
       PcBuildOperation(
         'Press the edge beneath the latch and confirm the battery is flat',
         inspect,
-        Offset(.4325, .448),
+        Offset(.438, .438),
       ),
     ],
     'ssd': [
       PcBuildOperation(
         'Position the 2.5-inch SATA SSD in its tray, connectors accessible',
         hand,
-        Offset(.6335, .3885),
+        Offset(.626, .421),
         place: true,
       ),
       PcBuildOperation(
         'Secure the first SSD mounting screw',
         driver,
-        Offset(.598, .302),
+        Offset(.594, .335),
       ),
       PcBuildOperation(
         'Secure the diagonal SSD mounting screw',
         driver,
-        Offset(.669, .474),
+        Offset(.662, .505),
       ),
       PcBuildOperation(
         'Secure the upper-right SSD mounting screw',
         driver,
-        Offset(.669, .302),
+        Offset(.662, .335),
       ),
       PcBuildOperation(
         'Secure the lower-left SSD mounting screw',
         driver,
-        Offset(.598, .474),
+        Offset(.594, .505),
       ),
       PcBuildOperation(
         'Check the drive cannot shift in the carrier',
         inspect,
-        Offset(.6335, .3885),
+        Offset(.626, .421),
       ),
     ],
     'psu': [
@@ -606,12 +625,12 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Inspect the narrow 7-pin L-shaped data plug',
         inspect,
-        Offset(.612, .478),
+        Offset(.606, .542),
       ),
       PcBuildOperation(
         'Seat the data cable at the SSD',
         hand,
-        Offset(.612, .478),
+        Offset(.606, .542),
         place: true,
         dropToken: 'sata_data_drive',
         requiredQuarterTurns: 0,
@@ -634,7 +653,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Inspect the wider 15-pin L-shaped SATA power housing',
         inspect,
-        Offset(.652, .478),
+        Offset(.642, .542),
       ),
       PcBuildOperation(
         'Route the SATA power branch from the PSU behind the drive tray',
@@ -644,7 +663,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Seat the SATA power connector on the SSD without twisting it',
         hand,
-        Offset(.652, .478),
+        Offset(.642, .542),
         place: true,
         dropToken: 'sata_power_drive',
         requiredQuarterTurns: 0,
@@ -652,7 +671,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Inspect both SSD connectors and keep their cables free of strain',
         inspect,
-        Offset(.632, .478),
+        Offset(.624, .542),
       ),
     ],
     'front_panel': [

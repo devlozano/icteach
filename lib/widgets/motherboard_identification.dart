@@ -183,9 +183,13 @@ class _MotherboardIdentificationState extends State<MotherboardIdentification> {
                             MotherboardParts.cmosRect.width * size.maxWidth,
                             MotherboardParts.cmosRect.height * size.maxHeight,
                           ),
-                          child: Image.asset(
-                            MotherboardParts.cmosAsset,
-                            fit: BoxFit.contain,
+                          child: ClipOval(
+                            child: Image.asset(
+                              MotherboardParts.cmosAsset,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.center,
+                              filterQuality: FilterQuality.high,
+                            ),
                           ),
                         ),
                       ],

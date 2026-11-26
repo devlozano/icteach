@@ -70,6 +70,38 @@ class PcDisassemblyMechanicsPainter extends CustomPainter {
       }
     }
 
+    void pushPins(List<Offset> points, double progress) {
+      for (var i = 0; i < points.length; i++) {
+        final amount = (progress * points.length - i).clamp(0.0, 1.0);
+        final center = point(points[i]);
+        canvas.save();
+        canvas.translate(center.dx, center.dy - 5 * amount);
+        canvas.rotate(-amount * math.pi / 2);
+        canvas.drawCircle(
+          Offset.zero,
+          8,
+          Paint()..color = const Color(0xE620252A),
+        );
+        canvas.drawArc(
+          const Rect.fromLTWH(-5, -5, 10, 10),
+          -.85 * math.pi,
+          1.25 * math.pi,
+          false,
+          Paint()
+            ..color = const Color(0xFFB8C1C8)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.5
+            ..strokeCap = StrokeCap.round,
+        );
+        canvas.drawCircle(
+          Offset(0, 2.5 * amount),
+          2.4,
+          Paint()..color = const Color(0xFF11161A),
+        );
+        canvas.restore();
+      }
+    }
+
     void clip(Offset location, double progress, {bool lower = false}) {
       canvas.save();
       final center = point(location);
@@ -273,15 +305,15 @@ class PcDisassemblyMechanicsPainter extends CustomPainter {
     }
     if (present('cooler')) {
       lead(
-        const Offset(.448, .30),
-        const Offset(.46, .235),
+        PcBuildProcedure.cpuFanCableExit,
+        PcBuildProcedure.cpuFanHeader,
         p('cooler', 0),
         const Color(0xFF8E9A78),
         width: 7,
       );
-      final coolerFasteners = PcBuildProcedure.fasteners['cpu_fan']!;
-      screws([coolerFasteners[0], coolerFasteners[1]], p('cooler', 1));
-      screws([coolerFasteners[2], coolerFasteners[3]], p('cooler', 2));
+      final coolerPins = PcBuildProcedure.coolerPushPins;
+      pushPins([coolerPins[0], coolerPins[1]], p('cooler', 1));
+      pushPins([coolerPins[2], coolerPins[3]], p('cooler', 2));
     } else if (present('cpu')) {
       // Used thermal compound is visible once the heatsink is lifted away.
       canvas.drawOval(
