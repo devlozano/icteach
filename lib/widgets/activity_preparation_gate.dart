@@ -943,7 +943,7 @@ class _ActivityPreparationGateState extends State<ActivityPreparationGate> {
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text(
-                      'This activity is waiting for teacher setup. Your teacher or trainer must publish a lesson, publish a theory quiz with questions for simulations, and link them in Modules > Lesson & assignment links. Uploading a draft alone does not unlock the activity.',
+                      'This activity is waiting for teacher setup. Your teacher or trainer must publish a module, publish a theory quiz with questions, and link the quiz from the module details. Uploading a draft alone does not unlock the activity.',
                     ),
                   ),
                 );

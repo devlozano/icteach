@@ -46,6 +46,13 @@ void main() {
         expect(find.text('More tools'), findsOneWidget);
         expect(find.text('Modules'), findsOneWidget);
         expect(find.text('Class Monitoring'), findsOneWidget);
+        expect(find.text('Archives & Reports'), findsOneWidget);
+        await tester.ensureVisible(find.text('Archives & Reports'));
+        await tester.tap(find.text('Archives & Reports'));
+        await tester.pumpAndSettle();
+        expect(selected, trainer ? 7 : 9);
+        await tester.tap(find.text('More'));
+        await tester.pumpAndSettle();
         await tester.ensureVisible(find.text('Class Monitoring'));
         await tester.tap(find.text('Class Monitoring'));
         await tester.pumpAndSettle();

@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/quiz_model.dart';
 import '../../services/quiz_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/learning_path_service.dart';
 
 class CreateQuizPage extends StatefulWidget {
   final String classId;
@@ -376,6 +377,10 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
     setState(() => _isLoading = true);
 
     try {
+      await LearningPathService.requireContentManagement(
+        widget.classId,
+        'quizzes',
+      );
       final quiz = QuizModel(
         id: _quizId ?? '',
         classId: widget.classId,
@@ -423,7 +428,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
 
       Navigator.pop(context, true);
     } catch (e) {
-      _showMessage('Error ${_isEditing ? 'updating' : 'creating'} quiz: $e');
+      _showMessage(LearningPathService.contentError(e));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -500,7 +505,7 @@ class _CreateQuizPageState extends State<CreateQuizPage> {
                                   const SizedBox(width: 8),
                                   const Expanded(
                                     child: Text(
-                                      'Publish a quiz with questions, assign its required module in Lesson & assignment links, and unlock it in Content Lock Settings. Students complete that module before their one scored attempt.',
+                                      'Publish a quiz with questions, open the required module and link this quiz in Module details, then unlock it in Content Lock Settings. Students complete that module before their scored attempt.',
                                     ),
                                   ),
                                 ],

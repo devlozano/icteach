@@ -160,14 +160,34 @@ void main() {
         '255.255.255.0',
       );
       await press('perform-operation');
-      for (var i = 0; i < 3; i++) {
+      await tester.enterText(
+        find.byKey(const ValueKey('ipv4-gateway')),
+        '192.168.1.254',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('ipv4-dns')),
+        '192.168.1.1',
+      );
+      for (
+        var i = 0;
+        i < 10 &&
+            find.byKey(const ValueKey('accept-operation')).evaluate().isEmpty;
+        i++
+      ) {
         await press('perform-operation');
       }
       await press('accept-operation');
       expect(errors, hasLength(2));
       expect(result, isNull);
       await press('rework-operation');
-      await press('perform-operation');
+      for (
+        var i = 0;
+        i < 10 &&
+            find.byKey(const ValueKey('accept-operation')).evaluate().isEmpty;
+        i++
+      ) {
+        await press('perform-operation');
+      }
       await press('accept-operation');
       expect(result, isTrue);
       expect(find.byType(SimulationStepLab), findsNothing);

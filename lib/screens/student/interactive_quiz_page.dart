@@ -47,18 +47,20 @@ class _SessionState extends State<_Session> {
   @override
   void initState() {
     super.initState();
-    if (!kIsWeb)
+    if (!kIsWeb) {
       SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    }
   }
 
   @override
   void dispose() {
     _watch.stop();
-    if (!kIsWeb)
+    if (!kIsWeb) {
       SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
       ]);
+    }
     super.dispose();
   }
 
@@ -87,8 +89,9 @@ class _SessionState extends State<_Session> {
       );
       if (mounted) setState(() => _saved = true);
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Your result has not been saved. $error');
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -224,29 +227,98 @@ class InteractiveQuizWorkbench extends StatefulWidget {
 class _WorkbenchState extends State<InteractiveQuizWorkbench> {
   int _step = 0, _mistakes = 0;
   bool _complete = false;
+
+  String get _phase {
+    final count = widget.activity.items.where((item) => item.isRequired).length;
+    if (_step == 0) return 'Prepare and inspect';
+    if (_step >= count - 1) return 'Verify and record';
+    return 'Perform the procedure';
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.activity.id == 'sim_coc1_motherboard') {
       return MotherboardIdentification(onComplete: widget.onComplete);
     }
     final kind = GuidedSetupData.kindForId(widget.activity.id);
-    if (kind != null)
+    if (kind != null) {
       return GuidedSetupWorkbench(
         kind: kind,
         quiz: true,
         onComplete: widget.onComplete,
       );
+    }
     final items = widget.activity.items
         .where((item) => item.isRequired)
         .toList();
     if (_complete) return const Center(child: Text('Procedure complete'));
+    final progress = (_step + 1) / items.length;
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.all(12),
-          child: Text(
-            'Procedure ${_step + 1} of ${items.length}',
-            style: const TextStyle(fontWeight: FontWeight.bold),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0B4F6C), Color(0xFF168AAD)],
+              ),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x260B4F6C),
+                  blurRadius: 14,
+                  offset: Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.engineering_outlined, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.activity.learningOutcome,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Task ${_step + 1} of ${items.length}  |  $_phase',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    backgroundColor: Colors.white24,
+                    color: const Color(0xFFB8F2E6),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Read the work order, perform each action in sequence, then decide whether the observed result passes.',
+                  style: TextStyle(color: Color(0xFFE7F7FC), fontSize: 12),
+                ),
+              ],
+            ),
           ),
         ),
         Expanded(

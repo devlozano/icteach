@@ -28,6 +28,11 @@ class StaffMobileNav extends StatelessWidget {
             (Icons.rate_review_outlined, Icons.rate_review_rounded, 'Feedback'),
             (Icons.groups_outlined, Icons.groups_rounded, 'Students'),
             (Icons.menu_book_outlined, Icons.menu_book_rounded, 'Modules'),
+            (
+              Icons.inventory_2_outlined,
+              Icons.inventory_2_rounded,
+              'Archives & Reports',
+            ),
           ]
         : const [
             (Icons.home_outlined, Icons.home_rounded, 'Home'),
@@ -47,12 +52,17 @@ class StaffMobileNav extends StatelessWidget {
               Icons.fact_check_rounded,
               'Quiz & Assignment',
             ),
+            (
+              Icons.inventory_2_outlined,
+              Icons.inventory_2_rounded,
+              'Archives & Reports',
+            ),
           ];
     // Keep discussion in the centre: it is a shared, high-frequency workspace
     // for both roles. Profile remains one tap away; management tools are in
     // More, where they can be labelled clearly without a cramped tab bar.
     final primary = trainer ? [0, 6, 1, 2] : [0, 1, 2, 4];
-    final moreOrder = trainer ? [3, 5, 4] : [7, 8, 3, 6, 5];
+    final moreOrder = trainer ? [3, 7, 5, 4] : [7, 8, 9, 3, 6, 5];
     final selected = primary.indexOf(currentIndex);
     return NavigationBar(
       selectedIndex: selected < 0 ? 4 : selected,

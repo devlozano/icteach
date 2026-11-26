@@ -140,16 +140,21 @@ void main() {
       expect(find.byKey(const ValueKey('setup-error')), findsOneWidget);
       await connect(tester, 'usb', 'prep_usb', 'Preparation PC USB');
       await tap(tester, 'Open preparation desktop');
+      await select(
+        tester,
+        'deployment_profile',
+        'Modern Windows • UEFI practice',
+      );
       await tap(tester, 'Open Rufus');
       await tap(tester, 'SELECT');
-      await select(tester, 'iso', 'Windows 10 x64.iso');
+      await select(tester, 'iso', 'Modern Windows x64.iso');
       await tap(tester, 'Open ISO');
       await select(tester, 'partition_scheme', 'MBR');
       await select(tester, 'firmware', 'UEFI (non CSM)');
       await capture(tester, 'rufus');
       await tap(tester, 'erase_usb');
       await tap(tester, 'START');
-      expect(find.textContaining('needs GPT/UEFI'), findsOneWidget);
+      expect(find.textContaining('Match the partition scheme'), findsOneWidget);
       await select(tester, 'partition_scheme', 'GPT');
       await tap(tester, 'START');
       await tap(tester, 'Unplug USB');
@@ -167,6 +172,7 @@ void main() {
       await tap(tester, 'Boot installer');
       await select(tester, 'language', 'English • US');
       await tap(tester, 'license');
+      await select(tester, 'edition', 'Modern Windows x64');
       await select(tester, 'install_type', 'Custom: install Windows only');
       await tap(tester, 'Next');
       await tap(tester, 'disk_authorized');
@@ -195,6 +201,32 @@ void main() {
       expect(find.textContaining('Practical complete'), findsOneWidget);
     },
   );
+
+  testWidgets('legacy worksheet profile requires PowerISO and MBR BIOS media', (
+    tester,
+  ) async {
+    await mount(tester, SetupLabKind.operatingSystem, (_, _, _) {});
+    await connect(tester, 'usb', 'prep_usb', 'Preparation PC USB');
+    await tap(tester, 'Open preparation desktop');
+    await select(
+      tester,
+      'deployment_profile',
+      'Server PC • Windows Server 2008 R2 • Legacy BIOS',
+    );
+    await tap(tester, 'Open PowerISO');
+    await tap(tester, 'Open ISO file');
+    await select(tester, 'iso', 'Windows Server 2008 R2.iso');
+    await tap(tester, 'Open ISO');
+    await select(tester, 'partition_scheme', 'GPT');
+    await select(tester, 'firmware', 'UEFI (non CSM)');
+    await tap(tester, 'erase_usb');
+    await tap(tester, 'START');
+    expect(find.textContaining('Match the partition scheme'), findsOneWidget);
+    await select(tester, 'partition_scheme', 'MBR');
+    await select(tester, 'firmware', 'BIOS (or UEFI-CSM)');
+    await tap(tester, 'START');
+    expect(find.textContaining('PowerISO status: COMPLETE'), findsOneWidget);
+  });
 
   testWidgets(
     'software installs drivers, tests apps and printer before completion',
@@ -326,10 +358,10 @@ void main() {
       for (final d in devices) {
         await device(tester, d);
         for (final p in ['Private', 'Public']) {
-          await tap(tester, 'firewall_off_${d}_$p');
+          await tap(tester, 'firewall_on_${d}_$p');
         }
       }
-      await tap(tester, 'Apply worksheet firewall settings');
+      await tap(tester, 'Confirm protected firewall settings');
       for (final d in devices) {
         await device(tester, d);
         for (final f in [
@@ -340,9 +372,7 @@ void main() {
           'Windows Firewall Remote Management',
           'Windows Remote Management',
         ]) {
-          for (final p in ['Private', 'Public']) {
-            await tap(tester, 'rule_${d}_${f}_$p');
-          }
+          await tap(tester, 'rule_${d}_${f}_Private');
         }
       }
       await tap(tester, 'Save allowed features');
@@ -352,7 +382,7 @@ void main() {
           'discovery',
           'sharing',
           'public_folder',
-          'password_off',
+          'password_on',
         ]) {
           await tap(tester, '${s}_$d');
         }

@@ -29,8 +29,7 @@ class StudentEmailCsv {
 class StudentEmailCsvParser {
   static const maxBytes = 1024 * 1024;
   static const maxRecords = 100;
-  static const template =
-      'Gmail,First Name,Middle Name,Surname,Extension\r\n';
+  static const template = 'Gmail,First Name,Middle Name,Suffix,Extension\r\n';
   static final _email = RegExp(
     r'^[a-z0-9.!#$%&\x27*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$',
   );
@@ -64,9 +63,9 @@ class StudentEmailCsvParser {
         'gmailaddress' ||
         'emailaddress' ||
         'studentemail' => 'email',
-        'lastname' || 'surname' => 'lastname',
+        'lastname' || 'surname' || 'suffix' => 'lastname',
         'middlename' || 'middleinitial' || 'mi' => 'middlename',
-        'extension' || 'suffix' => 'extension',
+        'extension' => 'extension',
         _ => key,
       };
     }
@@ -91,13 +90,22 @@ class StudentEmailCsvParser {
           'extension',
         ].contains(headers[i])) {
           throw FormatException(
-            'Unknown column "${rows.first[i]}". Use Gmail, First Name, Middle Name, Surname, Extension. Names are optional; no LRN is needed.',
+            'Unknown column "${rows.first[i]}". Use Gmail, First Name, Middle Name, Suffix, Extension. First Name and Suffix are required; no LRN is needed.',
           );
         }
         if (columns.containsKey(headers[i])) {
           throw FormatException('Duplicate column: ${rows.first[i]}.');
         }
         columns[headers[i]] = i;
+      }
+      if (!columns.keys.toSet().containsAll([
+        'email',
+        'firstname',
+        'lastname',
+      ])) {
+        throw const FormatException(
+          'Headers must include Gmail, First Name and Suffix. Middle Name and Extension are optional.',
+        );
       }
     }
     final records = <StudentEmailRecord>[];
@@ -107,7 +115,7 @@ class StudentEmailCsvParser {
       final row = rows[index];
       final number = index + 1;
       if ((hasHeader && row.length != headers.length) ||
-          (!hasHeader && (row.isEmpty || row.length > 5))) {
+          (!hasHeader && row.length != 5)) {
         throw FormatException(
           'Row $number: incorrect number of columns. Put names containing commas inside double quotes.',
         );
@@ -135,6 +143,11 @@ class StudentEmailCsvParser {
       final middle = field('middlename').replaceAll(RegExp(r'\s+'), ' ');
       final last = field('lastname').replaceAll(RegExp(r'\s+'), ' ');
       final extension = field('extension').replaceAll(RegExp(r'\s+'), ' ');
+      if (first.isEmpty || last.isEmpty) {
+        throw FormatException(
+          'Row $number: First Name and Suffix are required.',
+        );
+      }
       if (first.length > 80 || middle.length > 80 || last.length > 80) {
         throw FormatException(
           'Row $number: names must be 80 characters or fewer.',

@@ -46,6 +46,7 @@ void main() {
                         activityBuilds++;
                         return ModuleDetailView(
                           module: module,
+                          quizLinks: const Text('Linked quizzes panel'),
                           onEdit: () => edits++,
                           onDelete: () => deletes++,
                           onTogglePublish: () => publishes++,
@@ -82,6 +83,7 @@ void main() {
       expect(find.text('Module details'), findsOneWidget);
       expect(find.text('Computer hardware'), findsOneWidget);
       expect(find.text('Ana Santos'), findsOneWidget);
+      expect(find.text('Linked quizzes panel'), findsOneWidget);
       for (final label in ['Edit', 'Unpublish']) {
         await tester.ensureVisible(find.text(label));
         await tester.tap(find.text(label));

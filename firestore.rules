@@ -75,7 +75,8 @@ service cloud.firestore {
     function invitedStudentProfile(data, uid) {
       return isActiveTeacher() && ownsClass(data.invitedClassId)
         && data.keys().hasOnly([
-          'uid', 'email', 'role', 'firstName', 'lastName', 'name',
+          'uid', 'email', 'role', 'firstName', 'middleName', 'lastName',
+          'extension', 'name',
           'displayName', 'invitationStatus', 'invitedAt', 'invitedBy',
           'invitedClassId', 'createdAt', 'updatedAt'
         ])
@@ -83,9 +84,11 @@ service cloud.firestore {
         && data.invitedBy == request.auth.uid
         && data.email is string && data.email.size() > 3 && data.email.size() <= 254
         && data.email.matches('^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$')
-        && data.firstName is string && data.firstName.size() <= 80
-        && data.lastName is string && data.lastName.size() <= 80
-        && data.name is string && data.name.size() > 0 && data.name.size() <= 161
+        && data.firstName is string && data.firstName.size() > 0 && data.firstName.size() <= 80
+        && data.middleName is string && data.middleName.size() <= 80
+        && data.lastName is string && data.lastName.size() > 0 && data.lastName.size() <= 80
+        && data.extension is string && data.extension.size() <= 30
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 274
         && data.displayName == data.name
         && data.invitationStatus == 'pending'
         && data.invitedAt == request.time
@@ -194,15 +197,43 @@ service cloud.firestore {
     }
     match /users/{uid}/quiz_results/{quizId} {
       allow read: if request.auth != null;
-      // Quiz attempts are immutable. Retakes and score replacement are denied
-      // even when the caller owns the profile.
       allow create: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.studentId == uid
         && classParticipant(request.resource.data.classId)
         && activeClass(request.resource.data.classId)
         && request.resource.data.quizId == quizId;
-      allow update, delete: if false;
+      allow update: if request.auth != null && (
+        (classStaff(resource.data.classId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'retryAllowed', 'teacherFeedback', 'retryAllowedAt', 'attemptNumber'
+          ])
+          && request.resource.data.retryAllowed == true
+          && request.resource.data.teacherFeedback is string
+          && request.resource.data.teacherFeedback.size() > 0
+          && request.resource.data.teacherFeedback.size() <= 1000
+          && request.resource.data.retryAllowedAt is timestamp
+          && request.resource.data.attemptNumber is int
+          && request.resource.data.attemptNumber >= 1
+          && request.resource.data.attemptNumber <= 100)
+        ||
+        (request.auth.uid == uid
+          && resource.data.studentId == uid
+          && resource.data.quizId == quizId
+          && resource.data.retryAllowed == true
+          && request.resource.data.retryAllowed == false
+          && request.resource.data.teacherFeedback == resource.data.teacherFeedback
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.quizId == resource.data.quizId
+          && request.resource.data.classId == resource.data.classId
+          && request.resource.data.attemptNumber == resource.data.attemptNumber + 1
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'score', 'totalPoints', 'userAnswers', 'completedAt', 'timeSpent',
+            'passingPercentage', 'retryAllowed', 'attemptNumber'
+          ])
+          && activeClass(resource.data.classId))
+      );
+      allow delete: if false;
     }
     match /students/{uid}/{subcollection}/{document=**} {
       allow read: if request.auth != null;
@@ -357,16 +388,33 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isActive', true) == true
         && resource.data.status == 'active'
+        && !(request.auth.uid in before)
+        && request.auth.uid in after
         // Joining is authorized by the membership written in the same atomic
         // batch. A roster-only update cannot bypass the submitted class code.
-        && (!(request.auth.uid in after) || (
-          membership.classId == classId
-          && membership.classCode == resource.data.classCode
-        ))
+        && membership.classId == classId
+        && membership.classCode == resource.data.classCode
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledStudentIds', 'updatedAt'])
         && after is list && after.size() <= 1000
         && after.size() == after.toSet().size()
         && after.toSet().difference(before.toSet()).hasOnly([request.auth.uid])
+        && before.toSet().difference(after.toSet()).hasOnly([]);
+    }
+    function studentLeavesSelf(classId) {
+      let before = resource.data.get('enrolledStudentIds', []);
+      let after = request.resource.data.enrolledStudentIds;
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student'
+        && request.auth.uid in before
+        && !(request.auth.uid in after)
+        // Leaving is permitted for active and archived classes, but only when
+        // the same atomic batch deletes both student membership documents.
+        && !existsAfter(/databases/$(database)/documents/users/$(request.auth.uid)/classes/$(classId))
+        && !existsAfter(/databases/$(database)/documents/classes/$(classId)/students/$(request.auth.uid))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['enrolledStudentIds', 'updatedAt'])
+        && after is list && after.size() <= 1000
+        && after.size() == after.toSet().size()
+        && after.toSet().difference(before.toSet()).hasOnly([])
         && before.toSet().difference(after.toSet()).hasOnly([request.auth.uid]);
     }
     match /classes/{classId} {
@@ -379,7 +427,8 @@ service cloud.firestore {
         || (isActiveTeacher() && ownsClass(classId) && validClassRoster(request.resource.data)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'description', 'enrolledStudentIds', 'studentCount', 'pendingReviews', 'updatedAt']))
-        || studentJoinsSelf(classId));
+        || studentJoinsSelf(classId)
+        || studentLeavesSelf(classId));
       allow delete: if canAdmin();
       match /students/{studentId} {
         allow create, update: if request.auth != null
@@ -498,7 +547,36 @@ service cloud.firestore {
         && activeClass(request.resource.data.classId)
         && request.resource.data.quizId is string
         && resultId == request.resource.data.quizId + '_' + request.auth.uid;
-      allow update, delete: if false;
+      allow update: if request.auth != null && (
+        (classStaff(resource.data.classId)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'retryAllowed', 'teacherFeedback', 'retryAllowedAt', 'attemptNumber'
+          ])
+          && request.resource.data.retryAllowed == true
+          && request.resource.data.teacherFeedback is string
+          && request.resource.data.teacherFeedback.size() > 0
+          && request.resource.data.teacherFeedback.size() <= 1000
+          && request.resource.data.retryAllowedAt is timestamp
+          && request.resource.data.attemptNumber is int
+          && request.resource.data.attemptNumber >= 1
+          && request.resource.data.attemptNumber <= 100)
+        ||
+        (resource.data.studentId == request.auth.uid
+          && resultId == resource.data.quizId + '_' + request.auth.uid
+          && resource.data.retryAllowed == true
+          && request.resource.data.retryAllowed == false
+          && request.resource.data.teacherFeedback == resource.data.teacherFeedback
+          && request.resource.data.studentId == resource.data.studentId
+          && request.resource.data.quizId == resource.data.quizId
+          && request.resource.data.classId == resource.data.classId
+          && request.resource.data.attemptNumber == resource.data.attemptNumber + 1
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'score', 'totalPoints', 'userAnswers', 'completedAt', 'timeSpent',
+            'passingPercentage', 'retryAllowed', 'attemptNumber'
+          ])
+          && activeClass(resource.data.classId))
+      );
+      allow delete: if false;
     }
     match /pre_assessments/{resultId} {
       allow read: if request.auth != null;

@@ -6,6 +6,12 @@ import 'package:icteach/widgets/motherboard_identification.dart';
 import 'package:icteach/screens/student/student_quizzes_page.dart';
 
 void main() {
+  test('motherboard identification includes the CMOS battery', () {
+    final cmos = MotherboardParts.entries.where((entry) => entry.$1 == 'cmos');
+    expect(cmos, hasLength(1));
+    expect(cmos.single.$2, 'CMOS battery');
+    expect(cmos.single.$3, MotherboardParts.cmosRect);
+  });
   test('active practicals have no retired prerequisite', () {
     final catalog = SimulationData.getAllSimulations();
     final ids = catalog.map((s) => s.id).toSet();

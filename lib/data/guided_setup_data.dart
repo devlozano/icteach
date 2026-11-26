@@ -3,11 +3,11 @@ enum SetupLabKind { operatingSystem, software, network }
 class GuidedSetupData {
   static String sceneAsset(SetupLabKind kind) => switch (kind) {
     SetupLabKind.operatingSystem =>
-      'assets/simulations/setup-os-workstation-v1.png',
+      'assets/simulations/coc1-boot-media-profiles-v1.png',
     SetupLabKind.software =>
       'assets/simulations/setup-software-workstation-v1.png',
     SetupLabKind.network =>
-      'assets/simulations/setup-network-workstation-v1.png',
+      'assets/simulations/coc2-three-device-network-v1.png',
   };
   static SetupLabKind? kindForId(String id) => switch (id) {
     'sim_coc1_os_install' => SetupLabKind.operatingSystem,
@@ -21,12 +21,12 @@ class GuidedSetupData {
       'Drag the training USB into the preparation PC. The approved ISO is stored on this PC; writing the USB will erase its old contents.',
     ),
     (
-      'Rufus: select ISO',
-      'Open Rufus, choose SELECT, then select the approved Windows client or server ISO for this assignment.',
+      'Choose deployment profile and ISO',
+      'Select the assigned deployment profile first. Use PowerISO with the legacy BIOS Windows 7/Server 2008 R2 worksheet, or Rufus with the modern UEFI practice profile. Do not mix settings between profiles.',
     ),
     (
-      'Rufus: write boot media',
-      'This target uses UEFI. Select GPT and UEFI, confirm the USB can be erased, then START. Wait for READY.',
+      'Create and verify bootable USB',
+      'Match the media settings to the selected target: MBR/legacy BIOS for the worksheet profile or GPT/UEFI for modern practice. Confirm the correct USB, start writing, and wait for completion.',
     ),
     (
       'Safely remove USB',
@@ -42,7 +42,7 @@ class GuidedSetupData {
     ),
     (
       'Choose USB boot',
-      'Set the UEFI USB as the first boot device, then use F10 to save and restart. A one-time boot override normally does not require saving boot order.',
+      'Choose the USB boot entry that matches the selected profile. For the worksheet profile, inspect Boot Option #1 and Hard Drive BBS priority; for modern practice, choose the UEFI USB entry. Save with F10 and restart.',
     ),
     (
       'Boot Windows Setup',
@@ -50,7 +50,7 @@ class GuidedSetupData {
     ),
     (
       'Choose Custom installation',
-      'Choose the language and edition, accept the training license prompt, and select Custom: install Windows only.',
+      'Choose English and the assigned edition: Windows Server 2008 R2 Full Installation, Windows 7 Ultimate x64, or the approved modern practice image. Accept the training license prompt and choose Custom installation.',
     ),
     (
       'Create disk partitions',
@@ -70,13 +70,13 @@ class GuidedSetupData {
     ),
     (
       'Create the local account',
-      'Set a training username and matching password, then verify the installed desktop. Use a fictional password; this practice does not save credentials.',
+      'Complete the required user setup with fictional training credentials. Install the approved device drivers and manufacturer updates, check Device Manager, then test and document the completed installation.',
     ),
   ];
   static const software = <(String, String)>[
     (
       'Review software requirements',
-      'Use the approved training manifest: chipset, LAN and printer drivers, a document editor, and a PDF reader.',
+      'Read the end-user work order and approved manifest. Confirm versions, system requirements, licenses and trusted installation sources before changing the computer.',
     ),
     (
       'Install device drivers',
@@ -96,13 +96,13 @@ class GuidedSetupData {
     ),
     (
       'Verify and document',
-      'Check driver status, application launches, protection and printer output. Create a restore point and record the observed results.',
+      'Check driver status, application launches, protection, network access and printer output. Apply approved updates, create a restore point and record the observed results and variations.',
     ),
   ];
   static const network = <(String, String)>[
     (
       'Connect router and server',
-      'Choose the assigned station number, then connect both ends of the Ethernet cable to the server NIC and a router LAN port.',
+      'Read the network plan, choose the assigned station, inspect the tested patch cable, then connect the server NIC to the specified router LAN port.',
     ),
     (
       'Reset the training router',
@@ -122,7 +122,7 @@ class GuidedSetupData {
     ),
     (
       'Configure LAN, DHCP and Wi-Fi',
-      'Use 192.168.N.10 for the router, /24 mask, and DHCP range .1 to .3. Configure a training SSID and Wi-Fi password. N is your station number.',
+      'Use the work-order address plan: 192.168.N.10/24 for the router and the assigned DHCP range. Configure the training SSID, approved security mode and Wi-Fi password. N is the station number.',
     ),
     (
       'Refresh the Ethernet adapter',
@@ -142,7 +142,7 @@ class GuidedSetupData {
     ),
     (
       'Test both directions',
-      'Select each computer and ping both peers. The lab pre-allows ICMP echo on its private network. A firewall can otherwise block ping even when addressing is correct.',
+      'Select each computer and test the loopback address, its own address, the default gateway and both peers. Record packet loss and isolate any failure before continuing.',
     ),
     (
       'Prepare discovery settings',
@@ -162,15 +162,15 @@ class GuidedSetupData {
     ),
     (
       'Worksheet firewall exercise',
-      'On each simulated device, turn off Private and Public firewall profiles as requested by the worksheet. This isolated exercise does not alter your real computer. Outside the exercise, keep firewall enabled and allow only required traffic.',
+      'Review the firewall profiles in this isolated simulator. Keep protection enabled and use the approved rules for the services required by the work order.',
     ),
     (
       'Configure allowed features',
-      'For each device, check Private and Public for the six worksheet features. These rules do not filter traffic while the firewall is off. Public remote-management exposure is not a recommended deployment configuration.',
+      'Allow only the required private-network discovery, file and printer sharing, and authorized management features. Do not expose remote-management services on a public profile.',
     ),
     (
       'Advanced sharing settings',
-      'On each device, enable discovery, file/printer sharing and public-folder sharing; turn off password-protected sharing for this isolated worksheet. Then verify the lab and review the protected deployment configuration.',
+      'Enable the work-order discovery and sharing options on the private training network. Keep password-protected sharing unless the work order explicitly requires an isolated exception. Retest, inspect and document the final network.',
     ),
   ];
   static List<(String, String)> steps(SetupLabKind kind) => switch (kind) {

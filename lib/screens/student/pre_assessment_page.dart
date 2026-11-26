@@ -99,7 +99,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Assignment not saved. Reconnect and try again; your answers are still here.',
+              'Pre-assessment not saved. Reconnect and try again; your answers are still here.',
             ),
           ),
         );
@@ -118,9 +118,9 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
           color: Color(0xFF2457C5),
           size: 36,
         ),
-        title: const Text('Submit your pre-assignment?'),
+        title: const Text('Submit your pre-assessment?'),
         content: const Text(
-          'Your answers will be saved as your diagnostic result. Review them now because this assignment can only be submitted once.',
+          'Your answers will be saved as your diagnostic result. Review them now because this pre-assessment can only be submitted once.',
           textAlign: TextAlign.center,
         ),
         actions: [
@@ -130,24 +130,12 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Submit assignment'),
+            child: const Text('Submit pre-assessment'),
           ),
         ],
       ),
     );
     if (confirmed == true) await _submit();
-  }
-
-  String _answerText(int index) {
-    final answers = _result?['answers'];
-    final options = PreAssessmentData.questions[index].options;
-    if (answers is! List || index >= answers.length || answers[index] is! int) {
-      return 'Not recorded';
-    }
-    final answer = answers[index] as int;
-    return answer >= 0 && answer < options.length
-        ? options[answer]
-        : 'Not recorded';
   }
 
   @override
@@ -161,7 +149,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
           title: Text(
             access.connectionState == ConnectionState.waiting
                 ? 'Modules'
-                : 'Pre-assignment',
+                : 'Pre-assessment',
           ),
           backgroundColor: const Color(0xFF2457C5),
           foregroundColor: Colors.white,
@@ -313,7 +301,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
           onPressed: () => setState(() => _started = true),
           icon: const Icon(Icons.play_arrow_rounded),
           label: const Text(
-            'Start pre-assignment',
+            'Start pre-assessment',
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ),
@@ -508,14 +496,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
   Widget _results() {
     final score = (_result!['score'] as num?)?.toInt() ?? 0;
     final total = (_result!['totalQuestions'] as num?)?.toInt() ?? 12;
-    final percentage = total == 0 ? 0 : (score / total * 100).round();
-    final performance = percentage >= 85
-        ? 'Strong foundation'
-        : percentage >= 60
-        ? 'Developing foundation'
-        : 'Ready to build your foundation';
-    final groups =
-        _result!['competencyScores'] as Map<String, dynamic>? ?? const {};
+    final progress = total > 0 ? score / total : 0.0;
     return ListView(
       key: const ValueKey('result'),
       padding: const EdgeInsets.all(20),
@@ -536,7 +517,7 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                   children: [
                     SizedBox.expand(
                       child: CircularProgressIndicator(
-                        value: score / total,
+                        value: progress,
                         strokeWidth: 13,
                         backgroundColor: Colors.white24,
                         color: const Color(0xFF70D99B),
@@ -553,35 +534,23 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                   ],
                 ),
               );
-              final copy = Column(
+              const copy = Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _Tag('ASSIGNMENT SAVED'),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Your learning path is ready',
+                  _Tag('PRE-ASSESSMENT SAVED'),
+                  SizedBox(height: 12),
+                  Text(
+                    'Pre-assessment complete',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 25,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(height: 9),
+                  SizedBox(height: 9),
                   Text(
-                    '$performance · $percentage%',
-                    style: const TextStyle(
-                      color: Color(0xFF8EF0B3),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Use the review below to see your strengths and the topics to focus on.',
-                    style: const TextStyle(
-                      color: Color(0xFFD8E6FF),
-                      height: 1.45,
-                    ),
+                    'Your score has been recorded. Continue to your learning modules.',
+                    style: TextStyle(color: Color(0xFFD8E6FF), height: 1.45),
                   ),
                 ],
               );
@@ -591,107 +560,13 @@ class _PreAssessmentPageState extends State<PreAssessmentPage> {
                       children: [
                         meter,
                         const SizedBox(width: 30),
-                        Expanded(child: copy),
+                        const Expanded(child: copy),
                       ],
                     );
             },
           ),
         ),
         const SizedBox(height: 18),
-        Text(
-          'Competency overview',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 10),
-        Wrap(
-          spacing: 10,
-          runSpacing: 10,
-          children: [
-            _Competency(
-              'COC 1',
-              'Computer systems servicing',
-              (groups['COC1'] as num?)?.toInt() ?? 0,
-              Icons.computer_outlined,
-            ),
-            _Competency(
-              'COC 2',
-              'Network fundamentals',
-              (groups['COC2'] as num?)?.toInt() ?? 0,
-              Icons.lan_outlined,
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Text(
-          'Your submitted responses',
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 10),
-        Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFEAF1FF),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.privacy_tip_outlined, color: Color(0xFF2457C5)),
-              SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'The answer key is hidden to keep the diagnostic fair for every learner.',
-                  style: TextStyle(color: Color(0xFF173D86), height: 1.35),
-                ),
-              ),
-            ],
-          ),
-        ),
-        for (final i in _order.questions)
-          Card(
-            elevation: 0,
-            margin: const EdgeInsets.only(bottom: 8),
-            child: ExpansionTile(
-              leading: CircleAvatar(
-                backgroundColor: const Color(0xFFEAF1FF),
-                child: Text(
-                  '${_order.questions.indexOf(i) + 1}',
-                  style: const TextStyle(
-                    color: Color(0xFF2457C5),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-              title: Text(
-                PreAssessmentData.questions[i].prompt,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Your answer: ${_answerText(i)}',
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        const SizedBox(height: 10),
         SizedBox(
           height: 54,
           child: FilledButton.icon(
@@ -847,48 +722,6 @@ class _Option extends StatelessWidget {
   );
 }
 
-class _Competency extends StatelessWidget {
-  final String title, subtitle;
-  final int score;
-  final IconData icon;
-  const _Competency(this.title, this.subtitle, this.score, this.icon);
-  @override
-  Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minWidth: 250, maxWidth: 460),
-    padding: const EdgeInsets.all(17),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFDCE5F5)),
-    ),
-    child: Row(
-      children: [
-        CircleAvatar(
-          backgroundColor: const Color(0xFFEAF1FF),
-          child: Icon(icon, color: const Color(0xFF2457C5)),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-              Text(
-                subtitle,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF66758D)),
-              ),
-            ],
-          ),
-        ),
-        Text(
-          '$score/6',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-        ),
-      ],
-    ),
-  );
-}
-
 class _ErrorState extends StatelessWidget {
   final VoidCallback onRetry;
   const _ErrorState({required this.onRetry});
@@ -906,7 +739,7 @@ class _ErrorState extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           const Text(
-            'Unable to open the pre-assignment',
+            'Unable to open the pre-assessment',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
           ),

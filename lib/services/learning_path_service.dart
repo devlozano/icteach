@@ -6,6 +6,100 @@ import 'package:firebase_auth/firebase_auth.dart';
 class LearningPathService {
   static String key(String type, String id) => '${type}_$id';
 
+  static Stream<Map<String, Map<String, dynamic>>> watchPaths(String classId) {
+    return FirebaseFirestore.instance
+        .collection('classes')
+        .doc(classId)
+        .collection('learning_paths')
+        .snapshots()
+        .map(
+          (snapshot) => {
+            for (final document in snapshot.docs) document.id: document.data(),
+          },
+        );
+  }
+
+  static Stream<Map<String, String>> watchModuleTitles(String classId) {
+    return FirebaseFirestore.instance
+        .collection('classes')
+        .doc(classId)
+        .collection('modules')
+        .snapshots()
+        .map(
+          (snapshot) => {
+            for (final document in snapshot.docs)
+              document.id:
+                  document.data()['title']?.toString() ?? 'Untitled module',
+          },
+        );
+  }
+
+  static Future<void> setQuizModule({
+    required String classId,
+    required String quizId,
+    required String? moduleId,
+    FirebaseFirestore? firestore,
+    String? userId,
+  }) async {
+    final db = firestore ?? FirebaseFirestore.instance;
+    await requireContentManagement(
+      classId,
+      'learning paths',
+      firestore: db,
+      userId: userId,
+    );
+    final root = db.collection('classes').doc(classId);
+    if (moduleId != null) {
+      final module = await root.collection('modules').doc(moduleId).get();
+      if (!module.exists) throw StateError('This module is unavailable.');
+      if (module.data()?['isPublished'] != true) {
+        throw StateError('Publish the module before linking quizzes.');
+      }
+    }
+
+    final linkedSimulations = await root
+        .collection('learning_paths')
+        .where('quizId', isEqualTo: quizId)
+        .get();
+    final batch = db.batch();
+    batch.set(
+      root.collection('learning_paths').doc(key('quiz', quizId)),
+      {'moduleId': moduleId, 'updatedAt': FieldValue.serverTimestamp()},
+      SetOptions(merge: true),
+    );
+    if (moduleId != null) {
+      for (final simulation in linkedSimulations.docs) {
+        batch.set(simulation.reference, {
+          'moduleId': moduleId,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
+    }
+    await batch.commit();
+  }
+
+  static String contentError(Object error) => error is StateError
+      ? error.message.toString()
+      : 'This action could not be completed. Please try again.';
+
+  static Future<void> requireContentManagement(
+    String classId,
+    String content, {
+    FirebaseFirestore? firestore,
+    String? userId,
+  }) async {
+    final data = await requireParticipant(
+      classId,
+      firestore: firestore,
+      userId: userId,
+    );
+    if (data['status'] == 'archived') {
+      throw StateError(
+        'This class is archived. You cannot upload or change $content.',
+      );
+    }
+  }
+
   /// Returns true when this student already has a saved scored attempt.
   ///
   /// Older per-student quiz results did not always include [classId]. Their

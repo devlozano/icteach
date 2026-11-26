@@ -209,7 +209,8 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
     }
 
     if (widget.simulation.type != 'identification' &&
-        widget.simulation.type != 'networking' &&
+        (widget.simulation.type != 'networking' ||
+            widget.simulation.id == 'sim_coc2_topology') &&
         item.step > 0 &&
         item.step != _nextAssemblyStep) {
       _errorLog.add(
@@ -406,6 +407,11 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
           'ESD-safe CPU holder',
           'Socket retention arm',
           'The socket is released and the CPU is lifted straight up without touching contacts or pins.',
+        ),
+        'disassembly_cmos' => (
+          'ESD-safe hands + parts tray',
+          'CMOS holder latch and battery orientation',
+          'The latch is released with power isolated, the positive-face orientation is recorded, and the CR2032 is stored safely.',
         ),
         'disassembly_motherboard' => (
           'Phillips #2 + screw organizer',
@@ -1262,7 +1268,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
         borderRadius: BorderRadius.circular(18),
         image: const DecorationImage(
           image: AssetImage(
-            'assets/simulations/pc-case-workbench-realistic.png',
+            'assets/simulations/pc-case-workbench-ssd-side-v2.png',
           ),
           fit: BoxFit.cover,
           opacity: .22,
@@ -1580,15 +1586,17 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                     ),
                   ),
               ] else
-                const Icon(
-                  Icons.task_alt_rounded,
+                Icon(
+                  widget.simulation.id == 'sim_coc2_topology'
+                      ? Icons.hub_outlined
+                      : Icons.task_alt_rounded,
                   size: 18,
                   color: Color(0xFF67E8F9),
                 ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${_placements.length}/${_requiredItems.length} ${widget.simulation.type == 'disassembly' ? 'removed' : 'placed'}  ·  $_mistakes errors  ·  $_formattedElapsed',
+                  '${widget.simulation.id == 'sim_coc2_topology' ? 'LAN topology  ·  ' : ''}${_placements.length}/${_requiredItems.length} ${widget.simulation.type == 'disassembly' ? 'removed' : 'placed'}  ·  $_mistakes errors  ·  $_formattedElapsed',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1703,7 +1711,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
               children: [
                 Expanded(
                   child: Text(
-                    'Parts  ${page + 1}/$pages',
+                    '${widget.simulation.id == 'sim_coc2_topology' ? 'Network devices' : 'Parts'}  ${page + 1}/$pages',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
@@ -1751,7 +1759,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
                   .toList(),
               isExpanded: true,
               decoration: const InputDecoration(
-                hintText: 'Select tool',
+                hintText: 'Select equipment or control',
                 hintStyle: TextStyle(fontSize: 11),
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 8,
@@ -2152,7 +2160,7 @@ class _DragDropSimulationState extends State<DragDropSimulation> {
   String get _workbenchImage {
     switch (widget.simulation.id) {
       case 'sim_coc1_assembly':
-        return 'assets/simulations/pc-case-workbench-realistic.png';
+        return 'assets/simulations/pc-case-workbench-ssd-side-v2.png';
       case 'sim_coc1_disassembly':
         return 'assets/simulations/maintenance-workbench-matched.png';
       case 'sim_coc1_cabling':

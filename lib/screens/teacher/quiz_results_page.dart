@@ -21,6 +21,56 @@ class TeacherQuizResultsPage extends StatefulWidget {
 class _TeacherQuizResultsPageState extends State<TeacherQuizResultsPage> {
   final QuizService _quizService = QuizService();
 
+  Future<void> _allowRetry(QuizResult result) async {
+    final controller = TextEditingController();
+    final feedback = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Feedback before retry'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          minLines: 3,
+          maxLines: 5,
+          maxLength: 1000,
+          decoration: const InputDecoration(
+            labelText: 'What should the student review?',
+            hintText: 'Explain the skill or lesson that needs improvement.',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) Navigator.pop(context, value);
+            },
+            child: const Text('Allow retry'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (feedback == null || !mounted) return;
+    try {
+      await _quizService.allowQuizRetry(result, feedback);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Retry opened for ${result.studentName}.')),
+      );
+      setState(() {});
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not open retry: $error')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,7 +230,10 @@ class _TeacherQuizResultsPageState extends State<TeacherQuizResultsPage> {
                   itemCount: results.length,
                   itemBuilder: (context, index) {
                     final result = results[index];
-                    return _ResultCard(result: result);
+                    return _ResultCard(
+                      result: result,
+                      onAllowRetry: () => _allowRetry(result),
+                    );
                   },
                 ),
               ),
@@ -232,8 +285,9 @@ class _StatItem extends StatelessWidget {
 // Result Card
 class _ResultCard extends StatelessWidget {
   final QuizResult result;
+  final VoidCallback onAllowRetry;
 
-  const _ResultCard({required this.result});
+  const _ResultCard({required this.result, required this.onAllowRetry});
 
   @override
   Widget build(BuildContext context) {
@@ -248,95 +302,124 @@ class _ResultCard extends StatelessWidget {
           width: 1.5,
         ),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            backgroundColor: result.isPassed
-                ? Colors.green.shade100
-                : Colors.red.shade100,
-            child: Text(
-              result.studentName.isNotEmpty
-                  ? result.studentName[0].toUpperCase()
-                  : '?',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: result.isPassed
-                    ? Colors.green.shade700
-                    : Colors.red.shade700,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  result.studentName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: result.isPassed
+                    ? Colors.green.shade100
+                    : Colors.red.shade100,
+                child: Text(
+                  result.studentName.isNotEmpty
+                      ? result.studentName[0].toUpperCase()
+                      : '?',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: result.isPassed
+                        ? Colors.green.shade700
+                        : Colors.red.shade700,
+                  ),
                 ),
-                Row(
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Score: ${result.score}/${result.totalPoints}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey.shade600,
-                      ),
+                      result.studentName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${result.percentage.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: result.isPassed
-                              ? Colors.green.shade700
-                              : Colors.red.shade700,
+                    Row(
+                      children: [
+                        Text(
+                          'Score: ${result.score}/${result.totalPoints}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade600,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '⏱ ${_formatTime(result.timeSpent)}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade500,
-                      ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${result.percentage.toStringAsFixed(0)}%',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: result.isPassed
+                                  ? Colors.green.shade700
+                                  : Colors.red.shade700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          '⏱ ${_formatTime(result.timeSpent)}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: result.isPassed
+                      ? Colors.green.shade100
+                      : Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  result.isPassed ? 'Passed' : 'Failed',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: result.isPassed
+                        ? Colors.green.shade800
+                        : Colors.red.shade800,
+                  ),
+                ),
+              ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: result.isPassed
-                  ? Colors.green.shade100
-                  : Colors.red.shade100,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              result.isPassed ? 'Passed' : 'Failed',
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                color: result.isPassed
-                    ? Colors.green.shade800
-                    : Colors.red.shade800,
+          if (!result.isPassed) ...[
+            const SizedBox(height: 10),
+            if (result.teacherFeedback.isNotEmpty)
+              Text(
+                'Feedback: ${result.teacherFeedback}',
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              ),
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: OutlinedButton.icon(
+                onPressed: result.retryAllowed ? null : onAllowRetry,
+                icon: Icon(result.retryAllowed ? Icons.schedule : Icons.replay),
+                label: Text(
+                  result.retryAllowed
+                      ? 'Retry opened'
+                      : 'Give feedback & allow retry',
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

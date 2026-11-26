@@ -187,7 +187,7 @@ class _LearningPathManagerState extends State<LearningPathManager> {
     appBar: AppBar(
       backgroundColor: const Color(0xFF172554),
       foregroundColor: Colors.white,
-      title: const Text('Lesson & assignment links'),
+      title: const Text('Simulation assignment links'),
     ),
     body: FutureBuilder<bool>(
       future: _staff,
@@ -245,77 +245,6 @@ class _LearningPathManagerState extends State<LearningPathManager> {
               ),
               const SizedBox(height: 12),
             ],
-            _PathSection(
-              title: 'Interactive quiz lesson references',
-              icon: Icons.touch_app_outlined,
-              count: 4,
-              children: [
-                for (final quiz in InteractiveQuizzes.forClass(widget.classId))
-                  _PathItem(
-                    icon: Icons.quiz_outlined,
-                    title: quiz.title,
-                    subtitle: 'Portrait procedure quiz',
-                    actionLabel: 'Assign module',
-                    onTap: () => _edit('quiz', quiz.id, quiz.title),
-                  ),
-              ],
-            ),
-            StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('classes')
-                  .doc(widget.classId)
-                  .collection('quizzes')
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const _PathNotice(
-                    icon: Icons.cloud_off_outlined,
-                    text: 'Unable to load quizzes. Reopen this page to retry.',
-                  );
-                }
-                if (!snapshot.hasData) {
-                  return const _PathNotice(
-                    icon: Icons.hourglass_top_rounded,
-                    text: 'Loading quizzes…',
-                    loading: true,
-                  );
-                }
-                final quizzes = snapshot.data!.docs
-                    .where(
-                      (q) =>
-                          InteractiveQuizzes.activity(widget.classId, q.id) ==
-                          null,
-                    )
-                    .toList();
-                return _PathSection(
-                  title: 'Quiz lesson references',
-                  icon: Icons.quiz_outlined,
-                  count: quizzes.length,
-                  children: quizzes.isEmpty
-                      ? const [
-                          _PathNotice(
-                            icon: Icons.quiz_outlined,
-                            text: 'Create a quiz to add a lesson reference.',
-                          ),
-                        ]
-                      : [
-                          for (final quiz in quizzes)
-                            _PathItem(
-                              icon: Icons.menu_book_outlined,
-                              title: quiz.data()['title'] ?? quiz.id,
-                              subtitle:
-                                  'Required lesson before students can take this quiz',
-                              actionLabel: 'Assign module',
-                              onTap: () => _edit(
-                                'quiz',
-                                quiz.id,
-                                quiz.data()['title'] ?? quiz.id,
-                              ),
-                            ),
-                        ],
-                );
-              },
-            ),
             const SizedBox(height: 16),
           ],
         );
@@ -543,37 +472,6 @@ class _PathItem extends StatelessWidget {
           ),
         ],
       ),
-    ),
-  );
-}
-
-class _PathNotice extends StatelessWidget {
-  final IconData icon;
-  final String text;
-  final bool loading;
-  const _PathNotice({
-    required this.icon,
-    required this.text,
-    this.loading = false,
-  });
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.all(18),
-    child: Row(
-      children: [
-        if (loading)
-          const SizedBox.square(
-            dimension: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        else
-          Icon(icon, color: const Color(0xFF64748B)),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(text, style: const TextStyle(color: Color(0xFF64748B))),
-        ),
-      ],
     ),
   );
 }

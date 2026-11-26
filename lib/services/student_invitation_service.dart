@@ -41,16 +41,30 @@ class StudentInvitationService {
 
     final address = email.trim().toLowerCase();
     final first = firstName.trim();
+    final middle = middleName.trim();
     final last = lastName.trim();
+    final ext = extension.trim();
     if (!_emailPattern.hasMatch(address) || address.length > 254) {
       throw const StudentInvitationException(
         'Check this student email address.',
         stopBatch: false,
       );
     }
-    if (first.length > 80 || last.length > 80) {
+    if (first.isEmpty || last.isEmpty) {
+      throw const StudentInvitationException(
+        'First Name and Suffix are required.',
+        stopBatch: false,
+      );
+    }
+    if (first.length > 80 || middle.length > 80 || last.length > 80) {
       throw const StudentInvitationException(
         'Student names can contain at most 80 characters.',
+        stopBatch: false,
+      );
+    }
+    if (ext.length > 30) {
+      throw const StudentInvitationException(
+        'Extension can contain at most 30 characters.',
         stopBatch: false,
       );
     }
@@ -138,14 +152,22 @@ class StudentInvitationService {
     }
 
     final storedFirst = stored?['firstName']?.toString().trim() ?? '';
+    final storedMiddle = stored?['middleName']?.toString().trim() ?? '';
     final storedLast = stored?['lastName']?.toString().trim() ?? '';
-    final resolvedFirst = stored == null ? first : storedFirst;
-    final resolvedLast = stored == null ? last : storedLast;
+    final storedExtension = stored?['extension']?.toString().trim() ?? '';
+    final resolvedFirst = storedFirst.isNotEmpty ? storedFirst : first;
+    final resolvedMiddle = storedMiddle.isNotEmpty ? storedMiddle : middle;
+    final resolvedLast = storedLast.isNotEmpty ? storedLast : last;
+    final resolvedExtension = storedExtension.isNotEmpty
+        ? storedExtension
+        : ext;
     final storedName = stored?['name']?.toString().trim() ?? '';
     final storedDisplayName = stored?['displayName']?.toString().trim() ?? '';
     final enteredName = [
       resolvedFirst,
+      resolvedMiddle,
       resolvedLast,
+      resolvedExtension,
     ].where((part) => part.isNotEmpty).join(' ');
     final displayName = storedName.isNotEmpty
         ? storedName
@@ -161,7 +183,9 @@ class StudentInvitationService {
       'email': address,
       'role': 'student',
       'firstName': resolvedFirst,
+      'middleName': resolvedMiddle,
       'lastName': resolvedLast,
+      'extension': resolvedExtension,
       'name': displayName,
       'displayName': displayName,
       'invitationStatus': 'pending',

@@ -83,9 +83,11 @@ void main() {
     expect(PcBuildProcedure.quarterTurns('ram'), 1);
     expect(PcBuildProcedure.quarterTurns('ssd'), 1);
     expect(PcBuildProcedure.quarterTurns('gpu'), 0);
+    expect(PcBuildProcedure.quarterTurns('cmos'), 0);
     final ram = PcBuildProcedure.rects['ram']!;
     final ssd = PcBuildProcedure.rects['ssd']!;
     final gpu = PcBuildProcedure.rects['gpu']!;
+    final cmos = PcBuildProcedure.rects['cmos']!;
     double screenAspect(Rect rect) => rect.width * (1672 / 941) / rect.height;
     expect(ram.width, inInclusiveRange(.009, .012));
     expect(PcBuildProcedure.targetRect('ram').contains(ram.center), isTrue);
@@ -94,9 +96,10 @@ void main() {
     expect(ram.center.dx, closeTo(.456, .002));
     expect(ram.top, closeTo(.211, .002));
     expect(ram.bottom, closeTo(.474, .002));
-    expect(ssd.center.dx, closeTo(.653, .002));
+    expect(ssd.center.dx, closeTo(.63175, .002));
     expect(gpu.left, closeTo(.245, .001));
     expect(gpu.bottom, lessThanOrEqualTo(.72));
+    expect(cmos.center.dx, closeTo(.4325, .001));
     for (final rect in PcBuildProcedure.rects.values) {
       expect(const Rect.fromLTWH(0, 0, 1, 1).contains(rect.topLeft), isTrue);
       expect(rect.right, lessThanOrEqualTo(1));
@@ -112,6 +115,11 @@ void main() {
     expect(PcBuildProcedure.fasteners['psu'], hasLength(4));
     expect(PcBuildProcedure.fasteners['ram'], isNull);
     expect(PcBuildProcedure.fasteners['cpu'], isNull);
+    expect(PcBuildProcedure.fasteners['cmos'], isNull);
+    expect(
+      PcBuildProcedure.fasteners['gpu'],
+      orderedEquals([const Offset(.226, .523), const Offset(.226, .558)]),
+    );
     expect(
       PcBuildProcedure.fasteners['motherboard']!.toSet(),
       equals({
@@ -187,6 +195,24 @@ void main() {
       orderedEquals(['sata_data_drive', 'sata_data_board']),
     );
     expect(drops.map((operation) => operation.requiredQuarterTurns), [0, 2]);
+  });
+
+  test('SSD endpoints meet the raised side tray without floating', () {
+    final ssd = PcBuildProcedure.rects['ssd']!;
+    const data = Offset(.612, .478);
+    const power = Offset(.652, .478);
+    expect(ssd.contains(data), isTrue);
+    expect(ssd.contains(power), isTrue);
+    expect(data.dy, closeTo(ssd.bottom, .02));
+    expect(power.dy, closeTo(ssd.bottom, .02));
+  });
+
+  test('CMOS installation releases the holder before seating positive-up', () {
+    final steps = PcBuildProcedure.stepsFor('cmos');
+    final placement = steps.indexWhere((step) => step.place);
+    expect(placement, PcBuildProcedure.placementOperation['cmos']);
+    expect(steps[1].label.toLowerCase(), contains('release'));
+    expect(steps[placement].label, contains('positive (+) face visible'));
   });
 
   testWidgets('system unit rotates between open side and rear panel', (
@@ -312,6 +338,11 @@ void main() {
             for (var n = 0; n < steps.length; n++) {
               final step = steps[n];
               final tray = find.byKey(ValueKey('build-tool-${item.id}'));
+              expect(
+                tray,
+                findsOneWidget,
+                reason: '${item.id} should be the active build item',
+              );
               await tester.ensureVisible(tray);
               final tool = find.byKey(
                 ValueKey('select-build-tool-${step.tool}'),

@@ -81,6 +81,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       'ram' => {'ram_upper', 'ram_lower'},
       'cpu' => {'cpu_lever', 'cpu_plate'},
       'gpu' => {'gpu_latch'},
+      'cmos' => {'cmos_latch'},
       _ => <String>{},
     };
     if (step.place && !_openedLocks.containsAll(requiredLocks)) {
@@ -183,6 +184,11 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
           step.label.toLowerCase().contains('latch') &&
           !step.place) {
         _openedLocks.add('gpu_latch');
+      }
+      if (item.id == 'cmos' &&
+          step.label.toLowerCase().contains('release') &&
+          !step.place) {
+        _openedLocks.add('cmos_latch');
       }
       if (step.result.isNotEmpty) {
         _history.add(
@@ -1055,9 +1061,24 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
   Widget _componentLayer(String id, double progress, bool installing) {
     final asset = 'assets/simulations/${PcBuildProcedure.assets[id]}';
     if (id == 'ssd') {
-      return Opacity(
-        opacity: installing ? 1 - progress : 0,
-        child: Image.asset(asset, fit: BoxFit.fill),
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(5),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x99000000),
+              blurRadius: 8,
+              offset: Offset(3, 4),
+            ),
+          ],
+        ),
+        child: Opacity(
+          opacity: installing ? progress : 1,
+          child: RotatedBox(
+            quarterTurns: PcBuildProcedure.quarterTurns(id),
+            child: Image.asset(asset, fit: BoxFit.fill),
+          ),
+        ),
       );
     }
     if (id != 'ram' && id != 'gpu') {
@@ -1140,11 +1161,11 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     'cpu_power' => const Offset(.326, .187),
     'gpu_power' => const Offset(.455, .58),
     'sata_cable' => switch (operation) {
-      1 => const Offset(.635, .315),
+      1 => const Offset(.612, .478),
       2 => const Offset(.501, .585),
       _ => null,
     },
-    'sata_power' => const Offset(.675, .315),
+    'sata_power' => const Offset(.652, .478),
     'front_panel' => switch (operation) {
       1 => const Offset(.49, .68),
       2 => const Offset(.505, .69),
@@ -1173,7 +1194,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     final start = item.id == 'front_panel'
         ? const Offset(.77, .22)
         : item.id == 'sata_cable' && operation == 2
-        ? const Offset(.635, .315)
+        ? const Offset(.612, .478)
         : const Offset(.68, .78);
     final position = Offset.lerp(
       start,
@@ -1240,7 +1261,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
       children: [
         Positioned.fill(
           child: Image.asset(
-            'assets/simulations/pc-case-workbench-realistic.png',
+            'assets/simulations/pc-case-workbench-ssd-side-v2.png',
             fit: BoxFit.fill,
           ),
         ),
@@ -1676,7 +1697,7 @@ class _BuildMechanicsPainter extends CustomPainter {
           connected('sata_data_board') ||
           (current == 'sata_cable' &&
               (operation > 1 || operation == 1 && busy)),
-      p(.635, .315),
+      p(.612, .478),
       Colors.redAccent,
       start: p(.501, .585),
       progress: current == 'sata_cable'
@@ -1696,7 +1717,7 @@ class _BuildMechanicsPainter extends CustomPainter {
       installed.contains('sata_power') ||
           connected('sata_power_drive') ||
           (current == 'sata_power' && operation == 2 && busy),
-      p(.675, .315),
+      p(.652, .478),
       Colors.orangeAccent,
       progress: current == 'sata_power' && operation == 2 && busy ? motion : 1,
       contacts: 15,

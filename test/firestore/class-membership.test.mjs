@@ -61,6 +61,36 @@ test('student leaves atomically and loses private class access', async () => {
   await assertFails(getDoc(doc(db, 'classes/class/modules/lesson')));
   await assertSucceeds(join(db).commit());
 });
+test('student can leave an archived class atomically', async () => {
+  const db = dbFor('student');
+  await assertSucceeds(join(db).commit());
+  await env.withSecurityRulesDisabled(c =>
+    updateDoc(doc(c.firestore(), 'classes/class'), {status: 'archived'}));
+
+  await assertSucceeds(writeBatch(db)
+    .update(doc(db, 'classes/class'), {enrolledStudentIds: arrayRemove('student')})
+    .delete(doc(db, 'classes/class/students/student'))
+    .delete(doc(db, 'users/student/classes/class')).commit());
+
+  assert.deepEqual(
+    (await getDoc(doc(db, 'classes/class'))).data().enrolledStudentIds,
+    [],
+  );
+  assert.equal(
+    (await getDoc(doc(db, 'users/student/classes/class'))).exists(),
+    false,
+  );
+});
+test('archived roster removal fails unless both membership documents are deleted', async () => {
+  const db = dbFor('student');
+  await assertSucceeds(join(db).commit());
+  await env.withSecurityRulesDisabled(c =>
+    updateDoc(doc(c.firestore(), 'classes/class'), {status: 'archived'}));
+
+  await assertFails(updateDoc(doc(db, 'classes/class'), {
+    enrolledStudentIds: arrayRemove('student'),
+  }));
+});
 for (const options of [{code: 'WRONG'}, {uid: 'other'}, {role: 'teacher'}, {extra: {score: 100}}]) {
   test(`invalid join is rejected atomically: ${JSON.stringify(options)}`, async () => {
     await assertFails(join(dbFor('student'), options).commit());
@@ -99,14 +129,29 @@ test('student cannot forge another user membership or nested progress', async ()
     completed: true,
   }));
 });
-test('quiz results are owner-only and immutable', async () => {
+test('quiz retry requires teacher feedback and one explicit authorization', async () => {
   await assertSucceeds(join(dbFor('student')).commit());
-  const result = {quizId: 'quiz', classId: 'class', studentId: 'student', score: 8, totalPoints: 10};
+  const result = {quizId: 'quiz', classId: 'class', studentId: 'student', studentName: 'Student',
+    score: 4, totalPoints: 10, userAnswers: [], timeSpent: 30, attemptNumber: 1, retryAllowed: false};
   await assertSucceeds(setDoc(doc(dbFor('student'), 'users/student/quiz_results/quiz'), result));
   await assertSucceeds(setDoc(doc(dbFor('student'), 'quiz_results/quiz_student'), result));
   await assertFails(updateDoc(doc(dbFor('student'), 'users/student/quiz_results/quiz'), {score: 10}));
   await assertFails(updateDoc(doc(dbFor('student'), 'quiz_results/quiz_student'), {score: 10}));
   await assertFails(setDoc(doc(dbFor('other'), 'quiz_results/quiz_student'), {...result, score: 10}));
+
+  const approval = {retryAllowed: true, teacherFeedback: 'Review the missed concepts.',
+    retryAllowedAt: serverTimestamp(), attemptNumber: 1};
+  await assertSucceeds(updateDoc(doc(dbFor('teacher'), 'users/student/quiz_results/quiz'), approval));
+  await assertSucceeds(updateDoc(doc(dbFor('teacher'), 'quiz_results/quiz_student'), approval));
+  await assertFails(updateDoc(doc(dbFor('other'), 'quiz_results/quiz_student'), approval));
+
+  const retry = {score: 8, totalPoints: 10, userAnswers: [], timeSpent: 25,
+    completedAt: serverTimestamp(), retryAllowed: false, attemptNumber: 2};
+  await assertSucceeds(updateDoc(doc(dbFor('student'), 'users/student/quiz_results/quiz'), retry));
+  await assertSucceeds(updateDoc(doc(dbFor('student'), 'quiz_results/quiz_student'), retry));
+  await assertFails(updateDoc(doc(dbFor('student'), 'quiz_results/quiz_student'), {
+    ...retry, score: 10, attemptNumber: 3,
+  }));
 });
 test('archived students keep read and practice access but cannot change graded or forum data', async () => {
   const db = dbFor('student');

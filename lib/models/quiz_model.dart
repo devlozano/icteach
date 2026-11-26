@@ -199,6 +199,9 @@ class QuizResult {
   final List<UserAnswer> userAnswers;
   final DateTime completedAt;
   final int timeSpent; // in seconds
+  final bool retryAllowed;
+  final String teacherFeedback;
+  final int attemptNumber;
 
   QuizResult({
     this.passingPercentage = 60,
@@ -211,6 +214,9 @@ class QuizResult {
     required this.userAnswers,
     required this.completedAt,
     required this.timeSpent,
+    this.retryAllowed = false,
+    this.teacherFeedback = '',
+    this.attemptNumber = 1,
   });
 
   factory QuizResult.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -231,6 +237,9 @@ class QuizResult {
       completedAt:
           (data['completedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       timeSpent: data['timeSpent'] ?? 0,
+      retryAllowed: data['retryAllowed'] == true,
+      teacherFeedback: data['teacherFeedback']?.toString() ?? '',
+      attemptNumber: (data['attemptNumber'] as num?)?.toInt() ?? 1,
     );
   }
 
@@ -257,6 +266,9 @@ class QuizResult {
           .toList(),
       'completedAt': FieldValue.serverTimestamp(),
       'timeSpent': timeSpent,
+      'retryAllowed': retryAllowed,
+      'teacherFeedback': teacherFeedback,
+      'attemptNumber': attemptNumber,
     };
   }
 

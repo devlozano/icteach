@@ -78,6 +78,10 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
     ],
     'ram': ['Release upper DIMM clip', 'Release lower DIMM clip'],
     'cpu': ['Release socket lever', 'Raise socket retention plate'],
+    'cmos': [
+      'Confirm mains power is disconnected and note the positive-face orientation',
+      'Release the CMOS battery-holder latch',
+    ],
     'motherboard': [
       'Disconnect front-panel, USB and fan headers',
       'Undo and collect all motherboard screws',
@@ -93,6 +97,7 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
   static final _rects = <String, Rect>{
     'motherboard': PcBuildProcedure.rects['motherboard']!,
     'cpu': PcBuildProcedure.rects['cpu']!,
+    'cmos': PcBuildProcedure.rects['cmos']!,
     'ram': PcBuildProcedure.rects['ram']!,
     'cooler': PcBuildProcedure.rects['cpu_fan']!,
     'gpu': PcBuildProcedure.rects['gpu']!,
@@ -102,6 +107,7 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
   static const _layers = [
     'motherboard',
     'cpu',
+    'cmos',
     'ram',
     'cooler',
     'storage',
@@ -634,7 +640,7 @@ class _PcDisassemblyWorkbenchState extends State<PcDisassemblyWorkbench>
           children: [
             Positioned.fill(
               child: Image.asset(
-                'assets/simulations/pc-case-workbench-realistic.png',
+                'assets/simulations/pc-case-workbench-ssd-side-v2.png',
                 fit: BoxFit.fill,
               ),
             ),

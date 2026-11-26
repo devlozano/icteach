@@ -60,16 +60,20 @@ class PcBuildProcedure {
     'ram': Rect.fromLTWH(.451, .211, .010, .263),
     // From the open side panel the installed card is seen edge-on.
     'gpu': Rect.fromLTWH(.245, .535, .22, .13),
-    'ssd': Rect.fromLTWH(.608, .31, .09, .202),
+    // Raised 2.5-inch carrier beside the motherboard tray. The connector edge
+    // faces down toward the cable grommet and remains visible after seating.
+    'ssd': Rect.fromLTWH(.586, .286, .0915, .205),
+    'cmos': Rect.fromLTWH(.422, .429, .021, .038),
     'psu': Rect.fromLTWH(.225, .735, .12, .213),
   };
   static const assets = <String, String>{
-    'motherboard': 'assembly-motherboard-nine-hole-v2.png',
+    'motherboard': 'assembly-motherboard-cmos-holder-v3.png',
     'cpu': 'assembly-cpu-matched.png',
     'cpu_fan': 'assembly-cooler-matched.png',
     'ram': 'assembly-ram-ddr4-matched.png',
     'gpu': 'assembly-gpu-matched.png',
     'ssd': 'assembly-ssd-matched.png',
+    'cmos': 'cmos-cr2032-v1.png',
     'psu': 'assembly-psu-matched.png',
   };
   static const installedAssets = <String, String>{
@@ -100,12 +104,14 @@ class PcBuildProcedure {
       Offset(.45, .25),
       Offset(.34, .44),
     ],
-    'gpu': [Offset(.25, .55), Offset(.25, .61)],
+    // The GPU bracket screws pass through the rear I/O bracket tabs into the
+    // top two case expansion-slot screw holes.
+    'gpu': [Offset(.226, .523), Offset(.226, .558)],
     'ssd': [
-      Offset(.622, .325),
-      Offset(.684, .495),
-      Offset(.684, .325),
-      Offset(.622, .495),
+      Offset(.598, .302),
+      Offset(.669, .474),
+      Offset(.669, .302),
+      Offset(.598, .474),
     ],
     'psu': [
       Offset(.235, .755),
@@ -121,6 +127,7 @@ class PcBuildProcedure {
     'ram' => const Offset(0, -.18),
     'gpu' => const Offset(-.15, -.04),
     'ssd' => const Offset(.14, 0),
+    'cmos' => const Offset(0, -.12),
     'psu' => const Offset(-.18, 0),
     _ => Offset.zero,
   };
@@ -131,6 +138,7 @@ class PcBuildProcedure {
     'ram' => .06,
     'gpu' => -.10,
     'ssd' => .04,
+    'cmos' => .02,
     _ => 0,
   };
   static double installStartScale(String id) => switch (id) {
@@ -147,6 +155,7 @@ class PcBuildProcedure {
     'ram': 2,
     'gpu': 2,
     'ssd': 0,
+    'cmos': 2,
     'psu': 1,
   };
   static const fitChecks = <String, List<String>>{
@@ -179,6 +188,11 @@ class PcBuildProcedure {
       'SATA connectors face the cable-routing side',
       'Drive holes align with the 2.5-inch tray holes',
       'Drive lies flat without covering another mount',
+    ],
+    'cmos': [
+      'Battery holder latch is released before insertion',
+      'CR2032 positive (+) face remains visible',
+      'Battery sits flat beneath the retaining tab',
     ],
     'psu': [
       'Fan faces the filtered bottom ventilation opening',
@@ -352,7 +366,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Remove the rear expansion-slot screws and covers',
         driver,
-        Offset(.25, .58),
+        Offset(.226, .54),
       ),
       PcBuildOperation(
         'Open the PCIe x16 retention latch',
@@ -368,12 +382,12 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Secure the card bracket to the chassis',
         driver,
-        Offset(.25, .55),
+        Offset(.226, .523),
       ),
       PcBuildOperation(
         'Secure the second expansion-slot bracket screw',
         driver,
-        Offset(.25, .61),
+        Offset(.226, .558),
       ),
       PcBuildOperation(
         'Inspect the locked PCIe latch and level card',
@@ -381,37 +395,60 @@ class PcBuildProcedure {
         Offset(.455, .51),
       ),
     ],
+    'cmos': [
+      PcBuildOperation(
+        'Locate the CR2032 holder and inspect its retaining latch',
+        inspect,
+        Offset(.4325, .448),
+      ),
+      PcBuildOperation(
+        'Release the CMOS battery-holder latch',
+        hand,
+        Offset(.443, .448),
+      ),
+      PcBuildOperation(
+        'Insert the CR2032 with the positive (+) face visible',
+        hand,
+        Offset(.4325, .448),
+        place: true,
+      ),
+      PcBuildOperation(
+        'Press the edge beneath the latch and confirm the battery is flat',
+        inspect,
+        Offset(.4325, .448),
+      ),
+    ],
     'ssd': [
       PcBuildOperation(
         'Position the 2.5-inch SATA SSD in its tray, connectors accessible',
         hand,
-        Offset(.653, .41),
+        Offset(.6335, .3885),
         place: true,
       ),
       PcBuildOperation(
         'Secure the first SSD mounting screw',
         driver,
-        Offset(.622, .325),
+        Offset(.598, .302),
       ),
       PcBuildOperation(
         'Secure the diagonal SSD mounting screw',
         driver,
-        Offset(.684, .495),
+        Offset(.669, .474),
       ),
       PcBuildOperation(
         'Secure the upper-right SSD mounting screw',
         driver,
-        Offset(.684, .325),
+        Offset(.669, .302),
       ),
       PcBuildOperation(
         'Secure the lower-left SSD mounting screw',
         driver,
-        Offset(.622, .495),
+        Offset(.598, .474),
       ),
       PcBuildOperation(
         'Check the drive cannot shift in the carrier',
         inspect,
-        Offset(.653, .41),
+        Offset(.6335, .3885),
       ),
     ],
     'psu': [
@@ -569,12 +606,12 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Inspect the narrow 7-pin L-shaped data plug',
         inspect,
-        Offset(.635, .315),
+        Offset(.612, .478),
       ),
       PcBuildOperation(
         'Seat the data cable at the SSD',
         hand,
-        Offset(.635, .315),
+        Offset(.612, .478),
         place: true,
         dropToken: 'sata_data_drive',
         requiredQuarterTurns: 0,
@@ -597,7 +634,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Inspect the wider 15-pin L-shaped SATA power housing',
         inspect,
-        Offset(.675, .315),
+        Offset(.652, .478),
       ),
       PcBuildOperation(
         'Route the SATA power branch from the PSU behind the drive tray',
@@ -607,7 +644,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Seat the SATA power connector on the SSD without twisting it',
         hand,
-        Offset(.675, .315),
+        Offset(.652, .478),
         place: true,
         dropToken: 'sata_power_drive',
         requiredQuarterTurns: 0,
@@ -615,7 +652,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Inspect both SSD connectors and keep their cables free of strain',
         inspect,
-        Offset(.655, .315),
+        Offset(.632, .478),
       ),
     ],
     'front_panel': [

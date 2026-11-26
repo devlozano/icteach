@@ -12,6 +12,8 @@ import 'screens/staff_management_page.dart';
 import 'widgets/workspace_intro.dart';
 import 'widgets/persistent_workspace.dart';
 import 'screens/staff_outcomes.dart';
+import 'screens/staff_archive_reports_page.dart';
+import 'screens/teacher/progress_tracker_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -33,10 +35,23 @@ class TrainerHomePage extends StatefulWidget {
 }
 
 class _TrainerHomePageState extends State<TrainerHomePage> {
-  int _selectedIndex = WorkspacePreferences.tab('trainer', 7);
+  int _selectedIndex = WorkspacePreferences.tab('trainer', 8);
   void _selectTab(int index) {
     setState(() => _selectedIndex = index);
     WorkspacePreferences.saveTab('trainer', index);
+  }
+
+  void _openClassReport(String classId, String className) {
+    _selectTab(3);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              ProgressTrackerPage(classId: classId, className: className),
+        ),
+      );
+    });
   }
 
   static const _webItems = [
@@ -47,8 +62,9 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
     (Icons.rate_review_outlined, 'Feedback'),
     (Icons.groups_outlined, 'Student Management'),
     (Icons.menu_book_outlined, 'Module Management'),
+    (Icons.inventory_2_outlined, 'Archives & Reports'),
   ];
-  static const _webOrder = [0, 1, 3, 4, 5, 6, 2];
+  static const _webOrder = [0, 1, 3, 7, 4, 5, 6, 2];
   Widget _webSidebar(String name, ValueChanged<int> select) =>
       AdminWorkspaceSidebar(
         role: 'Trainer',
@@ -230,10 +246,14 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
             3 => const StaffOutcomes(trainer: true),
             4 => const StaffOutcomes(trainer: true, feedback: true),
             5 => const StaffManagementPage(trainer: true, embedded: true),
-            _ => const StaffManagementPage(
+            6 => const StaffManagementPage(
               trainer: true,
               embedded: true,
               modules: true,
+            ),
+            _ => StaffArchiveReportsPage(
+              role: 'trainer',
+              onOpenClassReport: _openClassReport,
             ),
           });
         }
@@ -265,6 +285,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                         'Feedback',
                         'Students',
                         'Modules',
+                        'Archives & Reports',
                       ][_selectedIndex],
                       style: const TextStyle(
                         color: Colors.white,
@@ -314,6 +335,7 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                                     'Feedback',
                                     'Student Management',
                                     'Module Management',
+                                    'Archives & Reports',
                                   ][_selectedIndex],
                                   style: const TextStyle(
                                     color: Color(0xFF102A43),
@@ -352,6 +374,10 @@ class _TrainerHomePageState extends State<TrainerHomePage> {
                           () => const StaffManagementPage(
                             modules: true,
                             trainer: true,
+                          ),
+                          () => StaffArchiveReportsPage(
+                            role: 'trainer',
+                            onOpenClassReport: _openClassReport,
                           ),
                         ],
                       ),
@@ -1377,6 +1403,7 @@ class _TrainerDesktopNav extends StatelessWidget {
       (Icons.rate_review_outlined, 'Feedback'),
       (Icons.groups_outlined, 'Student Management'),
       (Icons.menu_book_outlined, 'Module Management'),
+      (Icons.inventory_2_outlined, 'Archives & Reports'),
     ],
     onSelected: onChanged,
     onLogout: onLogout,

@@ -55,7 +55,7 @@ class QuizService {
 
   // Create a new quiz
   Future<void> createQuiz(QuizModel quiz) async {
-    await LearningPathService.requireActive(quiz.classId);
+    await LearningPathService.requireContentManagement(quiz.classId, 'quizzes');
     if (quiz.isPublished && quiz.questions.isEmpty)
       throw StateError('Add questions before publishing a quiz.');
     final docRef = _firestore
@@ -68,7 +68,7 @@ class QuizService {
   }
 
   Future<void> updateQuiz(String classId, String quizId, QuizModel quiz) async {
-    await LearningPathService.requireActive(classId);
+    await LearningPathService.requireContentManagement(classId, 'quizzes');
     if (quiz.isPublished && quiz.questions.isEmpty)
       throw StateError('Add questions before publishing a quiz.');
     try {
@@ -87,7 +87,7 @@ class QuizService {
 
   // Delete a quiz
   Future<void> deleteQuiz(String classId, String quizId) async {
-    await LearningPathService.requireActive(classId);
+    await LearningPathService.requireContentManagement(classId, 'quizzes');
     await _firestore
         .collection('classes')
         .doc(classId)
@@ -124,7 +124,7 @@ class QuizService {
     String quizId,
     bool isPublished,
   ) async {
-    await LearningPathService.requireActive(classId);
+    await LearningPathService.requireContentManagement(classId, 'quizzes');
     if (isPublished) {
       final quiz = await getQuiz(classId, quizId);
       if (quiz == null ||
@@ -164,6 +164,52 @@ class QuizService {
     }
   }
 
+  Future<QuizResult?> getStudentQuizResult(
+    String studentId,
+    String quizId,
+  ) async {
+    final doc = await _firestore
+        .collection('users')
+        .doc(studentId)
+        .collection('quiz_results')
+        .doc(quizId)
+        .get();
+    return doc.exists ? QuizResult.fromFirestore(doc) : null;
+  }
+
+  Future<void> allowQuizRetry(QuizResult result, String feedback) async {
+    final message = feedback.trim();
+    if (result.isPassed) {
+      throw StateError('A passed quiz does not need another attempt.');
+    }
+    if (message.isEmpty) {
+      throw StateError('Add feedback before allowing another attempt.');
+    }
+    final data = {
+      'retryAllowed': true,
+      'teacherFeedback': message,
+      'retryAllowedAt': FieldValue.serverTimestamp(),
+      // Backfill older immutable results that predate retry tracking.
+      'attemptNumber': result.attemptNumber,
+    };
+    final batch = _firestore.batch();
+    batch.update(
+      _firestore
+          .collection('users')
+          .doc(result.studentId)
+          .collection('quiz_results')
+          .doc(result.quizId),
+      data,
+    );
+    batch.update(
+      _firestore
+          .collection('quiz_results')
+          .doc('${result.quizId}_${result.studentId}'),
+      data,
+    );
+    await batch.commit();
+  }
+
   // Save quiz result
   Future<void> saveQuizResult(QuizResult result) async {
     await LearningPathService.requirePrepared(
@@ -188,12 +234,31 @@ class QuizService {
       final previous = await transaction.get(studentRef);
       final shared = await transaction.get(classRef);
       if (previous.exists || shared.exists) {
-        throw StateError(
-          'This quiz already has a saved result. Retakes are not allowed.',
-        );
+        if (!previous.exists || !shared.exists) {
+          throw StateError(
+            'The saved result is incomplete. Ask your teacher for help.',
+          );
+        }
+        final oldStudent = QuizResult.fromFirestore(previous);
+        final oldShared = QuizResult.fromFirestore(shared);
+        if (oldStudent.isPassed ||
+            oldShared.isPassed ||
+            !oldStudent.retryAllowed ||
+            !oldShared.retryAllowed) {
+          throw StateError('Your teacher has not opened another attempt yet.');
+        }
+        final retry = {
+          ...result.toFirestore(),
+          'retryAllowed': false,
+          'teacherFeedback': oldStudent.teacherFeedback,
+          'attemptNumber': oldStudent.attemptNumber + 1,
+        };
+        transaction.update(studentRef, retry);
+        transaction.update(classRef, retry);
+      } else {
+        transaction.set(studentRef, result.toFirestore());
+        transaction.set(classRef, result.toFirestore());
       }
-      transaction.set(studentRef, result.toFirestore());
-      transaction.set(classRef, result.toFirestore());
       transaction.set(_firestore.collection('activity_events').doc(), {
         'classId': result.classId,
         'studentId': result.studentId,

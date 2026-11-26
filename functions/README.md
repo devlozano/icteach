@@ -28,7 +28,7 @@ The EmailJS template requires `{{to_email}}`, `{{student_name}}`, and `{{setup_l
 
 ## Teacher Gmail CSV uploads
 
-Teacher > Student Management > class roster > **Upload Gmail CSV** accepts CSV UTF-8 files up to 1 MB and 100 student rows. Use `Gmail,First Name,Last Name`; names are optional and `Email` is an accepted header. A one-column list is supported. No LRN or student password is required. The template contains headers only.
+Teacher > Student Management > class roster > **Upload Gmail CSV** accepts CSV UTF-8 files up to 1 MB and 100 student rows. Use `Gmail,First Name,Middle Name,Suffix,Extension`; Gmail, First Name and Suffix are required. Middle Name and Extension are optional, and `Email` is accepted in place of `Gmail`. No LRN or student password is required. The template contains headers only.
 
 The teacher reviews all validated addresses before sending. Duplicate addresses in one file are removed case-insensitively. Invitations are sequential, with per-address results and stop/retry controls; successful rows are not retried in the same upload. Global service/authentication failures stop the batch and leave remaining students pending. A timeout is unconfirmed delivery, not a claim that no email was sent.
 

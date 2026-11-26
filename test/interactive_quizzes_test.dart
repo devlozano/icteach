@@ -61,8 +61,9 @@ void main() {
 
       for (final item in activity.items.where((i) => i.isRequired)) {
         final decision = ServiceDecision.bySlot[item.correctSlot];
-        if (decision != null)
+        if (decision != null) {
           await press('service-choice-${decision.correctIndex}');
+        }
         final actions = SimulationStepDetail.forItem(activity, item).actions;
         for (var i = 0; i < actions.length; i++) {
           if (activity.id == 'sim_coc2_ipconfig' && i == 1) {
@@ -77,6 +78,23 @@ void main() {
             await tester.enterText(
               find.byKey(const ValueKey('ipv4-mask')),
               '255.255.255.0',
+            );
+            tester.testTextInput.hide();
+          }
+          if (activity.id == 'sim_coc2_ipconfig' &&
+              i == 2 &&
+              item.id != 'ip_router') {
+            await tester.ensureVisible(
+              find.byKey(const ValueKey('ipv4-gateway')),
+            );
+            await tester.enterText(
+              find.byKey(const ValueKey('ipv4-gateway')),
+              '192.168.1.254',
+            );
+            await tester.ensureVisible(find.byKey(const ValueKey('ipv4-dns')));
+            await tester.enterText(
+              find.byKey(const ValueKey('ipv4-dns')),
+              '192.168.1.1',
             );
             tester.testTextInput.hide();
           }

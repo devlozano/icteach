@@ -21,7 +21,7 @@ class InteractiveQuizzes {
         classId: classId,
         title: item.title,
         description:
-            '${item.description} Interactive procedure quiz in portrait layout.',
+            '${item.description} TESDA Training Regulations-aligned practical procedure quiz in portrait layout.',
         questions: const [],
         timeLimit: 0,
         totalPoints: item.items.length,

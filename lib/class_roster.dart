@@ -92,62 +92,315 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
   Future<void> _inviteStudent() async {
     final email = TextEditingController();
     final firstName = TextEditingController();
-    final lastName = TextEditingController();
+    final middleName = TextEditingController();
+    final suffix = TextEditingController();
+    final extension = TextEditingController();
     final formKey = GlobalKey<FormState>();
+    String? requiredName(String? value, String label) {
+      final text = value?.trim() ?? '';
+      if (text.isEmpty) return '$label is required.';
+      if (text.length > 80) return '$label must be 80 characters or fewer.';
+      return null;
+    }
+
     final send = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Invite student by email'),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'Student email'),
-                validator: (value) =>
-                    RegExp(
-                      r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
-                    ).hasMatch(value?.trim() ?? '')
-                    ? null
-                    : 'Enter a valid email address.',
+      builder: (dialogContext) {
+        const primary = Color(0xFF087EA4);
+        const navy = Color(0xFF12304A);
+
+        InputDecoration fieldDecoration({
+          required String label,
+          required IconData icon,
+          bool requiredField = false,
+          String? hint,
+        }) {
+          return InputDecoration(
+            label: Text.rich(
+              TextSpan(
+                text: label,
+                children: requiredField
+                    ? const [
+                        TextSpan(
+                          text: ' *',
+                          style: TextStyle(color: Color(0xFFD14343)),
+                        ),
+                      ]
+                    : const [],
               ),
-              TextFormField(
-                controller: firstName,
-                decoration: const InputDecoration(
-                  labelText: 'First name (optional)',
+            ),
+            hintText: hint,
+            prefixIcon: Icon(icon, size: 21),
+            filled: true,
+            fillColor: const Color(0xFFF5F8FB),
+            counterText: '',
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFD7E1EA)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFFD7E1EA)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: primary, width: 1.8),
+            ),
+          );
+        }
+
+        return Dialog(
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 18,
+            vertical: 24,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 620, maxHeight: 760),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(24, 20, 12, 20),
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [navy, primary],
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.person_add_alt_1_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Invite student by email',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            SizedBox(height: 3),
+                            Text(
+                              'Add a student and send their account setup link.',
+                              style: TextStyle(
+                                color: Color(0xFFDCEFF5),
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Close',
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              TextFormField(
-                controller: lastName,
-                decoration: const InputDecoration(
-                  labelText: 'Last name (optional)',
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(24, 22, 24, 16),
+                    child: Form(
+                      key: formKey,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF7FB),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  color: primary,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    'Fields marked with * are required. Check the email carefully before sending.',
+                                    style: TextStyle(
+                                      color: Color(0xFF285166),
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Account email',
+                            style: TextStyle(
+                              color: navy,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: email,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            autofillHints: const [AutofillHints.email],
+                            decoration: fieldDecoration(
+                              label: 'Student email',
+                              icon: Icons.alternate_email_rounded,
+                              requiredField: true,
+                              hint: 'student@gmail.com',
+                            ),
+                            validator: (value) =>
+                                RegExp(
+                                  r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
+                                ).hasMatch(value?.trim() ?? '')
+                                ? null
+                                : 'Enter a valid email address.',
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Student information',
+                            style: TextStyle(
+                              color: navy,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: firstName,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            maxLength: 80,
+                            decoration: fieldDecoration(
+                              label: 'First Name',
+                              icon: Icons.badge_outlined,
+                              requiredField: true,
+                            ),
+                            validator: (value) =>
+                                requiredName(value, 'First Name'),
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: middleName,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            maxLength: 80,
+                            decoration: fieldDecoration(
+                              label: 'Middle name',
+                              icon: Icons.short_text_rounded,
+                              hint: 'Optional',
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: suffix,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.next,
+                            maxLength: 80,
+                            decoration: fieldDecoration(
+                              label: 'Suffix',
+                              icon: Icons.account_box_outlined,
+                              requiredField: true,
+                            ),
+                            validator: (value) => requiredName(value, 'Suffix'),
+                          ),
+                          const SizedBox(height: 14),
+                          TextFormField(
+                            controller: extension,
+                            textCapitalization: TextCapitalization.words,
+                            textInputAction: TextInputAction.done,
+                            maxLength: 30,
+                            decoration: fieldDecoration(
+                              label: 'Extension',
+                              icon: Icons.more_horiz_rounded,
+                              hint: 'Jr., Sr., III (optional)',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 14, 24, 18),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(top: BorderSide(color: Color(0xFFE5EBF0))),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(dialogContext, false),
+                        child: const Text('Cancel'),
+                      ),
+                      const SizedBox(width: 10),
+                      FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: primary,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 14,
+                          ),
+                        ),
+                        onPressed: () {
+                          if (formKey.currentState!.validate()) {
+                            Navigator.pop(dialogContext, true);
+                          }
+                        },
+                        icon: const Icon(Icons.send_rounded, size: 18),
+                        label: const Text('Send invitation'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () {
-              if (formKey.currentState!.validate())
-                Navigator.pop(context, true);
-            },
-            child: const Text('Create and send invite'),
-          ),
-        ],
-      ),
+        );
+      },
     );
     if (send != true) {
       email.dispose();
       firstName.dispose();
-      lastName.dispose();
+      middleName.dispose();
+      suffix.dispose();
+      extension.dispose();
       return;
     }
     try {
@@ -155,9 +408,11 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
         classId: widget.classId,
         email: email.text.trim(),
         firstName: firstName.text.trim(),
-        lastName: lastName.text.trim(),
+        middleName: middleName.text.trim(),
+        lastName: suffix.text.trim(),
+        extension: extension.text.trim(),
       );
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -166,19 +421,23 @@ class _ClassRosterPageState extends State<ClassRosterPage> {
             backgroundColor: Colors.green,
           ),
         );
+      }
       await _loadRoster();
     } catch (error) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(error.toString().replaceFirst('Bad state: ', '')),
             backgroundColor: Colors.red,
           ),
         );
+      }
     } finally {
       email.dispose();
       firstName.dispose();
-      lastName.dispose();
+      middleName.dispose();
+      suffix.dispose();
+      extension.dispose();
     }
   }
 

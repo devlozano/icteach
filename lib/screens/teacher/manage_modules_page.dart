@@ -60,8 +60,8 @@ class _ManageModulesPageState extends State<ManageModulesPage> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.account_tree),
-            tooltip: 'Lesson & assignment links',
+            icon: const Icon(Icons.precision_manufacturing_outlined),
+            tooltip: 'Simulation assignment links',
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(

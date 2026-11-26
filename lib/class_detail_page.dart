@@ -371,7 +371,7 @@ class _ClassDetailPageState extends State<ClassDetailPage> {
                   const SizedBox(height: 20),
 
                   // Leave Class Button
-                  if (_userRole == 'student' && !_classArchived)
+                  if (_userRole == 'student')
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(

@@ -71,7 +71,7 @@ class PersonalSummaryService {
         ],
       ),
       SummarySection(
-        'Pre-assignment',
+        'Pre-assessment',
         ['Score', 'Total'],
         [
           for (final p in pre) [p['score'], p['totalQuestions']],

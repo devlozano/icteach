@@ -124,7 +124,7 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
       if (mounted) {
         setState(
           () => _error =
-              'Could not save the template. Create a CSV with headers: Gmail, First Name, Last Name.',
+              'Could not save the template. Create a CSV with headers: Gmail, First Name, Middle Name, Suffix, Extension.',
         );
       }
     } finally {
@@ -180,7 +180,7 @@ class _StudentEmailUploadPageState extends State<StudentEmailUploadPage> {
                     const SizedBox(height: 12),
                     if (batch == null)
                       const Text(
-                        'CSV UTF-8 | Maximum 1 MB / 100 students. Required column: Gmail (Email also works). First Name and Last Name are optional.',
+                        'CSV UTF-8 | Maximum 1 MB / 100 students. Required: Gmail, First Name and Suffix. Middle Name and Extension are optional.',
                       ),
                     const SizedBox(height: 8),
                     Text(

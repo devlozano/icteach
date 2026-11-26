@@ -8,6 +8,7 @@ import '../../models/module_model.dart';
 import '../../services/cloudinary_service.dart';
 import '../../services/module_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/learning_path_service.dart';
 
 class CreateModulePage extends StatefulWidget {
   final String classId;
@@ -244,6 +245,11 @@ class _CreateModulePageState extends State<CreateModulePage> {
     });
 
     try {
+      await LearningPathService.requireContentManagement(
+        widget.classId,
+        'modules',
+      );
+      if (!mounted) return;
       final videoUrl = _youtubeLinkController.text.trim().isEmpty
           ? null
           : _youtubeLinkController.text.trim();
@@ -340,6 +346,15 @@ class _CreateModulePageState extends State<CreateModulePage> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
+      if (e is StateError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LearningPathService.contentError(e)),
+            backgroundColor: Colors.orange.shade800,
+          ),
+        );
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

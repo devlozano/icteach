@@ -27,7 +27,7 @@ void main() {
             pickCsv: () async => (
               name: 'students.csv',
               bytes: utf8.encode(
-                'Gmail,First Name,Last Name\nlearner@gmail.com,Ana,Santos\nLEARNER@gmail.com,Ana,Santos',
+                'Gmail,First Name,Middle Name,Suffix,Extension\nlearner@gmail.com,Ana,Reyes,Santos,Jr.\nLEARNER@gmail.com,Ana,Reyes,Santos,Jr.',
               ),
             ),
             invite: (student) async {
@@ -67,7 +67,7 @@ void main() {
     );
     await tester.tap(find.text('Upload Gmail CSV'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Row 2:'), findsOneWidget);
+    expect(find.textContaining('Headers must include'), findsOneWidget);
     expect(find.textContaining('Send invitations ('), findsNothing);
     expect(calls, 0);
   });
@@ -83,7 +83,9 @@ void main() {
             className: 'Class',
             pickCsv: () async => (
               name: 'students.csv',
-              bytes: utf8.encode('Gmail\na@example.com\nb@example.com'),
+              bytes: utf8.encode(
+                'Gmail,First Name,Suffix\na@example.com,Ana,Santos\nb@example.com,Ben,Reyes',
+              ),
             ),
             invite: (_) {
               calls++;

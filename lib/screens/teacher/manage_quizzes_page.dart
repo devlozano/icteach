@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/interactive_quizzes.dart';
 import '../../models/quiz_model.dart';
 import '../../services/quiz_service.dart';
+import '../../services/learning_path_service.dart';
 import 'create_quiz_page.dart';
 import '../teacher/quiz_results_page.dart';
 
@@ -221,7 +222,7 @@ class _ManageQuizzesPageState extends State<ManageQuizzesPage> {
       } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Error deleting quiz: $e'),
+            content: Text(LearningPathService.contentError(e)),
             backgroundColor: Colors.red,
           ),
         );
@@ -258,7 +259,10 @@ class _ManageQuizzesPageState extends State<ManageQuizzesPage> {
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('❌ Error: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text(LearningPathService.contentError(e)),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
@@ -457,6 +461,8 @@ class _QuizCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+          const SizedBox(height: 10),
+          _QuizModuleStatus(quiz: quiz),
           const SizedBox(height: 12),
           // ✅ FIXED: Separate row for action buttons
           Row(
@@ -577,4 +583,98 @@ class _QuizCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _QuizModuleStatus extends StatelessWidget {
+  const _QuizModuleStatus({required this.quiz});
+
+  final QuizModel quiz;
+
+  @override
+  Widget build(BuildContext context) =>
+      StreamBuilder<Map<String, Map<String, dynamic>>>(
+        stream: LearningPathService.watchPaths(quiz.classId),
+        builder: (context, pathsSnapshot) {
+          if (!pathsSnapshot.hasData) {
+            return const _ModuleStatusChip(
+              icon: Icons.hourglass_top_rounded,
+              label: 'Checking linked module...',
+              linked: false,
+            );
+          }
+          final paths = pathsSnapshot.data!;
+          final direct = paths[LearningPathService.key('quiz', quiz.id)];
+          final activity = InteractiveQuizzes.activity(quiz.classId, quiz.id);
+          final fallback = activity == null
+              ? null
+              : paths[LearningPathService.key('simulation', activity.id)];
+          final moduleId = (direct ?? fallback)?['moduleId']?.toString();
+          if (moduleId == null || moduleId.isEmpty) {
+            return const _ModuleStatusChip(
+              icon: Icons.link_off_rounded,
+              label: 'No module linked',
+              linked: false,
+            );
+          }
+          return StreamBuilder<Map<String, String>>(
+            stream: LearningPathService.watchModuleTitles(quiz.classId),
+            builder: (context, modulesSnapshot) {
+              final title = modulesSnapshot.data?[moduleId];
+              return _ModuleStatusChip(
+                icon: Icons.menu_book_rounded,
+                label: title == null
+                    ? 'Linked module unavailable'
+                    : 'Linked module: $title',
+                linked: title != null,
+              );
+            },
+          );
+        },
+      );
+}
+
+class _ModuleStatusChip extends StatelessWidget {
+  const _ModuleStatusChip({
+    required this.icon,
+    required this.label,
+    required this.linked,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool linked;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    decoration: BoxDecoration(
+      color: linked ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(
+        color: linked ? const Color(0xFFBFDBFE) : const Color(0xFFE2E8F0),
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 16,
+          color: linked ? const Color(0xFF2563EB) : const Color(0xFF64748B),
+        ),
+        const SizedBox(width: 7),
+        Flexible(
+          child: Text(
+            label,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: linked ? const Color(0xFF1E40AF) : const Color(0xFF64748B),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

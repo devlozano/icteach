@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'summary_pdf_service.dart';
 import 'module_access_service.dart';
+import 'css_gradebook_service.dart';
+import '../utils/deped_grading.dart';
 
 enum ClassSummaryPrintPurpose { grades, progress, modules }
 
@@ -13,12 +15,29 @@ class ClassSummaryService {
     final titles = switch (purpose) {
       ClassSummaryPrintPurpose.grades => const {
         'Learning progress summary',
+        'Teacher grade summary',
+        'Trainer grade summary',
         'Trainer practical validation',
       },
       ClassSummaryPrintPurpose.progress => const {'Learning progress summary'},
       ClassSummaryPrintPurpose.modules => const {'Module access'},
     };
-    return sections.where((section) => titles.contains(section.title)).toList();
+    final selected = sections
+        .where((section) => titles.contains(section.title))
+        .toList();
+    if (selected.isNotEmpty || purpose != ClassSummaryPrintPurpose.progress) {
+      return selected;
+    }
+    // Trainer reports do not contain the teacher-wide learning-progress table.
+    // Print the trainer-owned grading and validation summaries instead of
+    // passing an empty document to the printing plugin.
+    const trainerTitles = {
+      'Trainer grade summary',
+      'Trainer practical validation',
+    };
+    return sections
+        .where((section) => trainerTitles.contains(section.title))
+        .toList();
   }
 
   static Future<List<SummarySection>> loadForPrint(
@@ -39,6 +58,7 @@ class ClassSummaryService {
     if (role == 'trainer') {
       return [
         if (byTitle['Students'] case final section?) section,
+        if (byTitle['Trainer grade summary'] case final section?) section,
         if (byTitle['Trainer practical validation'] case final section?)
           section,
       ];
@@ -46,10 +66,11 @@ class ClassSummaryService {
     if (role == 'teacher') {
       const titles = [
         'Learning progress summary',
+        'Teacher grade summary',
         'Students',
         'Module access',
         'Quiz results',
-        'Pre-assignment',
+        'Pre-assessment',
         'Simulations',
       ];
       return [
@@ -121,6 +142,53 @@ class ClassSummaryService {
     ]);
     final modules = content[0].docs;
     final access = content[1].docs.map((d) => d.data()).toList();
+    final gradeOwner = resolvedRole == 'trainer'
+        ? uid
+        : classroom['teacherId']?.toString();
+    final gradeCollection = resolvedRole == 'trainer'
+        ? 'trainer_gradebooks'
+        : 'css_gradebooks';
+    final gradeRows = <List<Object?>>[];
+    if (gradeOwner != null && gradeOwner.isNotEmpty) {
+      final book = db
+          .collection(gradeCollection)
+          .doc(gradeOwner)
+          .collection('classes')
+          .doc(classId);
+      final configuration = (await book.get()).data();
+      if (configuration != null) {
+        final profile = CssGradingProfile.values
+            .asNameMap()[configuration['profile']];
+        final year = configuration['year'];
+        if (profile != null && year is int) {
+          final records = {
+            for (final record in (await book.collection('records').get()).docs)
+              record.id: record.data(),
+          };
+          for (final studentId in ids) {
+            final termGrades = <int?>[
+              for (var term = 1; term <= 3; term++)
+                DepEdGrading.calculate(
+                  CssGradebookService.readScores(
+                    records['${studentId}_$term'] ?? const {},
+                  ),
+                  profile,
+                  year,
+                )?.grade,
+            ];
+            final finalGrade = DepEdGrading.finalGrade(termGrades);
+            gradeRows.add([
+              names[studentId],
+              ...termGrades.map((grade) => grade ?? 'Incomplete'),
+              finalGrade ?? 'Incomplete',
+              finalGrade == null
+                  ? 'Incomplete'
+                  : DepEdGrading.remark(termGrades),
+            ]);
+          }
+        }
+      }
+    }
     final simulations = <Map<String, dynamic>>[];
     final studentIds = ids.toList();
     for (var offset = 0; offset < studentIds.length; offset += 10) {
@@ -183,6 +251,20 @@ class ClassSummaryService {
         ],
       ),
       SummarySection(
+        resolvedRole == 'trainer'
+            ? 'Trainer grade summary'
+            : 'Teacher grade summary',
+        const [
+          'Student',
+          'Term 1',
+          'Term 2',
+          'Term 3',
+          'Final grade',
+          'Remark',
+        ],
+        gradeRows,
+      ),
+      SummarySection(
         'Module access',
         ['Module', 'Students', 'Accessed', 'Downloaded', 'Requests'],
         [
@@ -209,7 +291,7 @@ class ClassSummaryService {
         ],
       ),
       SummarySection(
-        'Pre-assignment',
+        'Pre-assessment',
         ['Student', 'Score', 'Total', 'Competency scores'],
         [
           for (final a in assessments)

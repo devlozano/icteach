@@ -59,15 +59,22 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
 
     // Check if student has already taken the quiz
     try {
-      final hasTaken = await _quizService.hasTakenQuiz(user.uid, quiz.id);
+      final existing = await _quizService.getStudentQuizResult(
+        user.uid,
+        quiz.id,
+      );
       if (!mounted) return;
-      if (hasTaken) {
+      if (existing != null && !existing.retryAllowed) {
         final action = await showDialog<String>(
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Already Taken'),
-            content: const Text(
-              'You have already completed this quiz. You can view your results.',
+            content: Text(
+              existing.isPassed
+                  ? 'You passed this quiz. You can review your result.'
+                  : existing.teacherFeedback.isEmpty
+                  ? 'This attempt did not pass. Wait for your teacher to review it and open a retry.'
+                  : 'Teacher feedback: ${existing.teacherFeedback}\n\nWait for your teacher to open a retry.',
             ),
             actions: [
               TextButton(
@@ -84,14 +91,12 @@ class _StudentQuizzesPageState extends State<StudentQuizzesPage> {
 
         if (action == 'view') {
           // Fetch and show existing results
-          final results = await _quizService.getStudentQuizResults(user.uid);
-          final result = results.firstWhere((r) => r.quizId == quiz.id);
           if (!mounted) return;
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => QuizResultsPage(
-                result: result,
+                result: existing,
                 questions: quiz.questions,
                 quizTitle: quiz.title,
               ),
@@ -321,15 +326,11 @@ class _QuizCardState extends State<_QuizCard> {
 
   Future<void> _checkIfTaken() async {
     try {
-      final hasTaken = await widget.quizService.hasTakenQuiz(
+      final result = await widget.quizService.getStudentQuizResult(
         widget.userId,
         widget.quiz.id,
       );
-      if (hasTaken) {
-        final results = await widget.quizService.getStudentQuizResults(
-          widget.userId,
-        );
-        final result = results.firstWhere((r) => r.quizId == widget.quiz.id);
+      if (result != null) {
         if (!mounted) return;
         setState(() {
           _hasTaken = true;
@@ -457,6 +458,24 @@ class _QuizCardState extends State<_QuizCard> {
               overflow: TextOverflow.ellipsis,
             ),
           ],
+          if (_result != null &&
+              !_result!.isPassed &&
+              _result!.teacherFeedback.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF7E6),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFF2C66D)),
+              ),
+              child: Text(
+                'Teacher feedback: ${_result!.teacherFeedback}',
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [
@@ -486,12 +505,20 @@ class _QuizCardState extends State<_QuizCard> {
                 child: ElevatedButton.icon(
                   onPressed: widget.onTakeQuiz,
                   icon: Icon(
-                    _hasTaken == true
+                    _result?.retryAllowed == true
+                        ? Icons.replay
+                        : _hasTaken == true
                         ? Icons.visibility
                         : Icons.play_arrow_rounded,
                     size: 18,
                   ),
-                  label: Text(_hasTaken == true ? 'View Results' : 'Take Quiz'),
+                  label: Text(
+                    _result?.retryAllowed == true
+                        ? 'Retry Quiz'
+                        : _hasTaken == true
+                        ? 'View Results'
+                        : 'Take Quiz',
+                  ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF428DEB),
                     foregroundColor: Colors.white,

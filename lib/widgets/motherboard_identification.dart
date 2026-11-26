@@ -172,9 +172,23 @@ class _MotherboardIdentificationState extends State<MotherboardIdentification> {
                         details.localPosition.dy / size.maxHeight,
                       ),
                     ),
-                    child: Image.asset(
-                      MotherboardParts.asset,
-                      fit: BoxFit.fill,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.asset(MotherboardParts.asset, fit: BoxFit.fill),
+                        Positioned.fromRect(
+                          rect: Rect.fromLTWH(
+                            MotherboardParts.cmosRect.left * size.maxWidth,
+                            MotherboardParts.cmosRect.top * size.maxHeight,
+                            MotherboardParts.cmosRect.width * size.maxWidth,
+                            MotherboardParts.cmosRect.height * size.maxHeight,
+                          ),
+                          child: Image.asset(
+                            MotherboardParts.cmosAsset,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

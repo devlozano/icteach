@@ -49,7 +49,10 @@ class ModuleService {
 
   // Create a new module
   Future<void> createModule(ModuleModel module) async {
-    await LearningPathService.requireActive(module.classId);
+    await LearningPathService.requireContentManagement(
+      module.classId,
+      'modules',
+    );
     try {
       final docRef = _firestore
           .collection('classes')
@@ -76,7 +79,7 @@ class ModuleService {
     String moduleId,
     ModuleModel module,
   ) async {
-    await LearningPathService.requireActive(classId);
+    await LearningPathService.requireContentManagement(classId, 'modules');
     try {
       final data = module.toFirestore();
       data['updatedAt'] = FieldValue.serverTimestamp();
@@ -96,7 +99,7 @@ class ModuleService {
 
   // Delete a module
   Future<void> deleteModule(String classId, String moduleId) async {
-    await LearningPathService.requireActive(classId);
+    await LearningPathService.requireContentManagement(classId, 'modules');
     try {
       await _firestore
           .collection('classes')
@@ -137,7 +140,7 @@ class ModuleService {
     String moduleId,
     bool isPublished,
   ) async {
-    await LearningPathService.requireActive(classId);
+    await LearningPathService.requireContentManagement(classId, 'modules');
     try {
       await _firestore
           .collection('classes')

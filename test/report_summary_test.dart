@@ -52,11 +52,13 @@ void main() {
   test('class report sections are appropriate for each staff role', () {
     const sections = [
       SummarySection('Learning progress summary', [], []),
+      SummarySection('Teacher grade summary', [], []),
       SummarySection('Students', [], []),
       SummarySection('Module access', [], []),
       SummarySection('Quiz results', [], []),
-      SummarySection('Pre-assignment', [], []),
+      SummarySection('Pre-assessment', [], []),
       SummarySection('Trainer practical validation', [], []),
+      SummarySection('Trainer grade summary', [], []),
       SummarySection('Simulations', [], []),
       SummarySection('Teaching and course feedback', [], []),
     ];
@@ -66,14 +68,19 @@ void main() {
         'trainer',
         sections,
       ).map((section) => section.title),
-      ['Students', 'Trainer practical validation'],
+      ['Students', 'Trainer grade summary', 'Trainer practical validation'],
     );
     expect(
       ClassSummaryService.sectionsForRole(
         'teacher',
         sections,
       ).map((section) => section.title),
-      containsAll(['Quiz results', 'Simulations', 'Module access']),
+      containsAll([
+        'Teacher grade summary',
+        'Quiz results',
+        'Simulations',
+        'Module access',
+      ]),
     );
     expect(
       ClassSummaryService.sectionsForRole('admin', sections),
@@ -84,6 +91,7 @@ void main() {
   test('print purposes include only the required summary', () {
     const sections = [
       SummarySection('Learning progress summary', [], []),
+      SummarySection('Teacher grade summary', [], []),
       SummarySection('Students', [], []),
       SummarySection('Module access', [], []),
       SummarySection('Quiz results', [], []),
@@ -96,7 +104,7 @@ void main() {
         ClassSummaryPrintPurpose.grades,
         ClassSummaryService.sectionsForRole('teacher', sections),
       ).map((section) => section.title),
-      ['Learning progress summary'],
+      ['Learning progress summary', 'Teacher grade summary'],
     );
     expect(
       ClassSummaryService.sectionsForPrint(
@@ -111,6 +119,16 @@ void main() {
         sections,
       ).map((section) => section.title),
       ['Learning progress summary'],
+    );
+    expect(
+      ClassSummaryService.sectionsForPrint(
+        ClassSummaryPrintPurpose.progress,
+        ClassSummaryService.sectionsForRole('trainer', [
+          ...sections,
+          const SummarySection('Trainer grade summary', [], []),
+        ]),
+      ).map((section) => section.title),
+      ['Trainer grade summary', 'Trainer practical validation'],
     );
     expect(
       ClassSummaryService.sectionsForPrint(

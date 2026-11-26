@@ -126,6 +126,16 @@ class SimulationStepDetail {
       'Processor and socket contacts are undamaged and protected.',
       'Processor is dragged across contacts or stored without protection.',
     ),
+    'cmos_parts_tray': SimulationStepDetail(
+      [
+        'Confirm the computer is unplugged, residual power is discharged, and ESD protection is in place.',
+        'Record the CR2032 orientation with its positive face visible before touching the holder.',
+        'Release the holder latch carefully and allow the battery edge to rise; do not pry against nearby board components.',
+        'Lift the battery by its edge and place it in the labelled parts tray without shorting its two faces.',
+      ],
+      'The CR2032 is removed by its edge, its orientation is recorded, and the holder and nearby components are undamaged.',
+      'The battery is forced from the holder, shorted, or removed before power isolation.',
+    ),
     'motherboard_parts_tray': SimulationStepDetail(
       [
         'Identify and label front-panel, USB, audio, fan, and remaining board connections.',

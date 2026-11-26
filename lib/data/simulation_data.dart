@@ -94,7 +94,7 @@ class SimulationData {
         id: 'motherboard',
         name: 'Motherboard',
         description: 'Main circuit board - install first in the case',
-        imageUrl: 'assets/simulations/assembly-motherboard-nine-hole-v2.png',
+        imageUrl: 'assets/simulations/assembly-motherboard-cmos-holder-v3.png',
         correctSlot: 'motherboard_tray',
         category: 'motherboard',
         step: 1,
@@ -111,13 +111,26 @@ class SimulationData {
         tooltip: 'Match the CPU triangle with the socket indicator.',
       ),
       _item(
+        id: 'cmos',
+        name: 'CMOS Battery',
+        description:
+            'CR2032 battery for the real-time clock and firmware settings',
+        imageUrl: 'assets/simulations/cmos-cr2032-v1.png',
+        correctSlot: 'cmos_holder',
+        category: 'motherboard',
+        step: 3,
+        tooltip:
+            'Release the holder latch and install the battery with its positive face visible.',
+        specification: 'CR2032 • 3 V coin cell • positive (+) face up',
+      ),
+      _item(
         id: 'cpu_fan',
         name: 'CPU Cooler',
         description: 'Attach after CPU installation',
         imageUrl: 'assets/simulations/assembly-cooler-matched.png',
         correctSlot: 'cpu_fan_mount',
         category: 'cooling',
-        step: 3,
+        step: 4,
         tooltip: 'Apply thermal paste before attaching the cooler.',
       ),
       _item(
@@ -127,7 +140,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/assembly-ram-ddr4-matched.png',
         correctSlot: 'ram_slot',
         category: 'memory',
-        step: 4,
+        step: 5,
         tooltip: 'Press firmly until the clips click.',
         specification: 'DDR4-3200 UDIMM • 288-pin • 1.2 V',
       ),
@@ -152,7 +165,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/assembly-gpu-matched.png',
         correctSlot: 'pcie_slot',
         category: 'graphics',
-        step: 5,
+        step: 6,
         tooltip: 'Secure the bracket with screws.',
       ),
       _item(
@@ -162,7 +175,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/assembly-ssd-matched.png',
         correctSlot: 'storage_bay',
         category: 'storage',
-        step: 6,
+        step: 7,
         tooltip: 'Mount in the drive bay or M.2 slot.',
       ),
       _item(
@@ -172,7 +185,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/assembly-psu-matched.png',
         correctSlot: 'psu_mount',
         category: 'power',
-        step: 7,
+        step: 8,
         tooltip: 'Face the fan toward the case ventilation.',
       ),
       _item(
@@ -182,7 +195,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/cable-atx-24pin-v2.png',
         correctSlot: 'power_slot',
         category: 'cable',
-        step: 8,
+        step: 9,
         tooltip:
             'Align the keyed 24-pin housing and press on the connector until its latch closes.',
         specification: 'ATX 24-pin • motherboard main power • keyed latch',
@@ -194,7 +207,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/cable-cpu-4plus4.png',
         correctSlot: 'cpu_power_slot',
         category: 'cable',
-        step: 9,
+        step: 10,
         tooltip:
             'Join the correct 4+4 halves, match their rounded and square keys, and latch them near the CPU socket.',
         specification: 'EPS12V 4+4 pin • CPU power • rounded/square keying',
@@ -206,7 +219,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/cable-gpu-6plus2.png',
         correctSlot: 'gpu_power_slot',
         category: 'cable',
-        step: 10,
+        step: 11,
         tooltip:
             'Use the PCIe lead rather than the similar CPU lead and confirm the GPU connector latch.',
         specification: 'PCIe 6+2 pin • GPU auxiliary power • not EPS12V',
@@ -218,7 +231,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/cable-sata-data-v2.png',
         correctSlot: 'sata_slot',
         category: 'cable',
-        step: 11,
+        step: 12,
         tooltip:
             'Match both L-shaped data connectors and route the cable without sharp bends.',
         specification: 'SATA 7-pin data • L-shaped key • not SATA power',
@@ -230,7 +243,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/cable-sata-power-v2.png',
         correctSlot: 'sata_power_device',
         category: 'cable',
-        step: 12,
+        step: 13,
         tooltip:
             'Use the wider SATA power housing, align its L-shaped key, and press only on the connector body.',
         specification: 'SATA 15-pin power • PSU to drive • keyed housing',
@@ -243,7 +256,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/cable-front-panel-leads-v2.png',
         correctSlot: 'front_panel_slot',
         category: 'cable',
-        step: 13,
+        step: 14,
         tooltip:
             'Follow each connector label and wire color; LED positive and negative polarity must match the training-board diagram.',
         specification: 'F_PANEL header • polarity matters for LEDs',
@@ -256,7 +269,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/check.svg',
         correctSlot: 'cable_test_station',
         category: 'diagnostic',
-        step: 14,
+        step: 15,
         tooltip:
             'Trace the same connections that must be released during disassembly and correct loose or misrouted cables before power-on.',
         specification:
@@ -269,7 +282,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/check.svg',
         correctSlot: 'assembly_test_station',
         category: 'diagnostic',
-        step: 15,
+        step: 16,
         tooltip:
             'Check clearances, fasteners, and connections before power-on. Confirm POST, fan operation, hardware detection, and document the result.',
         specification:
@@ -367,14 +380,25 @@ class SimulationData {
             'Lift the CPU straight up by its edges and place it in an antistatic holder.',
       ),
       _item(
+        id: 'disassembly_cmos',
+        name: 'Remove CMOS Battery',
+        description: 'Release the holder latch and lift the CR2032 by its edge',
+        imageUrl: 'assets/simulations/cmos-cr2032-v1.png',
+        correctSlot: 'cmos_parts_tray',
+        category: 'disassembly',
+        step: 8,
+        tooltip:
+            'With power isolated, release the holder latch, note the positive-face orientation, and store the battery safely.',
+      ),
+      _item(
         id: 'disassembly_motherboard',
         name: 'Remove Motherboard',
         description:
             'Verify all connectors and fasteners are free before lifting',
-        imageUrl: 'assets/simulations/assembly-motherboard-nine-hole-v2.png',
+        imageUrl: 'assets/simulations/assembly-motherboard-cmos-holder-v3.png',
         correctSlot: 'motherboard_parts_tray',
         category: 'disassembly',
-        step: 8,
+        step: 9,
         tooltip:
             'Remove every board screw, check for attached cables, then lift by the edges onto an ESD mat.',
       ),
@@ -385,7 +409,7 @@ class SimulationData {
         imageUrl: 'assets/simulations/check.svg',
         correctSlot: 'inventory_station',
         category: 'disassembly',
-        step: 9,
+        step: 10,
         tooltip:
             'Inspect for damage, organize screws, protect components, and complete the service record.',
       ),
@@ -582,10 +606,11 @@ class SimulationData {
     id: 'sim_coc2_topology',
     title: 'Network Topology - COC2',
     description:
-        'Build a functional network by placing devices in their correct positions.',
+        'Interpret the network plan, arrange the modem, router, switch and endpoints, then inspect and test the completed LAN.',
     type: 'networking',
     competency: 'COC2',
-    learningOutcome: 'LO1 - Install network cables',
+    learningOutcome:
+        'COC 2 LO 1-4 - Plan, connect, configure, inspect and test a LAN',
     timeLimit: 12,
     requiredSimulationId: 'sim_coc1_assembly',
     items: [
@@ -691,10 +716,10 @@ class SimulationData {
     id: 'sim_coc2_ipconfig',
     title: 'IP Configuration - COC2',
     description:
-        'Assign the correct IP addresses to each device in the network.',
+        'Apply the approved IPv4 plan, avoid duplicate addresses, then verify the saved configuration and network reachability.',
     type: 'networking',
     competency: 'COC2',
-    learningOutcome: 'LO3 - Set-up network protocols',
+    learningOutcome: 'COC 2 LO 2 - Set network configuration',
     timeLimit: 10,
     requiredSimulationId: null,
     items: [
@@ -747,8 +772,10 @@ class SimulationData {
     type: 'configuration',
     competency: competency,
     learningOutcome: kind == SetupLabKind.network
-        ? 'LO2 - Configure network; LO3 - Test connectivity'
-        : 'LO3 - Install and configure operating systems and software',
+        ? 'COC 2 LO 1-4 - Connect, configure, inspect and test the network'
+        : kind == SetupLabKind.operatingSystem
+        ? 'COC 1 LO 2 - Install operating system and drivers'
+        : 'COC 1 LO 3-4 - Install software, test and document',
     timeLimit: kind == SetupLabKind.network ? 120 : 60,
     requiredSimulationId: prerequisite,
     items: [
@@ -887,9 +914,9 @@ class SimulationData {
     id: 'sim_coc2_diagnostics',
     title: 'Network Connectivity Diagnostics - COC2',
     description:
-        'Diagnose physical, addressing, gateway, DNS, and service faults from the lowest layer upward.',
+        'Inspect and test the configured network in a fixed order: physical link, local TCP/IP, addressing, gateway, DNS and service.',
     competency: 'COC2',
-    outcome: 'LO4 - Test and troubleshoot network connectivity',
+    outcome: 'COC 2 LO 4 - Inspect and test the configured network',
     prerequisite: 'sim_coc2_ipconfig',
     visual: 'assets/simulations/coc2-diagnostic-laptop-matched.png',
     steps: const [
@@ -909,9 +936,19 @@ class SimulationData {
         'Ping 127.0.0.1 to confirm the local TCP/IP stack before testing the network adapter.',
       ),
       (
+        'Ping the Local Address',
+        'adapter_test',
+        'Ping the computer’s assigned IPv4 address to verify that the local adapter and address are bound correctly.',
+      ),
+      (
         'Ping Default Gateway',
         'gateway_test',
         'Test the local gateway; failure indicates a local configuration, cable, VLAN, or switch issue.',
+      ),
+      (
+        'Ping a Remote IP Address',
+        'remote_ip_test',
+        'Test an approved remote IP address before testing a host name. This separates routing failure from name-resolution failure.',
       ),
       (
         'Test DNS Resolution',

@@ -34,6 +34,8 @@ class _SimulationStepLabState extends State<SimulationStepLab>
   );
   final _address = TextEditingController();
   final _mask = TextEditingController();
+  final _gateway = TextEditingController();
+  final _dns = TextEditingController();
   int _action = 0;
   int? _decisionChoice;
   ServiceDecision? get _decision =>
@@ -55,6 +57,8 @@ class _SimulationStepLabState extends State<SimulationStepLab>
     _motion.dispose();
     _address.dispose();
     _mask.dispose();
+    _gateway.dispose();
+    _dns.dispose();
     super.dispose();
   }
 
@@ -88,6 +92,16 @@ class _SimulationStepLabState extends State<SimulationStepLab>
             _mask.text.trim() != '255.255.255.0')) {
       _mistake(
         'Configuration rejected. Compare this device address with the allocation plan and use the /24 mask 255.255.255.0.',
+      );
+      return;
+    }
+    if (_ip &&
+        _action == 2 &&
+        widget.item.id != 'ip_router' &&
+        (_gateway.text.trim() != '192.168.1.254' ||
+            _dns.text.trim() != '192.168.1.1')) {
+      _mistake(
+        'Configuration rejected. Use gateway 192.168.1.254 and the approved DNS server 192.168.1.1 from the allocation plan.',
       );
       return;
     }
@@ -175,7 +189,15 @@ class _SimulationStepLabState extends State<SimulationStepLab>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Training workbench • Perform, observe, then verify.'),
+              Text(
+                widget.simulation.learningOutcome,
+                style: const TextStyle(
+                  color: Color(0xFF0B6075),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text('Perform → observe → verify → record'),
               const SizedBox(height: 8),
               LinearProgressIndicator(value: _action / _detail.actions.length),
             ],
@@ -209,6 +231,25 @@ class _SimulationStepLabState extends State<SimulationStepLab>
                       ? 'Acceptance criterion: ${_detail.expected}'
                       : _detail.actions[_action],
                 ),
+                if (_action == 0) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF6F8),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFB8DCE3)),
+                    ),
+                    child: Text(
+                      'Work order: ${widget.item.description}',
+                      style: const TextStyle(
+                        color: Color(0xFF12334C),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
                 if (_action == 0 && _decision != null) ...[
                   const SizedBox(height: 16),
                   Text(
@@ -297,6 +338,34 @@ class _SimulationStepLabState extends State<SimulationStepLab>
                     ),
                   ),
                 ],
+                if (_ip && _action == 2 && widget.item.id != 'ip_router') ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    key: const ValueKey('ipv4-gateway'),
+                    controller: _gateway,
+                    enabled: !_busy,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Default gateway',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const ValueKey('ipv4-dns'),
+                    controller: _dns,
+                    enabled: !_busy,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Preferred DNS server',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
                 if (_finished) ...[
                   const SizedBox(height: 12),
                   Semantics(
@@ -341,6 +410,8 @@ class _SimulationStepLabState extends State<SimulationStepLab>
                           ? 'Operation in progress…'
                           : _ip && _action == 1
                           ? 'Apply configuration'
+                          : _ip && _action == 2
+                          ? 'Apply gateway and DNS'
                           : 'Perform operation',
                     ),
                   ),

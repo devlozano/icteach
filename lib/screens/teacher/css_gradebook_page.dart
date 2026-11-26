@@ -299,50 +299,58 @@ class _CssGradebookPageState extends State<CssGradebookPage> {
                                   ? null
                                   : () => Navigator.pop(context, true),
                               icon: const Icon(Icons.download),
-                              label: const Text('Export CSV for Excel'),
+                              label: const Text('Download grades'),
                             ),
                           ],
                         ),
                       );
                       if (export != true) return;
                       try {
-                        await ReportExportService.shareCsv(
-                          'css-grades-$schoolYear.csv',
-                          [
-                            [
-                              'School year',
-                              'Profile',
-                              'Student',
-                              'Term 1',
-                              'Term 2',
-                              'Term 3',
-                              'Final grade',
-                              'Descriptor',
-                            ],
-                            ...students.map((s) {
-                              final grades = [
-                                for (var t = 1; t <= 3; t++)
-                                  result(s.key, t)?.grade,
-                              ];
-                              final finalGrade = DepEdGrading.finalGrade(
-                                grades,
-                              );
-                              return <Object?>[
-                                '$schoolYear-${schoolYear + 1}',
-                                profile.label,
-                                s.value,
-                                ...grades.map((g) => g ?? 'Incomplete'),
-                                finalGrade ?? 'Incomplete',
-                                finalGrade == null
-                                    ? ''
-                                    : DepEdGrading.descriptor(finalGrade),
-                              ];
-                            }),
-                          ],
-                        );
+                        final downloaded =
+                            await ReportExportService.downloadCsv(
+                              'css-grades-$schoolYear.csv',
+                              [
+                                [
+                                  'School year',
+                                  'Profile',
+                                  'Student',
+                                  'Term 1',
+                                  'Term 2',
+                                  'Term 3',
+                                  'Final grade',
+                                  'Descriptor',
+                                ],
+                                ...students.map((s) {
+                                  final grades = [
+                                    for (var t = 1; t <= 3; t++)
+                                      result(s.key, t)?.grade,
+                                  ];
+                                  final finalGrade = DepEdGrading.finalGrade(
+                                    grades,
+                                  );
+                                  return <Object?>[
+                                    '$schoolYear-${schoolYear + 1}',
+                                    profile.label,
+                                    s.value,
+                                    ...grades.map((g) => g ?? 'Incomplete'),
+                                    finalGrade ?? 'Incomplete',
+                                    finalGrade == null
+                                        ? ''
+                                        : DepEdGrading.descriptor(finalGrade),
+                                  ];
+                                }),
+                              ],
+                            );
+                        if (mounted) {
+                          message(
+                            downloaded
+                                ? 'Student grades downloaded.'
+                                : 'Download cancelled.',
+                          );
+                        }
                       } catch (_) {
                         if (mounted) {
-                          message('Unable to export grades. Please retry.');
+                          message('Unable to download grades. Please retry.');
                         }
                       }
                     },

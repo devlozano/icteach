@@ -59,6 +59,16 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
   List<(String, String)> get _steps => GuidedSetupData.steps(widget.kind);
   String get _station => _text('station').isEmpty ? '9' : _text('station');
   String get _subnet => '192.168.$_station';
+  String get _deploymentProfile => _choice('deployment_profile');
+  bool get _legacyOs => _deploymentProfile.contains('Legacy BIOS');
+  String get _mediaTool => _legacyOs ? 'PowerISO' : 'Rufus';
+  String get _expectedIso => switch (_deploymentProfile) {
+    'Server PC • Windows Server 2008 R2 • Legacy BIOS' =>
+      'Windows Server 2008 R2.iso',
+    'Desktop client • Windows 7 Ultimate x64 • Legacy BIOS' =>
+      'Windows 7 Ultimate x64.iso',
+    _ => 'Modern Windows x64.iso',
+  };
   String _ip(String device) => '$_subnet.${_devices.indexOf(device) + 1}';
   TextEditingController _controller(String key) =>
       _fields.putIfAbsent(key, () => TextEditingController());
@@ -300,21 +310,31 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         ];
       case 1:
         return [
-          _button('Open Rufus', () => _flag('rufus')),
-          if (_has('rufus')) ...[
+          _select('deployment_profile', 'Assigned deployment profile', [
+            'Server PC • Windows Server 2008 R2 • Legacy BIOS',
+            'Desktop client • Windows 7 Ultimate x64 • Legacy BIOS',
+            'Modern Windows • UEFI practice',
+          ]),
+          if (_deploymentProfile.isNotEmpty)
+            _button('Open $_mediaTool', () => _flag('media_tool')),
+          if (_has('media_tool')) ...[
             _note(
-              'Rufus • Device: Training USB (16 GB)\nBoot selection: Disk or ISO image',
+              '$_mediaTool • Device: Training USB (16 GB)\nProfile: $_deploymentProfile',
             ),
-            _button('SELECT', () => _flag('iso_picker')),
+            _button(
+              _legacyOs ? 'Open ISO file' : 'SELECT',
+              () => _flag('iso_picker'),
+            ),
             if (_has('iso_picker')) ...[
               _select('iso', 'Approved ISO library', [
-                'Windows 10 x64.iso',
-                'Windows Server 2022 x64.iso',
+                'Windows Server 2008 R2.iso',
+                'Windows 7 Ultimate x64.iso',
+                'Modern Windows x64.iso',
               ]),
               _button('Open ISO', () {
                 if (_check(
-                  _choice('iso').isNotEmpty,
-                  'Select an ISO file from the library.',
+                  _choice('iso') == _expectedIso,
+                  'Select the ISO assigned to $_deploymentProfile.',
                 )) {
                   _advance();
                 }
@@ -325,7 +345,7 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
       case 2:
         return [
           _note(
-            'Device: Training USB • ${_choice('iso')}\nTarget specification: UEFI x64 • blank GPT disk. Windows 10 is included for worksheet practice, not as a current deployment recommendation.',
+            'Device: Training USB • ${_choice('iso')}\nTarget: $_deploymentProfile. Keep the partition scheme and firmware mode compatible.',
           ),
           _select('partition_scheme', 'Partition scheme', ['GPT', 'MBR']),
           _select('firmware', 'Target system', [
@@ -333,7 +353,9 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
             'BIOS (or UEFI-CSM)',
           ]),
           _note(
-            'File system: Rufus-selected default for this ISO. Rufus can use its UEFI:NTFS loader when needed; FAT32 is not universally required.',
+            _legacyOs
+                ? 'Worksheet profile: use MBR with BIOS/UEFI-CSM. The simulator keeps the file-system choice tied to the approved image.'
+                : 'Modern profile: use GPT with UEFI. Rufus selects the compatible file system for this approved image.',
           ),
           _toggle(
             'erase_usb',
@@ -341,10 +363,11 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
           ),
           _button('START', () {
             if (_check(
-              _choice('partition_scheme') == 'GPT' &&
-                  _choice('firmware') == 'UEFI (non CSM)' &&
+              _choice('partition_scheme') == (_legacyOs ? 'MBR' : 'GPT') &&
+                  _choice('firmware') ==
+                      (_legacyOs ? 'BIOS (or UEFI-CSM)' : 'UEFI (non CSM)') &&
                   _has('erase_usb'),
-              'This UEFI target needs GPT/UEFI and confirmation of the USB erase.',
+              'Match the partition scheme and firmware mode to the selected profile, then confirm the USB erase.',
             )) {
               _wait('usb_ready');
             }
@@ -352,7 +375,7 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         ];
       case 3:
         return [
-          _note('Rufus status: READY • writing finished'),
+          _note('$_mediaTool status: COMPLETE • boot media verified'),
           _button('Eject Training USB', () => _flag('ejected')),
           _button('Unplug USB', () {
             if (_check(
@@ -405,16 +428,22 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         ];
       case 6:
         return [
-          _note('UEFI Setup Utility • Boot priority'),
+          _note(
+            _legacyOs
+                ? 'BIOS Setup • Boot Option #1 and Hard Drive BBS priority'
+                : 'UEFI Setup Utility • Boot priority',
+          ),
           _select('boot', 'Boot option #1', [
+            'USB HDD: Training USB',
             'UEFI: Training USB',
             'Windows Boot Manager',
             'Network PXE',
           ]),
           _button('F10 • Save and restart', () {
             if (_check(
-              _choice('boot') == 'UEFI: Training USB',
-              'Choose the UEFI USB entry to start the installer.',
+              _choice('boot') ==
+                  (_legacyOs ? 'USB HDD: Training USB' : 'UEFI: Training USB'),
+              'Choose the USB entry that matches the selected deployment profile.',
             )) {
               _advance();
             }
@@ -422,7 +451,9 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         ];
       case 7:
         return [
-          _note('Target restarting • boot source: UEFI USB'),
+          _note(
+            'Target restarting • boot source: ${_legacyOs ? 'USB HDD' : 'UEFI USB'}',
+          ),
           _button('Boot installer', () => _wait('installer_loaded')),
         ];
       case 8:
@@ -436,6 +467,11 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
             'license',
             'Accept the simulated license prompt for this approved training image',
           ),
+          _select('edition', 'Operating system edition', [
+            'Windows Server 2008 R2 • Full Installation',
+            'Windows 7 Ultimate x64',
+            'Modern Windows x64',
+          ]),
           _select('install_type', 'Installation type', [
             'Upgrade',
             'Custom: install Windows only',
@@ -444,8 +480,14 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
             if (_check(
               _choice('language').isNotEmpty &&
                   _has('license') &&
+                  _choice('edition') ==
+                      (_deploymentProfile.startsWith('Server PC')
+                          ? 'Windows Server 2008 R2 • Full Installation'
+                          : _deploymentProfile.startsWith('Desktop client')
+                          ? 'Windows 7 Ultimate x64'
+                          : 'Modern Windows x64') &&
                   _choice('install_type') == 'Custom: install Windows only',
-              'Choose language, accept the license prompt and select Custom installation.',
+              'Choose the assigned edition, accept the license prompt and select Custom installation.',
             )) {
               _advance();
             }
@@ -454,7 +496,7 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
       case 9:
         return [
           _note(
-            'Disk 0 • authorized training disk • GPT\nEFI/MSR/recovery space is reserved separately. Usable exercise space: 102400 MiB.',
+            'Disk 0 • authorized training disk • ${_legacyOs ? 'MBR' : 'GPT'}\nUsable exercise space: 102400 MiB. Create Windows C: at 40% and Data D: at 60%.',
           ),
           _toggle(
             'disk_authorized',
@@ -512,13 +554,17 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
             _flag('installer_removed');
           }),
           _select('restart_boot', 'Restart boot source', [
+            'Internal hard disk',
             'UEFI: Training USB',
             'Windows Boot Manager',
           ]),
           _button('Continue restart', () {
             if (_check(
               !_has('target_usb') ||
-                  _choice('restart_boot') == 'Windows Boot Manager',
+                  _choice('restart_boot') ==
+                      (_legacyOs
+                          ? 'Internal hard disk'
+                          : 'Windows Boot Manager'),
               'The USB installer would load again. Remove it at restart or choose Windows Boot Manager.',
             )) {
               _wait('desktop_boot');
@@ -891,25 +937,25 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         return [
           _deviceSelector(),
           _note(
-            'ISOLATED WORKSHEET MODE • simulated switches only\nTurning off a firewall removes its filtering. Normal deployment: keep it on and use scoped rules.',
+            'Security check • keep firewall protection active. Configure only the rules required by the approved private-network work order.',
           ),
           _toggle(
-            'firewall_off_${_device}_Private',
-            'Turn off Private profile (worksheet)',
+            'firewall_on_${_device}_Private',
+            'Private profile firewall enabled',
           ),
           _toggle(
-            'firewall_off_${_device}_Public',
-            'Turn off Public profile (worksheet)',
+            'firewall_on_${_device}_Public',
+            'Public profile firewall enabled',
           ),
-          _button('Apply worksheet firewall settings', () {
+          _button('Confirm protected firewall settings', () {
             if (_check(
               _devices.every(
                 (d) => [
                   'Private',
                   'Public',
-                ].every((p) => _has('firewall_off_${d}_$p')),
+                ].every((p) => _has('firewall_on_${d}_$p')),
               ),
-              'Apply the worksheet settings on all three simulated devices.',
+              'Confirm that both firewall profiles remain enabled on every device.',
             )) {
               _advance();
             }
@@ -919,27 +965,18 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
         return [
           _deviceSelector(),
           _note(
-            'Allow an app or feature • Change settings\nNetlogon and management features depend on installed roles and services. This training image exposes the worksheet entries.',
+            'Allow an app or feature • Change settings\nUse the Private profile for this trusted training LAN. Public remote-management access is outside the approved work order.',
           ),
           for (final feature in _features) ...[
             Text(feature, style: const TextStyle(fontWeight: FontWeight.bold)),
             _toggle('rule_${_device}_${feature}_Private', 'Private'),
-            _toggle(
-              'rule_${_device}_${feature}_Public',
-              'Public (isolated worksheet)',
-            ),
           ],
           _button('Save allowed features', () {
             if (_check(
               _devices.every(
-                (d) => _features.every(
-                  (f) => [
-                    'Private',
-                    'Public',
-                  ].every((p) => _has('rule_${d}_${f}_$p')),
-                ),
+                (d) => _features.every((f) => _has('rule_${d}_${f}_Private')),
               ),
-              'Configure both worksheet profiles for all six features on each device.',
+              'Apply the approved private-network rules on all three devices.',
             )) {
               _advance();
             }
@@ -952,18 +989,18 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
           _toggle('sharing_$_device', 'Turn on file and printer sharing'),
           _toggle(
             'public_folder_$_device',
-            'Turn on public folder sharing (worksheet)',
+            'Enable the authorized shared folder',
           ),
           _toggle(
-            'password_off_$_device',
-            'Turn off password-protected sharing (worksheet)',
+            'password_on_$_device',
+            'Keep password-protected sharing enabled',
           ),
           _note(
-            'Protected deployment: firewall ON for both profiles; private-network discovery/sharing only; password-protected sharing ON; enable remote access only when authorized. The worksheet state remains isolated here.',
+            'Final inspection: firewall enabled, private-network discovery and sharing only, password protection enabled, and remote access limited to authorized users.',
           ),
           _toggle(
             'review_secure',
-            'I can distinguish the worksheet settings from a protected deployment',
+            'I inspected the final network against the approved work order',
           ),
           _button('Verify network and finish', () {
             if (_check(
@@ -973,10 +1010,10 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
                       'discovery',
                       'sharing',
                       'public_folder',
-                      'password_off',
+                      'password_on',
                     ].every((s) => _has('${s}_$d')),
                   ),
-              'Apply sharing settings to all devices and review the protected deployment configuration.',
+              'Apply the approved protected sharing settings to every device, then complete the final inspection.',
             )) {
               _advance();
             }
@@ -1135,6 +1172,63 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
     }
   }
 
+  Widget _alignmentCard() {
+    final requirements = switch (widget.kind) {
+      SetupLabKind.operatingSystem => const [
+        'Legacy worksheet or modern UEFI profile',
+        '40% Windows C: • 60% Data D:',
+        'Safe USB removal and restart control',
+      ],
+      SetupLabKind.software => const [
+        'Chipset • LAN • printer drivers',
+        'Approved applications and test launch',
+        'Remote access, printer test and service record',
+      ],
+      SetupLabKind.network => const [
+        'Router .10 • Server .1 • Desktop .2 • Laptop .3',
+        'Six peer-to-peer ping directions',
+        'Discovery services and protected sharing',
+      ],
+    };
+    return Card(
+      margin: const EdgeInsets.only(top: 10),
+      elevation: 0,
+      color: const Color(0xFFF8FBFF),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: Color(0xFFD6E4F0)),
+      ),
+      child: ExpansionTile(
+        initiallyExpanded: false,
+        leading: const Icon(Icons.fact_check_rounded, color: Color(0xFF087E8B)),
+        title: const Text(
+          'Assessment alignment',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        subtitle: const Text('Open to review the required checkpoints'),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          for (final requirement in requirements)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.check_circle_outline_rounded,
+                    size: 19,
+                    color: Color(0xFF15803D),
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(child: Text(requirement)),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final title = switch (widget.kind) {
@@ -1142,8 +1236,21 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
       SetupLabKind.software => 'COC 1 • Software configuration',
       SetupLabKind.network => 'COC 2 • Computer network setup',
     };
-    return ColoredBox(
-      color: const Color(0xFFECF2F8),
+    final outcome = switch (widget.kind) {
+      SetupLabKind.operatingSystem =>
+        'Install the operating system and device drivers',
+      SetupLabKind.software =>
+        'Install application software, test and document',
+      SetupLabKind.network => 'Connect, configure, inspect and test the LAN',
+    };
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFFF4F8FC), Color(0xFFE7F0F7)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
       child: ListView(
         controller: _scroll,
         padding: const EdgeInsets.all(16),
@@ -1154,49 +1261,105 @@ class _GuidedSetupWorkbenchState extends State<GuidedSetupWorkbench>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF12334C),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _done
-                        ? '${widget.quiz ? "Quiz" : "Practical"} complete • ${_log.length} operations verified'
-                        : 'Step ${_step + 1} of ${_steps.length} • ${_steps[_step].$1}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ExpansionTile(
-                    key: ValueKey('setup-scene-${widget.kind.name}'),
-                    title: const Text('Training equipment reference'),
-                    subtitle: const Text('View the equipment used in this lab'),
-                    initiallyExpanded:
-                        _step == 0 && MediaQuery.sizeOf(context).width >= 800,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          GuidedSetupData.sceneAsset(widget.kind),
-                          height: 220,
-                          width: double.infinity,
-                          fit: BoxFit.contain,
-                          semanticLabel:
-                              'Illustrative equipment reference for $title; use the controls below to perform the current step',
-                        ),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF12334C), Color(0xFF087E8B)],
                       ),
-                      const SizedBox(height: 8),
-                    ],
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x2512334C),
+                          blurRadius: 16,
+                          offset: Offset(0, 7),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              widget.quiz
+                                  ? Icons.fact_check_outlined
+                                  : Icons.engineering_outlined,
+                              color: Colors.white,
+                            ),
+                            const SizedBox(width: 9),
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          outcome,
+                          style: const TextStyle(
+                            color: Color(0xFFD9F3F5),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _done
+                              ? '${widget.quiz ? "Quiz" : "Practical"} complete • ${_log.length} operations verified'
+                              : 'Step ${_step + 1} of ${_steps.length} • ${_steps[_step].$1}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: LinearProgressIndicator(
+                            value: _done ? 1 : (_step + 1) / _steps.length,
+                            minHeight: 7,
+                            backgroundColor: Colors.white24,
+                            color: const Color(0xFFB8F2E6),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  LinearProgressIndicator(
-                    value: _done ? 1 : _step / _steps.length,
-                    minHeight: 6,
+                  _alignmentCard(),
+                  const SizedBox(height: 10),
+                  Card(
+                    margin: EdgeInsets.zero,
+                    child: ExpansionTile(
+                      key: ValueKey('setup-scene-${widget.kind.name}'),
+                      leading: const Icon(Icons.devices_other_outlined),
+                      title: const Text('Equipment and workstation'),
+                      subtitle: const Text(
+                        'Open the reference when you need to inspect the setup',
+                      ),
+                      initiallyExpanded:
+                          _step == 0 && MediaQuery.sizeOf(context).width >= 800,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            GuidedSetupData.sceneAsset(widget.kind),
+                            height: 220,
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                            semanticLabel:
+                                'Illustrative equipment reference for $title; use the controls below to perform the current step',
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
                   ),
                   _note(
                     _done

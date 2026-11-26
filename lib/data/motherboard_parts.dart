@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// Regions calibrated to assembly-motherboard-nine-hole-v2.png.
+/// Regions calibrated to assembly-motherboard-cmos-holder-v3.png.
 class MotherboardParts {
   static const asset =
-      'assets/simulations/assembly-motherboard-nine-hole-v2.png';
+      'assets/simulations/assembly-motherboard-cmos-holder-v3.png';
   static const entries = <(String, String, Rect, String)>[
     (
       'cpu_socket',
@@ -53,5 +53,14 @@ class MotherboardParts {
       Rect.fromLTWH(.69, .62, .20, .26),
       'Dissipates heat from the chipset that supports peripheral communication.',
     ),
+    (
+      'cmos',
+      'CMOS battery',
+      Rect.fromLTWH(.64, .49, .075, .065),
+      'A CR2032 coin cell maintains the real-time clock and firmware settings while external power is disconnected. Its positive face is visible in the holder.',
+    ),
   ];
+
+  static const cmosRect = Rect.fromLTWH(.64, .49, .075, .065);
+  static const cmosAsset = 'assets/simulations/cmos-cr2032-v1.png';
 }

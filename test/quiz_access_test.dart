@@ -49,6 +49,51 @@ void main() {
   test('published quiz opens after its assigned module is complete', () async {
     await open();
   });
+  test(
+    'staff can link, reassign, and unlink a quiz from module details',
+    () async {
+      final root = db.collection('classes').doc('c');
+      await root.collection('modules').doc('m2').set({
+        'title': 'Second module',
+        'isPublished': true,
+      });
+      await root.collection('learning_paths').doc('simulation_sim').set({
+        'moduleId': 'm',
+        'quizId': 'q',
+      });
+
+      await LearningPathService.setQuizModule(
+        classId: 'c',
+        quizId: 'q',
+        moduleId: 'm2',
+        firestore: db,
+        userId: 'teacher',
+      );
+      expect(
+        (await root.collection('learning_paths').doc('quiz_q').get())
+            .data()?['moduleId'],
+        'm2',
+      );
+      expect(
+        (await root.collection('learning_paths').doc('simulation_sim').get())
+            .data()?['moduleId'],
+        'm2',
+      );
+
+      await LearningPathService.setQuizModule(
+        classId: 'c',
+        quizId: 'q',
+        moduleId: null,
+        firestore: db,
+        userId: 'teacher',
+      );
+      expect(
+        (await root.collection('learning_paths').doc('quiz_q').get())
+            .data()?['moduleId'],
+        isNull,
+      );
+    },
+  );
   test('current saved result completes simulation Part A', () async {
     await db
         .collection('users')
@@ -192,6 +237,38 @@ void main() {
   test('archived class is blocked', () async {
     await db.collection('classes').doc('c').update({'status': 'archived'});
     await expectLater(open(), throwsStateError);
+  });
+  test('archived staff content actions return a clear message', () async {
+    await LearningPathService.requireContentManagement(
+      'c',
+      'modules',
+      firestore: db,
+      userId: 'teacher',
+    );
+    await db.collection('classes').doc('c').update({'status': 'archived'});
+    await expectLater(
+      LearningPathService.requireContentManagement(
+        'c',
+        'modules',
+        firestore: db,
+        userId: 'teacher',
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (error) => error.message,
+          'message',
+          'This class is archived. You cannot upload or change modules.',
+        ),
+      ),
+    );
+    expect(
+      LearningPathService.contentError(
+        StateError(
+          'This class is archived. You cannot upload or change quizzes.',
+        ),
+      ),
+      'This class is archived. You cannot upload or change quizzes.',
+    );
   });
   test(
     'archived class remains accessible to its enrolled student for read-only practice',

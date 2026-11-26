@@ -11,6 +11,8 @@ import 'screens/staff_management_page.dart';
 import 'widgets/workspace_intro.dart';
 import 'widgets/persistent_workspace.dart';
 import 'screens/staff_outcomes.dart';
+import 'screens/staff_archive_reports_page.dart';
+import 'screens/teacher/progress_tracker_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -37,10 +39,23 @@ class TeacherHomePage extends StatefulWidget {
 }
 
 class _TeacherHomePageState extends State<TeacherHomePage> {
-  int _currentTabIndex = WorkspacePreferences.tab('teacher', 9);
+  int _currentTabIndex = WorkspacePreferences.tab('teacher', 10);
   void _selectTab(int index) {
     setState(() => _currentTabIndex = index);
     WorkspacePreferences.saveTab('teacher', index);
+  }
+
+  void _openClassReport(String classId, String className) {
+    _selectTab(3);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              ProgressTrackerPage(classId: classId, className: className),
+        ),
+      );
+    });
   }
 
   static const _webItems = [
@@ -53,9 +68,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     (Icons.groups_outlined, 'Student Management'),
     (Icons.menu_book_outlined, 'Module Management'),
     (Icons.fact_check_outlined, 'Quiz & Assignment'),
+    (Icons.inventory_2_outlined, 'Archives & Reports'),
   ];
   // Keep Feedback directly above Profile in the website sidebar.
-  static const _webOrder = [0, 1, 2, 3, 6, 7, 8, 5, 4];
+  static const _webOrder = [0, 1, 2, 3, 9, 6, 7, 8, 5, 4];
   Widget _webSidebar(String name, ValueChanged<int> select) =>
       AdminWorkspaceSidebar(
         role: 'Teacher',
@@ -509,7 +525,11 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 5 => const StaffOutcomes(feedback: true),
                 6 => const StaffManagementPage(embedded: true),
                 7 => const StaffManagementPage(embedded: true, modules: true),
-                _ => const TeacherQuizAssessmentHub(),
+                8 => const TeacherQuizAssessmentHub(),
+                _ => StaffArchiveReportsPage(
+                  role: 'teacher',
+                  onOpenClassReport: _openClassReport,
+                ),
               });
             }
 
@@ -541,6 +561,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                             'Students',
                             'Modules',
                             'Quiz & Assignment',
+                            'Archives & Reports',
                           ][_currentTabIndex],
                         ),
                         actions: [
@@ -587,6 +608,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                                           'Student Management',
                                           'Module Management',
                                           'Quiz & Assignment',
+                                          'Archives & Reports',
                                         ][_currentTabIndex],
                                         style: const TextStyle(
                                           color: Color(0xFF102A43),
@@ -626,6 +648,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                                   trainer: false,
                                 ),
                                 () => const TeacherQuizAssessmentHub(),
+                                () => StaffArchiveReportsPage(
+                                  role: 'teacher',
+                                  onOpenClassReport: _openClassReport,
+                                ),
                               ],
                             ),
                           ),
@@ -1244,6 +1270,7 @@ class _TeacherDesktopNav extends StatelessWidget {
       (Icons.groups_outlined, 'Student Management'),
       (Icons.menu_book_outlined, 'Module Management'),
       (Icons.fact_check_outlined, 'Quiz & Assignment'),
+      (Icons.inventory_2_outlined, 'Archives & Reports'),
     ],
     onSelected: onChanged,
     onLogout: onLogout,

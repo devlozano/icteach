@@ -222,6 +222,7 @@ void main() {
         'cooler': 5,
         'ram': 3,
         'cpu': 3,
+        'cmos': 3,
         'motherboard': 4,
       }.entries) {
         await selectTool(tester, tools['disassembly_${entry.key}']!);
