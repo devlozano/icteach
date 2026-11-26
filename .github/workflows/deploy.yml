@@ -51,6 +51,27 @@ jobs:
           include-hidden-files: true
 
       - name: Deploy to Hostinger
+        id: hostinger_deploy
+        continue-on-error: true
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./build/web/
+          server-dir: /public_html/
+          log-level: standard
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.env
+            **/.DS_Store
+
+      - name: Retry Hostinger deployment
+        if: steps.hostinger_deploy.outcome == 'failure'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
