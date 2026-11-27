@@ -8,8 +8,10 @@ void paintInstalledCable(
   double progress,
   int contacts,
   Color signalColor,
-  double scale,
-) {
+  double scale, {
+  double? housingAngle,
+  double? startHousingAngle,
+}) {
   final metric = route.computeMetrics().first;
   final distance = metric.length * progress.clamp(0.0, 1.0);
   final tangent = metric.getTangentForOffset(distance);
@@ -91,59 +93,67 @@ void paintInstalledCable(
       );
     }
   }
-  canvas.save();
-  canvas.translate(tangent.position.dx, tangent.position.dy);
-  // The long ATX housing lies along the vertical socket in the board artwork.
-  canvas.rotate(contacts == 24 ? 0 : tangent.angle);
-  canvas.scale(scale);
-  final housingWidth = contacts == 24
-      ? 9.0
-      : ribbon
-      ? 7.0
-      : 9.0;
-  final housingHeight = contacts == 24
-      ? 30.0
-      : ribbon
-      ? (contacts == 15 ? 18.0 : 10.0)
-      : count * 2.4 + 2;
-  final rect = Rect.fromCenter(
-    center: Offset.zero,
-    width: housingWidth,
-    height: housingHeight,
-  );
-  final shell = RRect.fromRectAndRadius(rect, const Radius.circular(1.3));
-  canvas.drawShadow(Path()..addRRect(shell), Colors.black, 2, true);
-  canvas.drawRRect(
-    shell,
-    Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF616970), Color(0xFF242A30), Color(0xFF10151A)],
-      ).createShader(rect),
-  );
-  canvas.drawRRect(
-    shell,
-    Paint()
-      ..color = const Color(0xFF858B90)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = .6,
-  );
-  for (var i = 1; i < (contacts == 24 ? 12 : count); i++) {
-    final y = rect.top + housingHeight * i / (contacts == 24 ? 12 : count);
-    canvas.drawLine(
-      Offset(rect.left + 1, y),
-      Offset(rect.right - 1, y),
+  void housing(Offset position, double angle) {
+    canvas.save();
+    canvas.translate(position.dx, position.dy);
+    // The long ATX housing lies along the vertical socket in the board artwork.
+    canvas.rotate(contacts == 24 ? 0 : angle);
+    canvas.scale(scale);
+    final housingWidth = contacts == 24
+        ? 9.0
+        : ribbon
+        ? 7.0
+        : 9.0;
+    final housingHeight = contacts == 24
+        ? 30.0
+        : ribbon
+        ? (contacts == 15 ? 18.0 : 10.0)
+        : count * 2.4 + 2;
+    final rect = Rect.fromCenter(
+      center: Offset.zero,
+      width: housingWidth,
+      height: housingHeight,
+    );
+    final shell = RRect.fromRectAndRadius(rect, const Radius.circular(1.3));
+    canvas.drawShadow(Path()..addRRect(shell), Colors.black, 2, true);
+    canvas.drawRRect(
+      shell,
       Paint()
-        ..color = const Color(0xFF141A20)
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF616970), Color(0xFF242A30), Color(0xFF10151A)],
+        ).createShader(rect),
+    );
+    canvas.drawRRect(
+      shell,
+      Paint()
+        ..color = const Color(0xFF858B90)
+        ..style = PaintingStyle.stroke
         ..strokeWidth = .6,
     );
+    for (var i = 1; i < (contacts == 24 ? 12 : count); i++) {
+      final y = rect.top + housingHeight * i / (contacts == 24 ? 12 : count);
+      canvas.drawLine(
+        Offset(rect.left + 1, y),
+        Offset(rect.right - 1, y),
+        Paint()
+          ..color = const Color(0xFF141A20)
+          ..strokeWidth = .6,
+      );
+    }
+    // Retention tab on power plugs; stepped strain relief on SATA plugs.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(rect.left - 2, -2.5, ribbon ? 3 : 4, 5),
+        const Radius.circular(.7),
+      ),
+      Paint()..color = const Color(0xFF7B8288),
+    );
+    canvas.restore();
   }
-  // Retention tab on power plugs; stepped strain relief on SATA plugs.
-  canvas.drawRRect(
-    RRect.fromRectAndRadius(
-      Rect.fromLTWH(rect.left - 2, -2.5, ribbon ? 3 : 4, 5),
-      const Radius.circular(.7),
-    ),
-    Paint()..color = const Color(0xFF7B8288),
-  );
-  canvas.restore();
+
+  housing(tangent.position, housingAngle ?? tangent.angle);
+  if (startHousingAngle != null && progress >= 1) {
+    final start = metric.getTangentForOffset(0);
+    if (start != null) housing(start.position, startHousingAngle);
+  }
 }

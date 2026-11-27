@@ -93,14 +93,19 @@ void main() {
     expect(PcBuildProcedure.targetRect('ram').contains(ram.center), isTrue);
     expect(screenAspect(ssd), closeTo(69.85 / 100, .03));
     expect(screenAspect(gpu), closeTo(2172 / 724, .02));
-    expect(ram.center.dx, closeTo(.456, .002));
+    expect(ram.center.dx, closeTo(.463, .002));
     expect(ram.top, closeTo(.211, .002));
     expect(ram.bottom, closeTo(.474, .002));
     expect(ssd.center.dx, closeTo(.626, .002));
     expect(gpu.left, closeTo(.228, .001));
     expect(gpu.top, closeTo(.510, .001));
     expect(gpu.bottom, lessThanOrEqualTo(.72));
-    expect(cmos.center.dx, closeTo(.438, .001));
+    expect(cmos.center.dx, closeTo(.432, .001));
+    expect(
+      cmos.right,
+      lessThan(ram.left),
+      reason: 'The CMOS battery must clear the DIMM slot and its latches.',
+    );
     expect(cmos.center.dy, closeTo(.438, .001));
     expect(
       screenAspect(cmos),
@@ -229,6 +234,30 @@ void main() {
     );
   });
 
+  test('front-panel plugs form the correct two-row header grid', () {
+    const hdd = PcBuildProcedure.frontHddLedPins;
+    const powerLed = PcBuildProcedure.frontPowerLedPins;
+    const reset = PcBuildProcedure.frontResetSwPins;
+    const powerSw = PcBuildProcedure.frontPowerSwPins;
+    expect(hdd.dy, reset.dy, reason: 'HDD LED and RESET use the odd-pin row.');
+    expect(
+      powerLed.dy,
+      powerSw.dy,
+      reason: 'POWER LED and POWER SW use the even-pin row.',
+    );
+    expect(hdd.dx, powerLed.dx, reason: 'LED plugs share the left columns.');
+    expect(
+      reset.dx,
+      powerSw.dx,
+      reason: 'Switch plugs share the right columns.',
+    );
+    expect(hdd.dx, lessThan(reset.dx));
+    expect(hdd.dy, lessThan(powerLed.dy));
+    for (final pins in [hdd, powerLed, reset, powerSw]) {
+      expect(PcBuildProcedure.rects['motherboard']!.contains(pins), isTrue);
+    }
+  });
+
   test('final functional test connects external leads before power-on', () {
     final operations = PcBuildProcedure.operations['assembly_test']!;
     expect(
@@ -289,8 +318,8 @@ void main() {
 
   test('SSD endpoints meet the raised side tray without floating', () {
     final ssd = PcBuildProcedure.rects['ssd']!;
-    const data = Offset(.606, .542);
-    const power = Offset(.642, .542);
+    const data = PcBuildProcedure.sataDataDrivePort;
+    const power = PcBuildProcedure.sataPowerDrivePort;
     expect(ssd.contains(data), isTrue);
     expect(ssd.contains(power), isTrue);
     expect(data.dy, closeTo(ssd.bottom, .01));
@@ -298,6 +327,28 @@ void main() {
     for (final screw in PcBuildProcedure.fasteners['ssd']!) {
       expect(ssd.contains(screw), isTrue);
     }
+  });
+
+  test('power and data cable endpoints align with their hardware ports', () {
+    final gpu = PcBuildProcedure.rects['gpu']!;
+    final ssd = PcBuildProcedure.rects['ssd']!;
+    final board = PcBuildProcedure.rects['motherboard']!;
+    expect(gpu.contains(PcBuildProcedure.gpuPowerPort), isTrue);
+    expect(ssd.contains(PcBuildProcedure.sataDataDrivePort), isTrue);
+    expect(ssd.contains(PcBuildProcedure.sataPowerDrivePort), isTrue);
+    expect(board.contains(PcBuildProcedure.sataDataBoardPort), isTrue);
+    expect(
+      PcBuildProcedure.sataDataDrivePort.dx,
+      lessThan(PcBuildProcedure.sataPowerDrivePort.dx),
+      reason:
+          'The narrow SATA data socket sits left of the wider power socket.',
+    );
+    expect(
+      PcBuildProcedure.sataPowerDrivePort.dx -
+          PcBuildProcedure.sataDataDrivePort.dx,
+      inInclusiveRange(.025, .035),
+      reason: 'Both SSD plugs must be centered without overlapping.',
+    );
   });
 
   test('CMOS installation releases the holder before seating positive-up', () {

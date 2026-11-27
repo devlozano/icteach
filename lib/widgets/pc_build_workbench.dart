@@ -1171,19 +1171,19 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     'assembly_test' => _step?.dropToken != null ? _step!.point : null,
     'power_cable' => const Offset(.501, .338),
     'cpu_power' => const Offset(.326, .187),
-    'gpu_power' => const Offset(.455, .58),
+    'gpu_power' => PcBuildProcedure.gpuPowerPort,
     'sata_cable' => switch (operation) {
-      1 => const Offset(.606, .542),
-      2 => const Offset(.501, .585),
+      1 => PcBuildProcedure.sataDataDrivePort,
+      2 => PcBuildProcedure.sataDataBoardPort,
       _ => null,
     },
-    'sata_power' => const Offset(.642, .542),
+    'sata_power' => PcBuildProcedure.sataPowerDrivePort,
     'front_panel' => switch (operation) {
       1 => const Offset(.49, .68),
-      2 => const Offset(.505, .69),
-      3 => const Offset(.495, .685),
-      4 => const Offset(.475, .675),
-      5 => const Offset(.485, .68),
+      2 => PcBuildProcedure.frontPowerSwPins,
+      3 => PcBuildProcedure.frontResetSwPins,
+      4 => PcBuildProcedure.frontHddLedPins,
+      5 => PcBuildProcedure.frontPowerLedPins,
       _ => null,
     },
     'cable_inspection' => switch (operation) {
@@ -1206,7 +1206,7 @@ class _PcBuildWorkbenchState extends State<PcBuildWorkbench>
     final start = item.id == 'front_panel'
         ? const Offset(.77, .22)
         : item.id == 'sata_cable' && operation == 2
-        ? const Offset(.606, .542)
+        ? PcBuildProcedure.sataDataDrivePort
         : const Offset(.68, .78);
     final position = Offset.lerp(
       start,
@@ -1670,6 +1670,9 @@ class _BuildMechanicsPainter extends CustomPainter {
       double? viaX,
       double progress = 1,
       int contacts = 2,
+      Offset? endApproach,
+      double? housingAngle,
+      double? startHousingAngle,
     }) {
       if (!shown) return;
       final from = start ?? p(.345, .83);
@@ -1677,6 +1680,9 @@ class _BuildMechanicsPainter extends CustomPainter {
           viaX ??
           (from.dy < size.height * .35 ? size.width * .47 : size.width * .61);
       final bendY = from.dy + (end.dy - from.dy) * .55;
+      final finalControl = endApproach == null
+          ? Offset(end.dx + (routeX - end.dx) * .35, end.dy)
+          : end + endApproach;
       final path = Path()
         ..moveTo(from.dx, from.dy)
         ..cubicTo(
@@ -1690,8 +1696,8 @@ class _BuildMechanicsPainter extends CustomPainter {
         ..cubicTo(
           routeX,
           end.dy - (end.dy - bendY) * .35,
-          end.dx + (routeX - end.dx) * .35,
-          end.dy,
+          finalControl.dx,
+          finalControl.dy,
           end.dx,
           end.dy,
         );
@@ -1702,6 +1708,8 @@ class _BuildMechanicsPainter extends CustomPainter {
         contacts,
         color,
         size.width / 1000,
+        housingAngle: housingAngle,
+        startHousingAngle: startHousingAngle,
       );
     }
 
@@ -1735,7 +1743,7 @@ class _BuildMechanicsPainter extends CustomPainter {
       installed.contains('gpu_power') ||
           connected('pcie_8pin_plug') ||
           (current == 'gpu_power' && operation == 2 && busy),
-      p(.455, .58),
+      p(PcBuildProcedure.gpuPowerPort.dx, PcBuildProcedure.gpuPowerPort.dy),
       Colors.yellow,
       viaX: size.width * PcBuildProcedure.cableRouteX['gpu_power']!,
       progress: current == 'gpu_power' && operation == 2 && busy ? motion : 1,
@@ -1746,9 +1754,15 @@ class _BuildMechanicsPainter extends CustomPainter {
           connected('sata_data_board') ||
           (current == 'sata_cable' &&
               (operation > 1 || operation == 1 && busy)),
-      p(.606, .542),
+      p(
+        PcBuildProcedure.sataDataDrivePort.dx,
+        PcBuildProcedure.sataDataDrivePort.dy,
+      ),
       Colors.redAccent,
-      start: p(.501, .585),
+      start: p(
+        PcBuildProcedure.sataDataBoardPort.dx,
+        PcBuildProcedure.sataDataBoardPort.dy,
+      ),
       viaX: size.width * PcBuildProcedure.cableRouteX['sata_cable']!,
       progress: current == 'sata_cable'
           ? operation == 1 && busy
@@ -1762,16 +1776,24 @@ class _BuildMechanicsPainter extends CustomPainter {
                 : 0
           : 1,
       contacts: 7,
+      endApproach: Offset(0, size.height * .04),
+      housingAngle: math.pi / 2,
+      startHousingAngle: 0,
     );
     wire(
       installed.contains('sata_power') ||
           connected('sata_power_drive') ||
           (current == 'sata_power' && operation == 2 && busy),
-      p(.642, .542),
+      p(
+        PcBuildProcedure.sataPowerDrivePort.dx,
+        PcBuildProcedure.sataPowerDrivePort.dy,
+      ),
       Colors.orangeAccent,
       viaX: size.width * PcBuildProcedure.cableRouteX['sata_power']!,
       progress: current == 'sata_power' && operation == 2 && busy ? motion : 1,
       contacts: 15,
+      endApproach: Offset(0, size.height * .04),
+      housingAngle: math.pi / 2,
     );
     final frontPanelComplete =
         (installed.contains('front_panel') && current != 'front_panel') ||
@@ -1781,7 +1803,10 @@ class _BuildMechanicsPainter extends CustomPainter {
           frontPanelComplete ||
           (current == 'front_panel' &&
               (operation > 2 || operation == 2 && busy)),
-      p(.505, .69),
+      p(
+        PcBuildProcedure.frontPowerSwPins.dx,
+        PcBuildProcedure.frontPowerSwPins.dy,
+      ),
       Colors.blueAccent,
       start: p(.77, .20),
       viaX: size.width * .73,
@@ -1792,7 +1817,10 @@ class _BuildMechanicsPainter extends CustomPainter {
           frontPanelComplete ||
           (current == 'front_panel' &&
               (operation > 3 || operation == 3 && busy)),
-      p(.495, .685),
+      p(
+        PcBuildProcedure.frontResetSwPins.dx,
+        PcBuildProcedure.frontResetSwPins.dy,
+      ),
       Colors.deepOrangeAccent,
       start: p(.77, .205),
       viaX: size.width * .735,
@@ -1803,7 +1831,10 @@ class _BuildMechanicsPainter extends CustomPainter {
           frontPanelComplete ||
           (current == 'front_panel' &&
               (operation > 4 || operation == 4 && busy)),
-      p(.475, .675),
+      p(
+        PcBuildProcedure.frontHddLedPins.dx,
+        PcBuildProcedure.frontHddLedPins.dy,
+      ),
       Colors.redAccent,
       start: p(.77, .21),
       viaX: size.width * .74,
@@ -1814,7 +1845,10 @@ class _BuildMechanicsPainter extends CustomPainter {
           frontPanelComplete ||
           (current == 'front_panel' &&
               (operation > 5 || operation == 5 && busy)),
-      p(.485, .68),
+      p(
+        PcBuildProcedure.frontPowerLedPins.dx,
+        PcBuildProcedure.frontPowerLedPins.dy,
+      ),
       Colors.greenAccent,
       start: p(.77, .215),
       viaX: size.width * .745,
@@ -1956,7 +1990,8 @@ class _BuildMechanicsPainter extends CustomPainter {
             : operation > index
             ? seating
             : 0.0;
-        final center = p(.456, index == 0 ? .211 : .474);
+        // Keep both DIMM latches centered on the shifted RAM slot.
+        final center = p(.463, index == 0 ? .211 : .474);
         final direction = index == 0 ? -1.0 : 1.0;
         final width = size.width * .011;
         final length = size.height * .017;

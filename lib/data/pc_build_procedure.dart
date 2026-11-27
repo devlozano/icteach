@@ -41,6 +41,19 @@ class PcBuildProcedure {
     'sata_cable': .555,
     'sata_power': .665,
   };
+  // Physical connector faces on the installed component artwork.
+  static const gpuPowerPort = Offset(.435, .532);
+  // Center the full 7-pin housing over the SSD data socket. The earlier
+  // anchor used its left edge and left the plug visibly offset.
+  static const sataDataDrivePort = Offset(.612, .542);
+  static const sataDataBoardPort = Offset(.501, .585);
+  static const sataPowerDrivePort = Offset(.642, .542);
+  // F_PANEL is a 2x5 pin header. Each two-pin housing must remain on one
+  // horizontal row instead of forming a diagonal line across the board.
+  static const frontHddLedPins = Offset(.481, .681);
+  static const frontPowerLedPins = Offset(.481, .690);
+  static const frontResetSwPins = Offset(.500, .681);
+  static const frontPowerSwPins = Offset(.500, .690);
   static const frontPanelDropTokens = <int, String>{
     2: 'front_power_sw',
     3: 'front_reset_sw',
@@ -76,7 +89,9 @@ class PcBuildProcedure {
     // layers rotate 90 degrees into the vertical DIMM and drive mounts.
     // A seated DIMM is seen edge-on from this chassis view. The full-height
     // side-profile sprite is used only while the learner is positioning it.
-    'ram': Rect.fromLTWH(.451, .211, .010, .263),
+    // Center the DIMM over the pictured slot while leaving clear space beside
+    // the CMOS holder. The latch painter uses this same .463 center.
+    'ram': Rect.fromLTWH(.458, .211, .010, .263),
     // From the open side panel the installed card is seen edge-on.
     // The rear bracket sits against the expansion-slot rail while the gold
     // edge is centered over PCIe x16. This also puts both bracket tabs under
@@ -86,7 +101,8 @@ class PcBuildProcedure {
     // faces down toward the cable grommet and remains visible after seating.
     'ssd': Rect.fromLTWH(.574, .292, .104, .258),
     // Calibrated to the round CR2032 holder visible on the motherboard layer.
-    'cmos': Rect.fromLTWH(.429, .422, .018, .032),
+    // Seat the CR2032 inside the holder without touching the DIMM bank.
+    'cmos': Rect.fromLTWH(.423, .422, .018, .032),
     'psu': Rect.fromLTWH(.225, .735, .12, .213),
   };
   static const assets = <String, String>{
@@ -111,7 +127,7 @@ class PcBuildProcedure {
     _ => 0,
   };
   static Rect targetRect(String id) => switch (id) {
-    'ram' => const Rect.fromLTWH(.446, .206, .020, .273),
+    'ram' => const Rect.fromLTWH(.453, .206, .020, .273),
     'gpu' => const Rect.fromLTWH(.24, .51, .235, .17),
     _ => rects[id]!,
   };
@@ -600,7 +616,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Check PCIe 6+2 label; EPS is electrically incompatible',
         inspect,
-        Offset(.455, .58),
+        gpuPowerPort,
       ),
       PcBuildOperation(
         'Route below the card, leaving slack clear of its fans',
@@ -610,7 +626,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Seat the joined PCIe 6+2 plug on the GPU',
         hand,
-        Offset(.455, .58),
+        gpuPowerPort,
         place: true,
         dropToken: 'pcie_8pin_plug',
         requiredQuarterTurns: 0,
@@ -618,19 +634,19 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Inspect the latched plug without pulling its wires',
         inspect,
-        Offset(.455, .58),
+        gpuPowerPort,
       ),
     ],
     'sata_cable': [
       PcBuildOperation(
         'Inspect the narrow 7-pin L-shaped data plug',
         inspect,
-        Offset(.606, .542),
+        sataDataDrivePort,
       ),
       PcBuildOperation(
         'Seat the data cable at the SSD',
         hand,
-        Offset(.606, .542),
+        sataDataDrivePort,
         place: true,
         dropToken: 'sata_data_drive',
         requiredQuarterTurns: 0,
@@ -638,7 +654,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Rotate and drag the other end into motherboard SATA0',
         hand,
-        Offset(.501, .585),
+        sataDataBoardPort,
         place: true,
         dropToken: 'sata_data_board',
         requiredQuarterTurns: 2,
@@ -653,7 +669,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Inspect the wider 15-pin L-shaped SATA power housing',
         inspect,
-        Offset(.642, .542),
+        sataPowerDrivePort,
       ),
       PcBuildOperation(
         'Route the SATA power branch from the PSU behind the drive tray',
@@ -663,7 +679,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Seat the SATA power connector on the SSD without twisting it',
         hand,
-        Offset(.642, .542),
+        sataPowerDrivePort,
         place: true,
         dropToken: 'sata_power_drive',
         requiredQuarterTurns: 0,
@@ -688,21 +704,21 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Seat PWR_SW on pins 6/8; switch polarity does not matter',
         hand,
-        Offset(.505, .69),
+        frontPowerSwPins,
         place: true,
         dropToken: 'front_power_sw',
       ),
       PcBuildOperation(
         'Seat RESET on pins 5/7; switch polarity does not matter',
         hand,
-        Offset(.495, .685),
+        frontResetSwPins,
         place: true,
         dropToken: 'front_reset_sw',
       ),
       PcBuildOperation(
         'Seat HDD_LED positive on 1 and negative on 3',
         hand,
-        Offset(.475, .675),
+        frontHddLedPins,
         place: true,
         dropToken: 'front_hdd_led',
         requiredQuarterTurns: 0,
@@ -710,7 +726,7 @@ class PcBuildProcedure {
       PcBuildOperation(
         'Seat PWR_LED positive on 2 and negative on 4',
         hand,
-        Offset(.485, .68),
+        frontPowerLedPins,
         place: true,
         dropToken: 'front_power_led',
         requiredQuarterTurns: 0,
